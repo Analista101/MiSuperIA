@@ -4,3 +4,5 @@ pillow
 PyPDF2
 requests
 gTTS
+pandas
+openpyxl
