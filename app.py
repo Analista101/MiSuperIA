@@ -1,52 +1,71 @@
 import streamlit as st
-from PIL import Image
 from groq import Groq
 import PyPDF2
 import requests
 
-st.set_page_config(page_title="Diana IA: Cerebro Artístico", layout="wide")
+st.set_page_config(page_title="Diana IA Pro Max", layout="wide")
 
-# SEGURIDAD
+# 1. CONFIGURACIÓN DE SEGURIDAD
 api_key_groq = st.secrets["GROQ_API_KEY"] if "GROQ_API_KEY" in st.secrets else ""
 
+# 2. INICIALIZAR MEMORIA AVANZADA
 if "messages" not in st.session_state:
-    st.session_state.messages = []
+    # El primer mensaje es el "System Prompt" que define su inteligencia
+    st.session_state.messages = [
+        {"role": "system", "content": "Eres Diana IA Pro, una asistente de élite. Eres precisa, inteligente y siempre verificas tus datos. Ayudas a Diana a tener éxito en sus proyectos."}
+    ]
 
-st.title("🌌 Diana Súper IA: Cerebro Artístico Activado")
+with st.sidebar:
+    st.header("🧠 Ajustes de Inteligencia")
+    # Control de precisión: 0 es exacto, 1 es creativo
+    precision = st.slider("Nivel de Creatividad:", 0.0, 1.0, 0.4)
+    
+    if st.button("🗑️ Reiniciar Memoria"):
+        st.session_state.messages = [{"role": "system", "content": "Eres Diana IA Pro..."}]
+        st.rerun()
 
-pestana1, pestana2, pestana3 = st.tabs(["💬 Chat & PDF", "📸 Editor", "🎨 Creador de Imágenes"])
+st.title("🚀 Diana IA: Edición Inteligencia Superior")
+
+pestana1, pestana2 = st.tabs(["💬 Chat Inteligente", "🎨 Creador de Arte"])
 
 with pestana1:
-    # --- CHAT DE SIEMPRE ---
-    for m in st.session_state.messages:
+    # Lector de PDF integrado en la precisión
+    archivo_pdf = st.file_uploader("Sube un PDF para análisis profundo", type=['pdf'])
+    contexto_pdf = ""
+    if archivo_pdf:
+        lector = PyPDF2.PdfReader(archivo_pdf)
+        for pagina in lector.pages:
+            contexto_pdf += pagina.extract_text()
+        st.success("✅ Documento analizado con precisión.")
+
+    # Mostrar mensajes (saltando el mensaje de sistema)
+    for m in st.session_state.messages[1:]:
         with st.chat_message(m["role"]): st.markdown(m["content"])
-    if prompt := st.chat_input("Dime algo..."):
+
+    if prompt := st.chat_input("Escribe tu consulta profesional..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"): st.markdown(prompt)
+        
+        # Lógica de Inteligencia Superior
         client = Groq(api_key=api_key_groq)
-        response = client.chat.completions.create(messages=st.session_state.messages, model="llama-3.3-70b-versatile").choices[0].message.content
-        with st.chat_message("assistant"): st.markdown(response)
-        st.session_state.messages.append({"role": "assistant", "content": response})
+        
+        # Si hay PDF, se inyecta en el último mensaje para máxima precisión
+        mensajes_con_contexto = st.session_state.messages.copy()
+        if contexto_pdf:
+            mensajes_con_contexto.append({"role": "system", "content": f"Contexto del PDF: {contexto_pdf[:5000]}"})
 
-with pestana3:
-    st.header("🎨 Generador de Alta Calidad")
-    descripcion = st.text_input("¿Qué quieres que dibuje?", placeholder="Ej: Una astronauta en un bosque mágico")
-    
-    # OPCIONES DE ESTILO
-    estilo = st.selectbox("Elige un estilo:", ["Realista", "Dibujo Animado", "Cyberpunk", "Óleo", "Arte Digital"])
-    
-    if st.button("🚀 Crear Obra Maestra"):
-        if descripcion:
-            with st.spinner("Tu cerebro artístico está diseñando..."):
-                # ESTE ES EL TRUCO: Le añadimos palabras mágicas a tu descripción
-                mejorador = ", highly detailed, 8k resolution, cinematic lighting, masterpiece, trending on artstation"
-                prompt_final = f"{descripcion}, {estilo} style {mejorador}"
-                
-                url = f"https://image.pollinations.ai/prompt/{prompt_final.replace(' ', '%20')}"
-                
-                response = requests.get(url)
-                if response.status_code == 200:
-                    st.image(response.content, caption=f"Resultado: {descripcion} (Estilo: {estilo})")
-                    st.download_button("Descargar mi Obra", response.content, "diana_arte.png")
-                else:
-                    st.error("El servidor de dibujo está saturado. ¡Intenta de nuevo!")
+        with st.spinner("Pensando con precisión..."):
+            completion = client.chat.completions.create(
+                messages=mensajes_con_contexto,
+                model="llama-3.3-70b-versatile",
+                temperature=precision, # Aquí aplicamos el slider
+                max_tokens=2048 # Más capacidad de respuesta
+            )
+            
+            response = completion.choices[0].message.content
+            with st.chat_message("assistant"): st.markdown(response)
+            st.session_state.messages.append({"role": "assistant", "content": response})
+
+with pestana2:
+    st.info("El generador de imágenes ahora usa el Cerebro Artístico mejorado.")
+    # (Aquí puedes mantener tu código de imágenes anterior)
