@@ -6,3 +6,4 @@ requests
 gTTS
 pandas
 openpyxl
+duckduckgo-search
