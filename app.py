@@ -2,56 +2,67 @@ import streamlit as st
 from PIL import Image, ImageOps, ImageFilter
 from groq import Groq
 import PyPDF2
-from openai import OpenAI  # Importamos la herramienta de imágenes
+import requests
+import io
 
-st.set_page_config(page_title="Diana Súper IA Artista", layout="wide")
+st.set_page_config(page_title="Diana IA Artista Gratis", layout="wide")
 
-# 1. SEGURIDAD Y LLAVES
-# Necesitaremos una llave de OpenAI para las imágenes
+# SEGURIDAD (Solo Groq para el chat)
 api_key_groq = st.secrets["GROQ_API_KEY"] if "GROQ_API_KEY" in st.secrets else ""
-api_key_openai = st.secrets["OPENAI_API_KEY"] if "OPENAI_API_KEY" in st.secrets else ""
 
-# 2. MEMORIA
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-st.title("🌌 Diana Súper IA: Edición Artista")
+st.title("🌌 Diana Súper IA: Edición Artista Gratuita")
 
-# CREAMOS 3 PESTAÑAS
-pestana1, pestana2, pestana3 = st.tabs(["💬 Chat & PDF", "📸 Editor de Fotos", "🎨 Generador de Imágenes"])
+pestana1, pestana2, pestana3 = st.tabs(["💬 Chat & PDF", "📸 Editor de Fotos", "🎨 Creador de Imágenes"])
 
-# --- PESTAÑA 1: CHAT & PDF ---
+# --- PESTAÑA 1: CHAT ---
 with pestana1:
-    # (Aquí va tu código de chat y PDF que ya funciona)
-    st.info("Usa el chat normal para hablar o analizar PDFs.")
+    archivo_pdf = st.file_uploader("¿Analizamos un PDF?", type=['pdf'])
+    texto_pdf = ""
+    if archivo_pdf:
+        lector = PyPDF2.PdfReader(archivo_pdf)
+        for pagina in lector.pages:
+            texto_pdf += pagina.extract_text()
+        st.success("✅ PDF cargado")
 
-# --- PESTAÑA 2: EDITOR DE FOTOS ---
+    for m in st.session_state.messages:
+        with st.chat_message(m["role"]): st.markdown(m["content"])
+
+    if prompt := st.chat_input("Dime algo..."):
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"): st.markdown(prompt)
+        
+        client = Groq(api_key=api_key_groq)
+        instruccion = f"Contexto PDF: {texto_pdf[:1000]}" if texto_pdf else ""
+        full_msj = [{"role": "system", "content": instruccion}] + st.session_state.messages
+        response = client.chat.completions.create(messages=full_msj, model="llama-3.3-70b-versatile").choices[0].message.content
+        with st.chat_message("assistant"): st.markdown(response)
+        st.session_state.messages.append({"role": "assistant", "content": response})
+
+# --- PESTAÑA 2: EDITOR ---
 with pestana2:
-    # (Aquí va tu código de filtros que ya funciona)
-    st.info("Sube fotos para aplicarles filtros.")
+    img_file = st.file_uploader("Sube una foto", type=['jpg', 'png'])
+    if img_file:
+        img = Image.open(img_file)
+        st.image(img, caption="Original")
 
-# --- PESTAÑA 3: GENERADOR DE IMÁGENES (NUEVO!) ---
+# --- PESTAÑA 3: GENERADOR GRATIS ---
 with pestana3:
-    st.header("🎨 Crea arte con IA")
-    descripcion = st.text_input("Describe la imagen que quieres crear:", placeholder="Ej: Un gato astronauta pintado por Van Gogh")
+    st.header("🎨 Genera imágenes sin llaves")
+    descripcion = st.text_input("¿Qué quieres que dibuje?", placeholder="Ej: Un paisaje futurista de una ciudad rosa")
     
-    if st.button("🚀 Generar Imagen"):
-        if not api_key_openai:
-            st.error("Necesitas configurar tu OPENAI_API_KEY en los Secrets.")
-        elif descripcion:
-            with st.spinner("Creando tu obra de arte..."):
-                try:
-                    client_ai = OpenAI(api_key=api_key_openai)
-                    response = client_ai.images.generate(
-                        model="dall-e-3",
-                        prompt=descripcion,
-                        size="1024x1024",
-                        quality="standard",
-                        n=1,
-                    )
-                    url_imagen = response.data[0].url
-                    st.image(url_imagen, caption=f"Resultado: {descripcion}")
-                except Exception as e:
-                    st.error(f"Hubo un error: {e}")
+    if st.button("🚀 Crear Obra"):
+        if descripcion:
+            with st.spinner("Dibujando..."):
+                # Usamos Pollinations AI (Es gratis y no pide llaves)
+                url = f"https://image.pollinations.ai/prompt/{descripcion.replace(' ', '%20')}"
+                response = requests.get(url)
+                if response.status_code == 200:
+                    st.image(response.content, caption=f"Arte para Diana: {descripcion}")
+                    st.download_button("Descargar Obra", response.content, "ia_arte.png")
+                else:
+                    st.error("El servidor de dibujo está ocupado, intenta en un momento.")
         else:
             st.warning("Escribe una descripción primero.")
