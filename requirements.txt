@@ -2,4 +2,5 @@ streamlit
 groq
 pillow
 PyPDF2
-openai
+requests
+gTTS
