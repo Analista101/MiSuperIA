@@ -1,58 +1,74 @@
 import streamlit as st
 from PIL import Image, ImageOps, ImageFilter
 from groq import Groq
+import PyPDF2
 
-# 1. CONFIGURACIÓN DE PÁGINA
-st.set_page_config(page_title="Diana IA Pro", layout="wide")
+st.set_page_config(page_title="Diana Súper IA", layout="wide")
 
-# 2. MEMORIA DEL CHAT
+# 1. MEMORIA Y CONFIGURACIÓN DE PERSONALIDAD
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# 3. SEGURIDAD (SECRETS)
-# Aquí intenta leer la llave que pegaste en la web de Streamlit
-if "GROQ_API_KEY" in st.secrets:
-    api_key = st.secrets["GROQ_API_KEY"]
-else:
-    # Si no la encuentra (como en tu PC), la pide en la barra lateral
-    api_key = st.sidebar.text_input("Introduce Groq API Key:", type="password")
+# 2. SEGURIDAD AUTOMÁTICA
+api_key = st.secrets["GROQ_API_KEY"] if "GROQ_API_KEY" in st.secrets else st.sidebar.text_input("API Key:", type="password")
 
-st.title("🌌 Diana IA: Versión en la Nube")
+# --- BARRA LATERAL (HERRAMIENTAS C y A) ---
+with st.sidebar:
+    st.header("🛠️ Herramientas Pro")
+    modo = st.selectbox("Personalidad de la IA:", ["Asistente Pro", "Creativo", "Amigo Divertido"])
+    
+    st.divider()
+    if st.button("🗑️ Borrar Memoria"):
+        st.session_state.messages = []
+        st.rerun()
 
-col1, col2 = st.columns([1, 1.5])
+st.title("🌌 Diana Súper IA: Edición Total")
 
-with col1:
-    st.header("🖼️ Visión")
-    archivo = st.file_uploader("Sube una foto", type=['jpg', 'png', 'jpeg'])
-    if archivo:
-        img = Image.open(archivo)
-        st.image(img, use_container_width=True)
+pestana1, pestana2 = st.tabs(["💬 Chat & PDF", "🎨 Editor de Imágenes"])
 
-with col2:
-    st.header("💬 Chat Inteligente")
+# --- PESTAÑA 1: CHAT + PDF (HERRAMIENTA B) ---
+with pestana1:
+    st.subheader(f"Chat en modo: {modo}")
+    
+    archivo_pdf = st.file_uploader("¿Quieres que analice un PDF?", type=['pdf'])
+    texto_pdf = ""
+    if archivo_pdf:
+        lector = PyPDF2.PdfReader(archivo_pdf)
+        for pagina in lector.pages:
+            texto_pdf += pagina.extract_text()
+        st.success("✅ PDF leído. ¡Pregúntame lo que quieras sobre él!")
+
     # Mostrar historial
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+    for m in st.session_state.messages:
+        with st.chat_message(m["role"]): st.markdown(m["content"])
 
-    # Entrada de chat
-    if prompt := st.chat_input("¿En qué puedo ayudarte hoy, Diana?"):
+    if prompt := st.chat_input("Escribe aquí..."):
+        # Ajuste de personalidad según lo elegido
+        instruccion = f"Actúa como un {modo}. "
+        if texto_pdf: instruccion += f"Contexto del PDF: {texto_pdf[:2000]}" # Lee los primeros 2000 caracteres
+        
         st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
+        with st.chat_message("user"): st.markdown(prompt)
 
-        if not api_key:
-            st.error("Falta la API Key en los Secrets o en la barra lateral.")
-        else:
-            try:
-                client = Groq(api_key=api_key)
-                completion = client.chat.completions.create(
-                    messages=st.session_state.messages,
-                    model="llama-3.3-70b-versatile"
-                )
-                response = completion.choices[0].message.content
-                with st.chat_message("assistant"):
-                    st.markdown(response)
-                st.session_state.messages.append({"role": "assistant", "content": response})
-            except Exception as e:
-                st.error(f"Error: {e}")
+        client = Groq(api_key=api_key)
+        # Enviamos la personalidad como primer mensaje oculto
+        full_messages = [{"role": "system", "content": instruccion}] + st.session_state.messages
+        
+        response = client.chat.completions.create(messages=full_messages, model="llama-3.3-70b-versatile").choices[0].message.content
+        
+        with st.chat_message("assistant"): st.markdown(response)
+        st.session_state.messages.append({"role": "assistant", "content": response})
+
+# --- PESTAÑA 2: EDITOR DE FOTOS ---
+with pestana2:
+    st.header("🖼️ Edición Visual")
+    img_file = st.file_uploader("Sube una imagen para editar", type=['jpg', 'png'])
+    if img_file:
+        img = Image.open(img_file)
+        filtro = st.radio("Aplica un efecto:", ["Original", "Blanco y Negro", "Contornos", "Borroso"])
+        
+        if filtro == "Blanco y Negro": img = ImageOps.grayscale(img)
+        elif filtro == "Contornos": img = img.filter(ImageFilter.FIND_EDGES)
+        elif filtro == "Borroso": img = img.filter(ImageFilter.BLUR)
+        
+        st.image(img, use_container_width=True)
