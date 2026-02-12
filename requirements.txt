@@ -1,9 +1,11 @@
 streamlit
 groq
+gspread
+google-auth
+pandas
+openpyxl
 pillow
 PyPDF2
 requests
 gTTS
-pandas
-openpyxl
 duckduckgo-search
