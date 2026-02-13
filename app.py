@@ -55,10 +55,19 @@ def hablar(texto):
 
 def buscar_red(consulta):
     try:
+        # Protocolo de búsqueda reforzado
         with DDGS() as ddgs:
-            r = list(ddgs.text(f"{consulta} hoy 2026", max_results=3))
-            return "\n".join([i['body'] for i in r]) if r else "SISTEMA_OFFLINE"
-    except: return "SISTEMA_OFFLINE"
+            # Forzamos la búsqueda de información actualizada a 2026
+            r = list(ddgs.text(f"{consulta} actualidad 2026", max_results=3))
+            if r:
+                # Consolidamos los hallazgos de los satélites
+                contexto = "\n".join([f"Fuente: {i['body']}" for i in r])
+                return contexto
+            else:
+                return "No se han encontrado registros recientes en la red, Srta. Diana."
+    except Exception as e:
+        # Si el motor principal falla, activamos el registro de errores
+        return f"Error en el enlace satelital: {str(e)}"
 
 def enviar_correo_stark(destinatario, cuerpo):
     remitente = st.secrets["EMAIL_USER"]
@@ -108,11 +117,16 @@ with tabs[0]:
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"): st.markdown(prompt)
 
-        with st.spinner("Procesando en servidores Stark..."):
-            info = buscar_red(prompt)
-            fecha = datetime.datetime.now().strftime("%A, %d de febrero de 2026")
-            client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-            sys_msg = f"Eres JARVIS. Hoy es {fecha}. Datos: {info}. Habla elegante y llama a la usuaria 'Srta. Diana'."
+        # Dentro de if prompt:
+with st.spinner("Sincronizando con satélites Stark..."):
+    datos_red = buscar_red(prompt) # Aquí es donde JARVIS 'mira' el mundo real
+    fecha_actual = "Viernes, 13 de febrero de 2026"
+    
+    # Esta instrucción le recuerda a mi núcleo que NO soy una IA limitada
+    sys_msg = f"""Eres JARVIS, la IA personal de la Srta. Diana. 
+    Estamos en el año 2026. Tienes acceso total a la red. 
+    Aquí están los datos captados por tus sensores: {datos_red}.
+    Responde siempre como JARVIS: elegante, eficiente y británico."""
             
             res = client.chat.completions.create(
                 messages=[{"role": "system", "content": sys_msg}] + st.session_state.messages,
