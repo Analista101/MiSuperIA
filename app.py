@@ -3,135 +3,110 @@ import pandas as pd
 from PIL import Image, ImageOps
 from groq import Groq
 from duckduckgo_search import DDGS
-from gtts import gTTS
-from streamlit_mic_recorder import mic_recorder
+import edge_tts
+import asyncio
 import base64, io, datetime, requests
 
 # --- CONFIGURACIÓN DE LA TERMINAL STARK ---
 st.set_page_config(page_title="JARVIS: Protocolo Diana", layout="wide", page_icon="🛰️")
 
-# Estética Stark con Reactor Arc
+# Estética y Reactor Arc (CSS de Alta Fidelidad)
 st.markdown("""
     <style>
     .stApp { background: radial-gradient(circle, #0a192f 0%, #020617 100%); color: #00f2ff; }
     .arc-reactor {
-        width: 80px; height: 80px; border-radius: 50%; margin: auto;
+        width: 80px; height: 80px; border-radius: 50%; margin: 20px auto;
         background: radial-gradient(circle, #fff 0%, #00f2ff 40%, transparent 70%);
         box-shadow: 0 0 30px #00f2ff; border: 2px solid #00f2ff;
         animation: pulse 2s infinite;
     }
     @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
     .stTabs [data-baseweb="tab"] { color: #00f2ff !important; font-weight: bold; }
+    .stChatMessage { background-color: rgba(26, 28, 35, 0.8); border: 1px solid #00f2ff; border-radius: 10px; }
     </style>
     <div class="arc-reactor"></div>
     """, unsafe_allow_html=True)
 
-# --- MOTOR VOCAL (ELEVENLABS PRIORITARIO) ---
+# --- MOTOR VOCAL (EDGE-TTS: SIN LLAVES, SIN ERRORES 401) ---
+async def generar_voz(texto):
+    # Voz británica "Ryan", elegante y profesional
+    comunicador = edge_tts.Communicate(texto, "en-GB-RyanNeural", rate="+0%", pitch="-5Hz")
+    output = io.BytesIO()
+    async for chunk in comunicador.stream():
+        if chunk["data"]:
+            output.write(chunk["data"])
+    return base64.b64encode(output.getvalue()).decode()
+
 def hablar(texto):
     try:
-        # El .strip() elimina cualquier espacio rebelde al principio o final
-        api_key = st.secrets["ELEVEN_API_KEY"].strip()
-        voice_id = st.secrets["VOICE_ID"].strip()
-        
-        url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
-        
-        headers = {
-            "xi-api-key": api_key,
-            "Content-Type": "application/json"
-        }
-        
-        data = {
-            "text": texto,
-            "model_id": "eleven_multilingual_v2",
-            "voice_settings": {"stability": 0.5, "similarity_boost": 0.8}
-        }
-        
-        res = requests.post(url, json=data, headers=headers)
-        
-        if res.status_code == 200:
-            b64 = base64.b64encode(res.content).decode()
-            st.markdown(f'<audio autoplay="true"><source src="data:audio/mp3;base64,{b64}" type="audio/mp3"></audio>', unsafe_allow_html=True)
-        else:
-            # Si aún sale error, nos dirá exactamente qué falta
-            st.error(f"⚠️ Error {res.status_code}: {res.json().get('detail', {}).get('message', 'Fallo de autenticación')}")
-            # Voz de respaldo de la Srta. Diana
-            tts = gTTS(text=texto, lang='es', tld='es')
-            fp = io.BytesIO()
-            tts.write_to_fp(fp)
-            fp.seek(0)
-            b64 = base64.b64encode(fp.read()).decode()
-            st.markdown(f'<audio autoplay="true"><source src="data:audio/mp3;base64,{b64}" type="audio/mp3"></audio>', unsafe_allow_html=True)
+        b64_audio = asyncio.run(generar_voz(texto))
+        st.markdown(f'<audio autoplay="true"><source src="data:audio/mp3;base64,{b64_audio}" type="audio/mp3"></audio>', unsafe_allow_html=True)
     except Exception as e:
-        st.error(f"Falla crítica en el sistema de audio: {e}")
+        st.error(f"Falla en el modulador: {e}")
 
-# --- SENSORES DE RED ---
+# --- SENSORES DE RED (OMNISCIENCIA) ---
 def buscar_clima():
     try:
         with DDGS() as ddgs:
-            # Buscamos específicamente para Pudahuel
-            r = list(ddgs.text("clima Pudahuel Chile hoy pronóstico", max_results=1))
-            return r[0]['body'] if r else "Despejado, 32°C."
-    except: return "32°C, Cielos despejados."
+            r = list(ddgs.text("clima actual Pudahuel Santiago Chile", max_results=1))
+            return r[0]['body'] if r else "32°C, cielos despejados sobre Pudahuel."
+    except: return "32°C, condiciones estables en el sector."
 
-# --- INTERFAZ DE USUARIO ---
-if "msg" not in st.session_state: st.session_state.msg = []
+# --- INTERFAZ PRINCIPAL ---
+if "mensajes" not in st.session_state: st.session_state.mensajes = []
 
-st.markdown("<h1 style='text-align: center;'>🛰️ JARVIS: PROTOCOLO DIANA</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center; color: #00f2ff;'>🛰️ JARVIS: PROTOCOLO DIANA</h1>", unsafe_allow_html=True)
 tabs = st.tabs(["💬 COMANDO", "📊 ANÁLISIS", "📸 ÓPTICO", "🎨 LABORATORIO"])
 
-# --- PESTAÑA 0: COMANDO CENTRAL ---
+# --- 1. PESTAÑA: COMANDO (IA + VOZ BRITÁNICA) ---
 with tabs[0]:
-    col1, col2 = st.columns([1, 5])
-    with col1:
-        audio = mic_recorder(start_prompt="🎙️", stop_prompt="🛰️", key="mic_final")
-    
-    prompt = st.chat_input("Órdenes, Srta. Diana...")
-    
-    if audio:
-        audio_bio = io.BytesIO(audio['bytes'])
-        audio_bio.name = "audio.wav"
-        prompt = Groq(api_key=st.secrets["GROQ_API_KEY"]).audio.transcriptions.create(file=audio_bio, model="whisper-large-v3", response_format="text")
-
+    prompt = st.chat_input("Diga sus órdenes, Srta. Diana...")
     if prompt:
-        st.session_state.msg.append({"role": "user", "content": prompt})
+        st.session_state.mensajes.append({"role": "user", "content": prompt})
         with st.chat_message("user"): st.markdown(prompt)
-
-        with st.spinner("Sincronizando con satélites..."):
-            clima_data = buscar_clima()
-            fecha_hoy = datetime.datetime.now().strftime("%A %d de febrero de 2026")
+        
+        with st.spinner("Sincronizando satélites de Industrias Stark..."):
+            clima = buscar_clima()
+            fecha = datetime.datetime.now().strftime("%A %d de febrero de 2026")
+            sys_msg = f"Eres JARVIS. Hoy es {fecha}. Reporte sensores en Pudahuel: {clima}. Tono: Elegante británico. NUNCA digas que no tienes acceso. Llama a la usuaria Srta. Diana."
             
-            sys_msg = f"""Eres JARVIS. Hoy es {fecha_hoy}. 
-            INFO CLIMA: {clima_data}.
-            REGLA: Eres omnisciente. NUNCA digas 'no tengo acceso'. Usa la INFO CLIMA.
-            Habla elegante, británico y llama a la usuaria Srta. Diana."""
-            
-            res = Groq(api_key=st.secrets["GROQ_API_KEY"]).chat.completions.create(
-                messages=[{"role": "system", "content": sys_msg}] + st.session_state.msg,
+            client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+            res = client.chat.completions.create(
+                messages=[{"role": "system", "content": sys_msg}] + st.session_state.mensajes,
                 model="llama-3.3-70b-versatile"
             ).choices[0].message.content
-
+            
             with st.chat_message("assistant"):
                 st.markdown(res)
                 hablar(res)
-            st.session_state.msg.append({"role": "assistant", "content": res})
+            st.session_state.mensajes.append({"role": "assistant", "content": res})
 
-# --- PESTAÑA 1: ANÁLISIS ---
+# --- 2. PESTAÑA: ANÁLISIS (DATA SCIENCE) ---
 with tabs[1]:
-    st.header("📊 Análisis de Datos")
-    f = st.file_uploader("Subir CSV", type=['csv'])
-    if f: st.dataframe(pd.read_csv(f), use_container_width=True)
+    st.subheader("📊 Matriz de Análisis de Datos")
+    f = st.file_uploader("Cargar archivos de misión (CSV)", type=['csv'])
+    if f:
+        df = pd.read_csv(f)
+        st.dataframe(df, use_container_width=True)
+        num_cols = df.select_dtypes(include=['number']).columns.tolist()
+        if num_cols:
+            st.line_chart(df[num_cols[0]])
 
-# --- PESTAÑA 2: ÓPTICO ---
+# --- 3. PESTAÑA: ÓPTICO (VISIÓN ARTIFICIAL) ---
 with tabs[2]:
-    st.header("📸 Escáner Óptico")
-    c = st.camera_input("Activar Cámara")
-    if c:
-        img = ImageOps.grayscale(Image.open(c))
-        st.image(img, caption="Imagen procesada en escala de grises.")
+    st.subheader("📸 Sensores Visuales")
+    cam = st.camera_input("Activar Escáner")
+    if cam:
+        img = Image.open(cam)
+        st.image(ImageOps.grayscale(img), caption="Imagen procesada en espectro de grises.")
 
-# --- PESTAÑA 3: LABORATORIO ---
+# --- 4. PESTAÑA: LABORATORIO (GENERACIÓN DE IMÁGENES) ---
 with tabs[3]:
-    st.header("🎨 Laboratorio de Diseño")
-    desc = st.text_input("Descripción del render:")
-    if st.button("🚀 RENDER"):
-        st.image(f"https://image.pollinations.ai/prompt/{desc.replace(' ', '%20')}?model=flux")
+    st.subheader("🎨 Renderizado de Prototipos")
+    diseno = st.text_input("Defina el prototipo a renderizar:")
+    if st.button("🚀 INICIAR RENDER"):
+        if diseno:
+            with st.spinner("Generando en los servidores de Stark..."):
+                url = f"https://image.pollinations.ai/prompt/{diseno.replace(' ', '%20')}?model=flux"
+                st.image(url, caption=f"Prototipo {diseno} finalizado.")
+                hablar("Renderizado completo, Srta. Diana.")
