@@ -61,41 +61,73 @@ tabs = st.tabs(["💬 COMANDO", "📊 ANÁLISIS", "📸 ÓPTICO", "🎨 LABORATO
 
 if "messages" not in st.session_state: st.session_state.messages = []
 
-# --- PESTAÑA ÓPTICO (CÁMARA Y ANÁLISIS) ---
-with tabs[2]:
-    st.header("📸 Reconocimiento Óptico Avanzado")
-    col_cam, col_fil = st.columns(2)
+# --- PESTAÑA 1: ANÁLISIS OMNI-FORMATO (MATRIZ COMPLETA) ---
+with tabs[1]:
+    st.header("📊 Matriz de Análisis de Datos")
+    f = st.file_uploader("Cargar registros (CSV, XLSX, JSON)", type=['csv', 'xlsx', 'json'], key="data_analisis")
     
-    with col_cam:
-        img_file = st.camera_input("Capturar imagen en tiempo real")
-        up_file = st.file_uploader("O cargar imagen de satélite", type=['jpg', 'png'])
-        
-    source = img_file or up_file
-    
-    if source:
-        img = Image.open(source)
-        with col_fil:
-            filtro = st.selectbox("Aplicar Filtro de Escaneo:", ["Original", "Visión Térmica", "Modo Nocturno", "Bordes (Rayos X)", "Escaneo de Fallas"])
-            img_procesada = aplicar_filtro_stark(img, filtro)
-            st.image(img_procesada, caption=f"Resultado: {filtro}", use_container_width=True)
+    if f:
+        try:
+            df = pd.read_csv(f) if 'csv' in f.name else pd.read_excel(f) if 'xlsx' in f.name else pd.read_json(f)
             
-            if st.button("🔍 Analizar con IA"):
-                with st.spinner("JARVIS procesando imagen..."):
-                    # Aquí JARVIS describiría la imagen usando su personalidad
-                    hablar("Analizando composición visual, Srta. Diana. Iniciando escaneo de patrones.")
-                    st.info("Escaneo completado: Se detectan estructuras optimizadas y balance térmico estable.")
+            st.success("🛰️ Datos cargados en la memoria central.")
+            
+            # Panel de Control de Datos
+            col_a, col_b, col_c = st.columns(3)
+            with col_a:
+                st.metric("Puntos de Datos", len(df))
+            with col_b:
+                st.metric("Variables", len(df.columns))
+            with col_c:
+                st.metric("Células Vacías", df.isnull().sum().sum())
+            
+            # Análisis Profundo
+            with st.expander("🔍 Ver Matriz Detallada"):
+                st.dataframe(df, use_container_width=True)
+            
+            # Gráficos Dinámicos Stark
+            st.subheader("📈 Proyección Visual de Datos")
+            columnas_num = df.select_dtypes(include=['number']).columns.tolist()
+            if columnas_num:
+                col_x = st.selectbox("Eje X (Análisis Temporal/Categoría):", df.columns)
+                col_y = st.selectbox("Eje Y (Métricas de Rendimiento):", columnas_num)
+                st.area_chart(df.set_index(col_x)[col_y])
+            else:
+                st.info("Srta. Diana, no se detectaron valores numéricos para proyecciones gráficas.")
+                
+        except Exception as e:
+            st.error(f"Error en el núcleo de análisis: {e}")
 
-# --- PESTAÑA LABORATORIO (GENERADOR) ---
+# --- PESTAÑA 3: LABORATORIO (RENDERIZADO AVANZADO) ---
 with tabs[3]:
-    st.header("🎨 Laboratorio de Prototipos")
-    prompt_img = st.text_area("Describa el prototipo que desea visualizar:")
-    estilo = st.selectbox("Estilo de Renderizado:", ["Hiperrealista", "Esquema Técnico Stark", "Holograma 3D", "Cinemático"])
+    st.header("🎨 Laboratorio de Prototipos Mark II")
+    prompt_img = st.text_area("Describa el diseño del prototipo:", placeholder="Ej: Armadura modular con acabados de oro y titanio...")
     
-    if st.button("🚀 Iniciar Renderizado"):
-        with st.spinner("Generando diseño..."):
-            final_prompt = f"{prompt_img}, {estilo}, highly detailed, neon lights, stark industries style"
-            st.image(f"https://image.pollinations.ai/prompt/{final_prompt.replace(' ', '%20')}?model=flux", caption="Prototipo Stark Generado")
-            hablar("Renderizado de prototipo completado, Srta. Diana. ¿Desea guardarlo en el archivo central?")
+    col1, col2 = st.columns(2)
+    with col1:
+        estilo = st.select_slider(
+            "Nivel de Renderizado:",
+            options=[
+                "Boceto Técnico (Lápiz)", 
+                "Esquema CAD (Blueprints)", 
+                "Holograma Stark Industries", 
+                "Render Fotorrealista", 
+                "Estilo Cómic Clásico", 
+                "Armadura Stealth (Mate)",
+                "Cinematográfico (Marvel Style)"
+            ]
+        )
+    with col2:
+        iluminacion = st.selectbox("Protocolo de Iluminación:", ["Neón Azul", "Reactor Arc Glow", "Luz Solar", "Estudio", "Ambiente Nocturno"])
+
+    if st.button("🚀 INICIAR PROCESAMIENTO"):
+        with st.spinner("Ensamblando prototipo en el laboratorio..."):
+            # Construcción del prompt refinado
+            final_prompt = f"{prompt_img}, {estilo}, lighting {iluminacion}, 8k resolution, cinematic lighting, sharp focus, marvel cinematic universe aesthetic"
+            url_render = f"https://image.pollinations.ai/prompt/{final_prompt.replace(' ', '%20')}?model=flux&width=1024&height=1024"
+            
+            st.image(url_render, caption=f"Prototipo: {estilo} - Protocolo {iluminacion}", use_container_width=True)
+            hablar(f"Prototipo renderizado con éxito en estilo {estilo}, Srta. Diana. Los planos han sido guardados.")
 
 # --- PESTAÑA MENSAJERÍA ---
 with tabs[4]:
