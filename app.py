@@ -117,13 +117,43 @@ with tabs[2]:
             st.warning("⚠️ SATÉLITES DE VISIÓN EN MANTENIMIENTO")
             st.write("Srta. Diana, Groq ha desactivado temporalmente sus modelos de visión. Los filtros visuales internos (Térmico/Nocturno) siguen operativos.")
 
-# --- 4. PESTAÑA: LABORATORIO (BIBLIOTECA DE RENDER) ---
+# --- 4. PESTAÑA: LABORATORIO CREATIVO (MARK 52 - BYPASS) ---
 with tabs[3]:
-    st.subheader("🎨 Estación de Diseño Mark 50")
-    est = st.selectbox("Estilo Visual:", ["Cinematic", "Blueprint", "Cyberpunk", "Anime", "Retro-Futurism", "Steampunk", "Neon Glow"])
-    dis = st.text_area("Descripción del prototipo:")
-    if st.button("🚀 INICIAR RENDERIZADO"):
-        if dis:
-            url = f"https://image.pollinations.ai/prompt/{dis.replace(' ', '%20')}%20{est}%20masterpiece?model=flux"
-            st.image(url, caption=f"Renderizado {est} completado.")
-            hablar("Prototipo finalizado con éxito, Srta. Diana.")
+    st.subheader("🎨 Estación de Diseño Mark 52")
+    c1, c2 = st.columns([2, 1])
+    
+    with c2:
+        estilo = st.selectbox("Estilo Visual:", [
+            "Cinematic", "Blueprint", "Cyberpunk", "Anime", 
+            "Retro-Futurism", "Steampunk", "Neon Glow"
+        ])
+        detalles = st.select_slider("Calidad:", options=["Boceto", "Estándar", "Épico"])
+    
+    with c1:
+        diseno = st.text_area("Descripción del prototipo:", placeholder="Ej: Gato Ninja con armadura tecnológica...")
+        
+        if st.button("🚀 INICIAR RENDERIZADO"):
+            if diseno:
+                with st.spinner("Sintetizando moléculas visuales..."):
+                    try:
+                        # Generamos un número aleatorio para evitar duplicados
+                        import random
+                        seed = random.randint(0, 999999)
+                        
+                        # Construimos el prompt
+                        prompt_url = f"{diseno}, {estilo} style, masterpiece, high quality".replace(" ", "%20")
+                        url = f"https://image.pollinations.ai/prompt/{prompt_url}?model=flux&width=1024&height=1024&seed={seed}"
+                        
+                        # PROTOCOLO DE DESCARGA: Intentamos obtener los datos de la imagen
+                        response = requests.get(url, timeout=20)
+                        
+                        if response.status_code == 200:
+                            # Si la descarga es exitosa, mostramos la imagen directamente
+                            st.image(response.content, caption=f"Renderizado {estilo} completado, Srta. Diana.", use_container_width=True)
+                            hablar(f"Prototipo finalizado, Srta. Diana. Los sistemas están listos.")
+                        else:
+                            st.error(f"Error de enlace: Código {response.status_code}. El servidor está saturado.")
+                    except Exception as e:
+                        st.error(f"Falla en el sintetizador: {e}")
+            else:
+                st.warning("Srta. Diana, indique qué desea que renderice.")
