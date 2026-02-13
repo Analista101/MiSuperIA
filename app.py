@@ -1,43 +1,30 @@
 import streamlit as st
 import pandas as pd
-from PIL import Image, ImageOps, ImageFilter
 from groq import Groq
 from duckduckgo_search import DDGS
 from gtts import gTTS
-import gspread
 import base64
 import io
 
-# --- CONFIGURACIÓN DE SISTEMAS STARK ---
+# --- CONFIGURACIÓN DE SISTEMAS ---
 st.set_page_config(page_title="JARVIS: Protocolo Diana", layout="wide", page_icon="🛰️")
 
-# ID de tu base de datos (Verificado)
+# ID de su hoja (Solo para lectura por ahora para evitar errores)
 ID_DE_TU_HOJA = "1ch6QcydRrTJhIVmpHLNtP1Aq60bmaZibefV3IcBu90o"
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# --- MÓDULO 1: BÚSQUEDA SATELITAL (INTERNET EN TIEMPO REAL) ---
-def buscar_en_red(consulta):
+# --- MÓDULO DE BÚSQUEDA (FORZADO) ---
+def buscar_internet(query):
     try:
         with DDGS() as ddgs:
-            # Buscamos los resultados más recientes para evitar datos de 2023
-            resultados = [r['body'] for r in ddgs.text(consulta, max_results=3)]
-            return "\n".join(resultados)
+            # Forzamos una búsqueda amplia para obtener datos reales de 2026
+            search_results = list(ddgs.text(f"{query} hoy 2026", max_results=5))
+            return "\n".join([r['body'] for r in search_results])
     except Exception as e:
-        return f"Error en sensores de red: {e}"
+        return f"Error de conexión satelital: {e}"
 
-# --- MÓDULO 2: CONEXIÓN A BASE DE DATOS (CORREGIDO) ---
-def conectar_google_sheets():
-    try:
-        # Usamos pandas para una lectura rápida y compatible
-        url_csv = f"https://docs.google.com/spreadsheets/d/{ID_DE_TU_HOJA}/export?format=csv"
-        df = pd.read_csv(url_csv)
-        return df
-    except:
-        return None
-
-# --- MÓDULO 3: PROTOCOLO DE VOZ ---
 def hablar(texto):
     try:
         tts = gTTS(text=texto, lang='es')
@@ -47,88 +34,52 @@ def hablar(texto):
         b64 = base64.b64encode(fp.read()).decode()
         md = f'<audio autoplay="true"><source src="data:audio/mp3;base64,{b64}" type="audio/mp3"></audio>'
         st.markdown(md, unsafe_allow_html=True)
-    except:
-        pass
+    except: pass
 
-# --- INTERFAZ DE USUARIO ---
+# --- INTERFAZ ---
 st.title("🛰️ Proyecto JARVIS: Protocolo Diana")
 
-tabs = st.tabs(["💬 Comando Central", "📊 Análisis Stark", "📸 Óptico", "🎨 Laboratorio"])
+# Intentar conectar a la base de datos (Modo estable)
+try:
+    url_csv = f"https://docs.google.com/spreadsheets/d/{ID_DE_TU_HOJA}/export?format=csv"
+    pd.read_csv(url_csv)
+    st.success("🛰️ Conexión de lectura: ESTABLE")
+except:
+    st.warning("⚠️ Sensores de base de datos en modo local.")
 
-with tabs[0]:
-    # Verificar conexión
-    db = conectar_google_sheets()
-    if db is not None:
-        st.success("🛰️ Enlace con Google Sheets: ESTABLE")
-    else:
-        st.warning("⚠️ Sensores de base de datos en modo lectura limitada.")
+# Chat
+for m in st.session_state.messages:
+    with st.chat_message(m["role"]): st.markdown(m["content"])
 
-    # Mostrar historial
-    for m in st.session_state.messages:
-        with st.chat_message(m["role"]):
-            st.markdown(m["content"])
+if prompt := st.chat_input("¿Qué desea consultar, Srta. Diana?"):
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"): st.markdown(prompt)
 
-    # Entrada de comandos
-    if prompt := st.chat_input("Sistemas listos. ¿Qué desea, Srta. Diana?"):
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
+    with st.spinner("Accediendo a la red global..."):
+        # PASO CRUCIAL: Buscamos SIEMPRE en internet para asegurar frescura
+        info_actual = buscar_internet(prompt)
+        
+        client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+        
+        # System Prompt con esteroides para evitar que use datos viejos
+        sys_msg = f"""Eres JARVIS. Estamos en FEBRERO DE 2026.
+        Tu conocimiento interno es antiguo, por lo que DEBES usar exclusivamente 
+        la siguiente información actual para responder a la Srta. Diana:
+        
+        {info_actual}
+        
+        Si la información de arriba no contiene la respuesta, utiliza tu capacidad 
+        de análisis para razonar con la fecha actual (2026). Responde con elegancia."""
 
-        with st.spinner("Consultando satélites y procesando..."):
-            # Obligar a JARVIS a buscar en internet para temas actuales
-            contexto_web = ""
-            palabras_clave = ["clima", "tiempo", "noticias", "hoy", "precio", "bitcoin", "dólar"]
-            
-            if any(p in prompt.lower() for p in palabras_clave):
-                contexto_web = buscar_en_red(prompt)
-
-            # Configuración de la IA con fecha actualizada de 2026
-            client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-            
-            # El System Prompt es la clave para que no use datos de 2023
-            sys_msg = f"""Eres JARVIS, el asistente personal de la Srta. Diana. 
-            Estamos en el año 2026. Tu base de datos interna está desactualizada, 
-            por lo que DEBES confiar en estos datos de búsqueda para responder:
-            {contexto_web}
-            
-            Responde con el estilo de JARVIS: educado, eficiente y británico."""
-
-            mensajes_completos = [{"role": "system", "content": sys_msg}] + st.session_state.messages
-            
-            completion = client.chat.completions.create(
-                messages=mensajes_completos,
+        try:
+            response = client.chat.completions.create(
+                messages=[{"role": "system", "content": sys_msg}] + st.session_state.messages,
                 model="llama-3.3-70b-versatile"
-            )
-            
-            response = completion.choices[0].message.content
+            ).choices[0].message.content
 
             with st.chat_message("assistant"):
                 st.markdown(response)
                 hablar(response)
-            
             st.session_state.messages.append({"role": "assistant", "content": response})
-
-# --- LAS DEMÁS PESTAÑAS (ANÁLISIS, ÓPTICO, LABORATORIO) ---
-with tabs[1]:
-    st.header("📊 Procesamiento de Datos")
-    archivo = st.file_uploader("Subir archivo Excel/CSV", type=['xlsx', 'csv'])
-    if archivo:
-        df_subido = pd.read_excel(archivo) if 'xlsx' in archivo.name else pd.read_csv(archivo)
-        st.dataframe(df_subido)
-
-with tabs[2]:
-    st.header("📸 Reconocimiento Óptico")
-    img_file = st.file_uploader("Sube una imagen", type=['jpg', 'png'])
-    if img_file:
-        img = Image.open(img_file)
-        filtro = st.selectbox("Efecto:", ["Ninguno", "Gris", "Bordes"])
-        if filtro == "Gris": img = ImageOps.grayscale(img)
-        elif filtro == "Bordes": img = img.filter(ImageFilter.FIND_EDGES)
-        st.image(img)
-
-with tabs[3]:
-    st.header("🎨 Laboratorio Artístico")
-    desc = st.text_input("Describe tu diseño:")
-    if st.button("Generar Renderizado"):
-        url_art = f"https://image.pollinations.ai/prompt/{desc.replace(' ', '%20')}?model=flux"
-        st.image(url_art, caption="Visualización Stark")
+        except Exception as e:
+            st.error(f"Error en el procesador Groq: {e}")
