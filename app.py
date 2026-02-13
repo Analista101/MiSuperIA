@@ -116,60 +116,55 @@ with tabs[2]:
         with col_v2:
             st.warning("⚠️ SATÉLITES DE VISIÓN EN MANTENIMIENTO")
             st.write("Srta. Diana, Groq ha desactivado temporalmente sus modelos de visión. Los filtros visuales internos (Térmico/Nocturno) siguen operativos.")
-# --- 4. PESTAÑA: LABORATORIO CREATIVO (MARK 57 - DEFINITIVO) ---
+            
+# --- 4. PESTAÑA: LABORATORIO CREATIVO (MARK 58 - ANTI-BLOCK) ---
 with tabs[3]:
-    st.subheader("🎨 Estación de Diseño Mark 57")
-    c1, c2 = st.columns([2, 1])
+    st.subheader("🎨 Estación de Diseño Mark 58 (Redención)")
     
+    # Selector de Motor de Renderizado
+    motor = st.segmented_control("Seleccionar Satélite:", ["Principal (SDXL)", "Respaldo (DALL-E Style)"], default="Principal (SDXL)")
+    
+    c1, c2 = st.columns([2, 1])
     with c2:
         estilo = st.selectbox("Estilo Visual:", [
             "Cinematic", "Blueprint", "Cyberpunk", "Hyper-Realistic", 
-            "Anime", "Retro-Futurism", "Steampunk"
+            "Anime Studio Ghibli", "Steampunk", "Neon Glow"
         ])
-        st.info("💡 Si la imagen no aparece abajo, use el botón de 'Ver en Pantalla Completa' para saltar el cortafuegos.")
+        resolucion = st.select_slider("Resolución:", options=["720p", "1080p", "4K"])
     
     with c1:
-        diseno = st.text_area("Descripción:", placeholder="Ej: Nueva armadura Mark 85...")
+        diseno = st.text_area("Descripción del prototipo:", placeholder="Ej: Nueva armadura Mark 85 con detalles en oro...")
         
         if st.button("🚀 INICIAR SÍNTESIS"):
             if diseno:
-                with st.spinner("Estableciendo conexión con satélites..."):
-                    import random
-                    seed = random.randint(0, 999999)
-                    
-                    # Protocolo de limpieza de prompt para evitar bloqueos
-                    prompt_encoded = diseno.replace(" ", "+")
-                    style_encoded = estilo.replace(" ", "+")
-                    
-                    # URL Maestra - Usamos el subdominio 'image' que es más estable
-                    url = f"https://image.pollinations.ai/prompt/{prompt_encoded}+{style_encoded}?width=1024&height=1024&seed={seed}&nologo=true"
-                    
-                    # 1. INTENTO DE VISUALIZACIÓN POR MARKDOWN (Más robusto que st.image)
-                    st.markdown(f"""
-                        <div style="border: 2px solid #00f2ff; border-radius: 15px; padding: 10px; background-color: #1a1a1a; text-align: center;">
-                            <p style="color: #00f2ff; font-family: monospace;">[ ESCANEANDO PROTOTIPO... ]</p>
-                            <img src="{url}" style="width: 100%; border-radius: 10px; border: 1px solid #333;" 
-                                 alt="Si no ve la imagen, use el enlace de abajo." 
-                                 onerror="this.src='https://via.placeholder.com/1024x1024.png?text=ERROR+DE+REDIRECCION+DE+DATOS';">
-                        </div>
-                    """, unsafe_allow_html=True)
-                    
-                    # 2. SOLUCIÓN DEFINITIVA: BOTÓN DE ACCESO DIRECTO (Bypass de CORS)
-                    st.write("")
-                    st.markdown(f"""
-                        <a href="{url}" target="_blank" style="text-decoration: none;">
-                            <div style="background: linear-gradient(90deg, #00f2ff, #0066ff); 
-                                        color: white; padding: 15px; border-radius: 10px; 
-                                        text-align: center; font-weight: bold; 
-                                        box-shadow: 0 4px 15px rgba(0,242,255,0.4);">
-                                🛰️ VER PROTOTIPO EN PANTALLA COMPLETA (SISTEMA SEGURO)
+                with st.spinner("Sintetizando a través de satélites de respaldo..."):
+                    try:
+                        import random
+                        seed = random.randint(1, 1000000)
+                        prompt_final = f"{diseno}, {estilo} style, highly detailed, 8k".replace(" ", "%20")
+                        
+                        # MOTOR 1: Estabilidad (Vía MagicStudio/Stable Diffusion Proxy)
+                        if motor == "Principal (SDXL)":
+                            url = f"https://ai-api.magicstudio.com/magicedit/generate?prompt={prompt_final}&output_format=jpg&seed={seed}"
+                        # MOTOR 2: Respaldo (Vía PromptHero/Lexica)
+                        else:
+                            url = f"https://image.pollinations.ai/prompt/{prompt_final}?nologo=true&private=true&enhance=true&seed={seed}"
+
+                        # Bypass de Seguridad: Cargamos la imagen mediante un contenedor de datos puro
+                        st.markdown(f"""
+                            <div style="border: 2px solid #00f2ff; border-radius: 15px; padding: 10px; background-color: #000; text-align: center; box-shadow: 0 0 20px #00f2ff;">
+                                <p style="color: #00f2ff; font-family: 'Courier New', monospace; font-size: 12px;">ESTABLECIENDO CONEXIÓN SEGURA...</p>
+                                <img src="{url}" style="width: 100%; border-radius: 10px;" 
+                                     onerror="this.onerror=null; this.src='https://via.placeholder.com/1024x1024.png?text=ERROR+DE+TUNEL+1033+-+REINTENTANDO';">
                             </div>
-                        </a>
-                        <p style="text-align: center; font-size: 12px; color: #555; margin-top: 5px;">
-                            Click para abrir el túnel de datos directo del satélite.
-                        </p>
-                    """, unsafe_allow_html=True)
-                    
-                    hablar(f"Srta. Diana, he enviado el diseño al servidor. Si el proyector interno falla por el cortafuegos, el botón de pantalla completa abrirá una conexión directa.")
+                        """, unsafe_allow_html=True)
+                        
+                        # Enlace de descarga directa por si el navegador bloquea el render
+                        st.download_button("📂 DESCARGAR PLANOS (JPG)", requests.get(url).content, file_name="prototipo_stark.jpg", mime="image/jpeg")
+                        
+                        hablar(f"Srta. Diana, he evadido el bloqueo 1033. El renderizado del {diseno} está en proceso.")
+                        
+                    except Exception as e:
+                        st.error(f"Falla crítica en el sintetizador: {e}")
             else:
-                st.warning("Srta. Diana, se requiere una descripción para el sintetizador.")
+                st.warning("Srta. Diana, el sistema requiere una descripción válida.")
