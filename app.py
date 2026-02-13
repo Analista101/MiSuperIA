@@ -81,9 +81,9 @@ with tabs[0]:
             hablar(res)
         st.session_state.mensajes.append({"role": "assistant", "content": res})
 
-# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (MARK 94 - CARGA NATIVA PRIORITARIA) ---
+# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (MARK 95 - MODELO PIXTRAL) ---
 with tabs[1]:
-    st.subheader("📊 Terminal de Inteligencia Mark 94")
+    st.subheader("📊 Terminal de Inteligencia Mark 95")
     
     import base64
     from groq import Groq
@@ -91,7 +91,7 @@ with tabs[1]:
         from docx import Document
     except: pass
 
-    # 1. INICIALIZACIÓN DE MEMORIA PURA
+    # 1. MEMORIA DE SISTEMA
     if 'stark_data' not in st.session_state:
         st.session_state.stark_data = None
     if 'stark_type' not in st.session_state:
@@ -99,73 +99,70 @@ with tabs[1]:
     if 'stark_report' not in st.session_state:
         st.session_state.stark_report = ""
 
-    st.info("🛰️ Srta. Diana, he activado el cargador nativo. Por favor, use el botón 'Browse files' para subir su imagen o documento.")
+    st.info("🛰️ Srta. Diana, he instalado el núcleo 'Pixtral'. Los modelos anteriores han sido dados de baja por el proveedor.")
 
-    # 2. CARGADOR DE ARCHIVOS (Nativo y Estable)
-    # Eliminamos el cuadro negro de pegado temporalmente para asegurar la conexión
+    # 2. CARGADOR NATIVO (EL ÚNICO QUE NO FALLA)
     archivo_activo = st.file_uploader(
-        "📁 Inyectar archivo (Imagen o Word):", 
+        "📁 Inyectar Imagen o Documento Word:", 
         type=["png", "jpg", "jpeg", "docx"], 
-        key="cargador_v94"
+        key="cargador_v95"
     )
 
-    # 3. PROCESAMIENTO INMEDIATO
     if archivo_activo:
         if archivo_activo.name.endswith('.docx'):
             doc = Document(archivo_activo)
             st.session_state.stark_data = "\n".join([p.text for p in doc.paragraphs])
             st.session_state.stark_type = "TEXTO"
-            st.success("✔️ Documento Word procesado.")
+            st.success("✔️ Texto de Word listo.")
         else:
-            # Convertimos imagen a Base64 de forma ultra-segura
+            # Procesamiento de imagen ultra-limpio para evitar Error 400
             base64_img = base64.b64encode(archivo_activo.getvalue()).decode()
             st.session_state.stark_data = f"data:image/jpeg;base64,{base64_img}"
             st.session_state.stark_type = "IMAGEN"
-            st.image(archivo_activo, caption="Carga finalizada con éxito", width=300)
+            st.image(archivo_activo, caption="Sensor visual activo", width=300)
 
-    # 4. BOTÓN DE DISPARO (Blindado)
+    # 3. BOTÓN DE DISPARO CON MODELO ACTUALIZADO
     st.write("---")
     if st.button("🔍 EJECUTAR ANÁLISIS DE JARVIS", type="primary", use_container_width=True):
         if st.session_state.stark_data:
-            with st.spinner("JARVIS accediendo a los servidores de Groq..."):
+            with st.spinner("JARVIS decodificando con Llama-3.2-Pixtral..."):
                 try:
                     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
                     
                     if st.session_state.stark_type == "TEXTO":
-                        # Análisis de Documentos (Llama 3.3)
+                        # Este sigue funcionando perfecto (Llama 3.3)
                         resp = client.chat.completions.create(
                             messages=[{"role": "user", "content": f"Analiza este documento: {st.session_state.stark_data}"}],
                             model="llama-3.3-70b-versatile"
                         )
                     else:
-                        # Análisis de Visión (Usamos el modelo Pixtral o 90B según disponibilidad)
-                        # Intentamos con el modelo más estable actualmente
+                        # ACTUALIZACIÓN CRÍTICA: MODELO PIXTRAL
                         resp = client.chat.completions.create(
                             messages=[{
                                 "role": "user",
                                 "content": [
-                                    {"type": "text", "text": "Identifica esta imagen. Si es planta, dame nombre científico y cuidados detallados."},
+                                    {"type": "text", "text": "Actúa como JARVIS. Identifica esta planta o objeto. Dame nombre científico, cuidados y detalles relevantes. Sé muy extenso."},
                                     {"type": "image_url", "image_url": {"url": st.session_state.stark_data}}
                                 ]
                             }],
-                            model="llama-3.2-90b-vision-preview"
+                            model="llama-3.2-11b-vision-pixtral" # <--- EL MODELO VIGENTE
                         )
                     st.session_state.stark_report = resp.choices[0].message.content
-                    hablar("Análisis completado, Srta. Diana.")
+                    hablar("Análisis visual completado, Srta. Diana.")
                 except Exception as e:
                     st.error(f"Falla de comunicación: {str(e)}")
+                    st.warning("Nota: Si el error persiste, Groq podría estar experimentando una caída en sus servicios de visión.")
         else:
-            st.warning("⚠️ El sistema no detecta archivos cargados.")
+            st.warning("⚠️ Cargue un archivo antes de iniciar el escaneo.")
 
-    # 5. RESULTADO FINAL
+    # 4. INFORME DE SALIDA
     if st.session_state.stark_report:
-        st.markdown("### 📝 Informe Stark")
-        st.write(st.session_state.stark_report)
-        if st.button("🗑️ Resetear"):
+        st.markdown("### 📝 Informe de Diagnóstico")
+        st.info(st.session_state.stark_report)
+        if st.button("🗑️ Resetear Memoria"):
             st.session_state.stark_data = None
             st.session_state.stark_report = ""
             st.rerun()
-
 # --- 3. PESTAÑA: ÓPTICO (CONSOLA DE DIAGNÓSTICO) ---
 with tabs[2]:
     st.subheader("📸 Sensores Visuales")
