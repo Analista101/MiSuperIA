@@ -5,3 +5,5 @@ groq
 duckduckgo_search
 edge-tts
 requests
+streamlit-mic-recorder
+openpyxl
