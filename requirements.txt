@@ -1,13 +1,7 @@
 streamlit
-groq
-gspread
-google-auth
 pandas
-openpyxl
-pillow
-PyPDF2
-requests
-gTTS
-duckduckgo-search
-streamlit-mic-recorder
+Pillow
+groq
+duckduckgo_search
+edge-tts
 requests
