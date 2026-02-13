@@ -81,46 +81,42 @@ with tabs[0]:
             hablar(res)
         st.session_state.mensajes.append({"role": "assistant", "content": res})
 
-# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (PUERTO DE PEGADO SEGURO) ---
+# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (PROTOCOLO DE ENTRADA DIRECTA) ---
 with tabs[1]:
-    st.markdown("""
-        <div style="border: 2px solid #00f2ff; padding: 15px; border-radius: 10px; background-color: rgba(0, 242, 255, 0.05); text-align: center;">
-            <p style="color: #00f2ff; font-weight: bold; font-family: monospace; font-size: 18px;">🛰️ RECEPTOR DE EVIDENCIA</p>
-            <p style="color: #ffffff; font-size: 14px;">Haga clic en el botón <b>'Browse files'</b> y, cuando se abra la ventana, simplemente presione <b>Ctrl+V</b> (o Pegar).</p>
-        </div>
-    """, unsafe_allow_html=True)
-    st.write("")
+    st.subheader("📊 Centro de Inteligencia y Evidencia")
+    
+    # OPCIÓN A: CUADRO DE TEXTO PARA URLS (PEGADO RÁPIDO)
+    st.markdown("#### 🔗 Enlace de Evidencia Directo")
+    url_pegada = st.text_input("Pegue la URL de la imagen aquí (Ctrl+V):", placeholder="https://ejemplo.com/evidencia.jpg")
+    
+    if url_pegada:
+        try:
+            st.image(url_pegada, caption="Imagen desde enlace externo", use_container_width=True)
+            if st.button("🧠 ANALIZAR ENLACE"):
+                hablar("Analizando imagen externa, Srta. Diana. Buscando patrones de interés.")
+        except Exception as e:
+            st.error("Srta. Diana, el enlace no parece contener una matriz de imagen válida.")
 
-    # El secreto para que funcione el pegado es que el foco del navegador esté activo en el componente
+    st.markdown("---")
+
+    # OPCIÓN B: RECEPTOR DE ARCHIVOS (PARA PEGAR IMÁGENES DIRECTAMENTE)
+    st.markdown("#### 📁 Receptor de Archivos y Portapapeles")
+    st.info("💡 Consejo Stark: Para imágenes copiadas (no URLs), haga clic en el recuadro de abajo y presione Ctrl+V.")
+    
     captura_evidencia = st.file_uploader(
-        "Cargue o pegue su archivo aquí", 
-        type=['png', 'jpg', 'jpeg', 'csv', 'xlsx'],
-        key="puerto_evidencia"
+        "Suelte su evidencia aquí o pegue (Ctrl+V)", 
+        type=['png', 'jpg', 'jpeg'],
+        key="puerto_final"
     )
 
     if captura_evidencia:
-        # Detectamos si es imagen por el tipo de archivo
-        if captura_evidencia.type.startswith('image/'):
-            img_stark = Image.open(captura_evidencia)
-            st.image(img_stark, caption="Evidencia visual capturada", use_container_width=True)
-            
-            if st.button("🧠 ANALIZAR PATRONES"):
-                with st.spinner("Analizando..."):
-                    hablar("Imagen recibida, Srta. Diana. Analizando estructura molecular.")
-                    # Aquí iría la lógica de visión de Groq si el servidor está activo
-                    st.info("Imagen procesada localmente con éxito.")
+        img_stark = Image.open(captura_evidencia)
+        st.image(img_stark, caption="Evidencia capturada", use_container_width=True)
         
-        # Detectamos si es una base de datos
-        elif any(captura_evidencia.name.endswith(ext) for ext in ['.csv', '.xlsx', '.xls']):
-            try:
-                df = pd.read_csv(captura_evidencia) if captura_evidencia.name.endswith('.csv') else pd.read_excel(captura_evidencia)
-                st.dataframe(df, use_container_width=True)
-                hablar("Base de datos sincronizada.")
-            except Exception as e:
-                st.error(f"Falla en lectura de datos: {e}")
-
-    st.markdown("---")
-    st.caption("💡 Truco Stark: Si Ctrl+V no funciona directamente en la página, haga clic en 'Browse files' y pegue el archivo en el cuadro de búsqueda que aparece. El sistema lo cargará automáticamente.")
+        if st.button("🧠 ESCANEO DE PÍXELES"):
+            with st.spinner("Procesando..."):
+                hablar("Escaneo de patrones iniciado. Los sensores están operativos.")
+                
 # --- 3. PESTAÑA: ÓPTICO (CONSOLA DE DIAGNÓSTICO) ---
 with tabs[2]:
     st.subheader("📸 Sensores Visuales")
