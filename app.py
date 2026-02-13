@@ -81,9 +81,9 @@ with tabs[0]:
             hablar(res)
         st.session_state.mensajes.append({"role": "assistant", "content": res})
 
-# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (MARK 84 - REPARACIÓN DE VISIÓN) ---
+# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (MARK 85 - BOTÓN PERSISTENTE) ---
 with tabs[1]:
-    st.subheader("📊 Terminal de Inteligencia Mark 84")
+    st.subheader("📊 Terminal de Inteligencia Mark 85")
     
     import streamlit.components.v1 as components
     import base64
@@ -91,9 +91,9 @@ with tabs[1]:
     try:
         from docx import Document
     except ImportError:
-        pass # Ya sabemos que esto funciona
+        pass
 
-    # 1. CELDAS DE MEMORIA
+    # 1. CELDAS DE MEMORIA BLINDADAS
     if 'stark_memory_img' not in st.session_state:
         st.session_state.stark_memory_img = None
     if 'stark_memory_text' not in st.session_state:
@@ -101,9 +101,9 @@ with tabs[1]:
     if 'doc_content_extracted' not in st.session_state:
         st.session_state.doc_content_extracted = ""
 
-    st.info("🛰️ Srta. Diana, el sensor de visión ha sido recalibrado. Inyecte la imagen para identificación biológica.")
+    st.info("🛰️ Srta. Diana, puerto de entrada activo. El botón de análisis ahora es permanente.")
 
-    # 2. RECEPTOR DE PEGADO (JavaScript Blindado)
+    # 2. RECEPTOR DE PEGADO (JavaScript con señal de retorno)
     receptor_js = components.html(
         """
         <div id="p_area" contenteditable="true" style="
@@ -111,7 +111,7 @@ with tabs[1]:
             background-color: #000; color: #00f2ff; height: 100px; 
             display: flex; align-items: center; justify-content: center;
             font-family: monospace; cursor: pointer; outline: none;">
-            [ PEGAR IMAGEN AQUÍ ]
+            [ CLIC AQUÍ Y PEGUE LA IMAGEN ]
         </div>
         <script>
         const area = document.getElementById('p_area');
@@ -121,7 +121,10 @@ with tabs[1]:
                 if (item.type.indexOf("image") !== -1) {
                     const reader = new FileReader();
                     reader.onload = (ev) => {
-                        window.parent.postMessage({type: 'streamlit:setComponentValue', value: ev.target.result}, '*');
+                        window.parent.postMessage({
+                            type: 'streamlit:setComponentValue',
+                            value: ev.target.result
+                        }, '*');
                     };
                     reader.readAsDataURL(item.getAsFile());
                 }
@@ -131,64 +134,61 @@ with tabs[1]:
         """, height=130,
     )
 
-    archivo_subido = st.file_uploader("Carga de Evidencia:", type=["png", "jpg", "jpeg", "docx"], key="uploader_v84")
+    # 3. SINCRONIZACIÓN DE MEMORIA (No tocamos documentos)
+    if receptor_js and isinstance(receptor_js, str):
+        st.session_state.stark_memory_img = receptor_js
 
-    # 3. PROCESAMIENTO DE ENTRADA (Mantenemos intactos los documentos)
-    if archivo_subido is not None:
+    archivo_subido = st.file_uploader("Carga manual de respaldo:", type=["png", "jpg", "jpeg", "docx"], key="u85")
+    
+    if archivo_subido:
         if archivo_subido.name.endswith('.docx'):
-            # Lógica de documentos que usted pidió NO TOCAR
             doc = Document(archivo_subido)
-            st.session_state.doc_content_extracted = "\n".join([para.text for para in doc.paragraphs])
+            st.session_state.doc_content_extracted = "\n".join([p.text for p in doc.paragraphs])
             st.session_state.stark_memory_img = "DOCUMENTO_LISTO"
-        elif archivo_subido.type.startswith('image/'):
+        else:
             bytes_data = archivo_subido.getvalue()
             st.session_state.stark_memory_img = f"data:image/jpeg;base64,{base64.b64encode(bytes_data).decode()}"
-            st.image(archivo_subido, width=300)
 
-    elif receptor_js and isinstance(receptor_js, str):
-        st.session_state.stark_memory_img = receptor_js
-        st.image(st.session_state.stark_memory_img, caption="Imagen detectada", width=300)
+    # Visualización previa si hay datos
+    if st.session_state.stark_memory_img and st.session_state.stark_memory_img != "DOCUMENTO_LISTO":
+        st.image(st.session_state.stark_memory_img, caption="Evidencia detectada", width=300)
 
-    # 4. BOTÓN DE ANÁLISIS (Reparado para Visión)
+    # 4. EL BOTÓN (SIEMPRE VISIBLE)
     st.write("---")
-    if st.session_state.stark_memory_img:
-        if st.button("🔍 GENERAR ANÁLISIS COMPLETO", type="primary", use_container_width=True):
-            with st.spinner("JARVIS accediendo a los sensores visuales..."):
+    if st.button("🔍 GENERAR ANÁLISIS COMPLETO", type="primary", use_container_width=True):
+        if st.session_state.stark_memory_img:
+            with st.spinner("JARVIS procesando datos..."):
                 try:
                     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-                    
                     if st.session_state.stark_memory_img == "DOCUMENTO_LISTO":
-                        # Análisis de texto (llama-3.3)
+                        # Análisis de Word (Llama 3.3)
                         response = client.chat.completions.create(
                             messages=[{"role": "user", "content": f"Analiza este documento: {st.session_state.doc_content_extracted}"}],
                             model="llama-3.3-70b-versatile",
                         )
                     else:
-                        # ANÁLISIS DE IMAGEN (Corrección de Protocolo)
-                        # Nos aseguramos de enviar la URL de la imagen correctamente formateada
-                        url_imagen = str(st.session_state.stark_memory_img)
+                        # Análisis de Imagen (Llama 3.2 Vision)
                         response = client.chat.completions.create(
                             messages=[{
                                 "role": "user",
                                 "content": [
-                                    {"type": "text", "text": "Actúa como JARVIS. Identifica qué hay en esta imagen. Si es una planta, di nombre común y científico, origen y cuidados. Si es un objeto, descríbelo. Sé muy extenso."},
-                                    {"type": "image_url", "image_url": {"url": url_imagen}}
+                                    {"type": "text", "text": "Actúa como JARVIS. Identifica esta imagen. Si es planta, da nombre científico y cuidados. Sé muy detallado."},
+                                    {"type": "image_url", "image_url": {"url": str(st.session_state.stark_memory_img)}}
                                 ]
                             }],
                             model="llama-3.2-11b-vision-preview",
                         )
-                    
                     st.session_state.stark_memory_text = response.choices[0].message.content
-                    hablar("Escaneo de visión completado, Srta. Diana.")
+                    hablar("Análisis completado, Srta. Diana.")
                 except Exception as e:
-                    st.error(f"Falla en el sensor visual: {str(e)}")
+                    st.error(f"Falla en el enlace: {str(e)}")
+        else:
+            st.warning("⚠️ Buffer vacío. Por favor, pegue o cargue una imagen primero.")
 
     # 5. RESULTADO
     if st.session_state.stark_memory_text:
-        st.markdown("### 📝 Informe Stark")
-        st.text_area("Resultados:", value=st.session_state.stark_memory_text, height=450)
-        
-        if st.button("🗑️ Resetear"):
+        st.text_area("Informe de Diagnóstico:", value=st.session_state.stark_memory_text, height=400)
+        if st.button("🗑️ Resetear Puerto"):
             st.session_state.stark_memory_img = None
             st.session_state.stark_memory_text = ""
             st.rerun()
