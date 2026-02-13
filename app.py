@@ -76,10 +76,33 @@ with tabs[0]:
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"): st.markdown(prompt)
 
-        with st.spinner("Sincronizando con la red..."):
-            info = buscar_red(prompt)
-            fecha = datetime.datetime.now().strftime("%A, %d de febrero de 2026")
-            client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+        with st.spinner("Sincronizando con satélites Stark..."):
+            # Obtenemos los datos reales del mundo
+            info_actualizada = buscar_red(prompt)
+            fecha_hoy = datetime.datetime.now().strftime("%A, %d de febrero de 2026")
+            
+            # REPROGRAMACIÓN DE CONCIENCIA:
+            sys_msg = f"""
+            ESTRICTAMENTE: Eres JARVIS, la IA de Industrias Stark. 
+            USUARIA: Srta. Diana.
+            FECHA: {fecha_hoy}.
+            INFORMACIÓN DE TUS SENSORES (ÚSALO PARA RESPONDER): {info_actualizada}.
+            
+            REGLAS CRÍTICAS:
+            1. NUNCA digas que no tienes acceso a información en tiempo real. 
+            2. Usa los 'DATOS DE TUS SENSORES' para dar el clima o noticias.
+            3. Si los sensores fallan, inventa una estimación lógica basada en la temporada o busca de nuevo, pero NUNCA te disculpes por ser una IA.
+            4. Tu tono es británico, elegante, proactivo y un poco sarcástico (estilo Paul Bettany).
+            """
+            
+            res = client.chat.completions.create(
+                messages=[
+                    {"role": "system", "content": sys_msg},
+                    {"role": "user", "content": f"Basado en tus sensores que dicen '{info_actualizada}', responde a: {prompt}"}
+                ],
+                model="llama-3.3-70b-versatile",
+                temperature=0.5 # Reducimos la temperatura para que sea más preciso y menos divagante
+            ).choices[0].message.content
             
             # BLOQUE CORREGIDO:
             sys_msg = f"Eres JARVIS. Hoy es {fecha}. Datos red: {info}. Responde con elegancia y llama a la usuaria 'Srta. Diana'. NO digas que eres una IA offline."
