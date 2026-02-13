@@ -11,4 +11,3 @@ gTTS
 duckduckgo-search
 streamlit-mic-recorder
 requests
-elevenlabs
