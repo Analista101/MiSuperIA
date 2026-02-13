@@ -81,32 +81,31 @@ with tabs[0]:
             hablar(res)
         st.session_state.mensajes.append({"role": "assistant", "content": res})
 
-# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (MARK 81 - CONTROL TOTAL) ---
+# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (MARK 82 - EXTRACCIÓN DE TEXTO) ---
 with tabs[1]:
-    st.subheader("📊 Terminal de Inteligencia Mark 81")
+    st.subheader("📊 Terminal de Inteligencia Mark 82")
     
     import streamlit.components.v1 as components
     import base64
     from groq import Groq
-    from PIL import Image
+    try:
+        from docx import Document  # Protocolo para leer archivos Word
+    except ImportError:
+        st.error("⚠️ Falta la librería 'python-docx'. Por favor, ejecute: pip install python-docx")
 
     # 1. CELDAS DE MEMORIA BLINDADAS
     if 'stark_memory_img' not in st.session_state:
         st.session_state.stark_memory_img = None
     if 'stark_memory_text' not in st.session_state:
         st.session_state.stark_memory_text = ""
+    if 'doc_content_extracted' not in st.session_state:
+        st.session_state.doc_content_extracted = ""
 
-    # 2. DEFINICIÓN DE PROTOCOLOS (Solución al error de documentos)
-    # Lista explícita de tipos permitidos para evitar el mensaje rojo
-    tipos_permitidos = [
-        "png", "jpg", "jpeg", 
-        "docx", "pptx", "pdf", "txt", "xlsx"
-    ]
+    # 2. PUERTO MULTIFORMATO
+    tipos_permitidos = ["png", "jpg", "jpeg", "docx"]
+    st.info("🛰️ Srta. Diana, el escáner de texto profundo está en línea. Suba su 'ORDEN DE SERVICIO' para lectura completa.")
 
-    st.info("🛰️ Srta. Diana, puerto multiformato activo. Pegue imágenes o suba documentos de Office.")
-
-    # 3. RECEPTOR DE PEGADO (JavaScript de Alta Fidelidad)
-    # Este componente solo se encarga de capturar la imagen
+    # RECEPTOR DE PEGADO (Solo para imágenes)
     receptor_js = components.html(
         """
         <div id="p_area" contenteditable="true" style="
@@ -114,7 +113,7 @@ with tabs[1]:
             background-color: #000; color: #00f2ff; height: 100px; 
             display: flex; align-items: center; justify-content: center;
             font-family: monospace; cursor: pointer; outline: none;">
-            [ CLIC AQUÍ Y PEGUE CON CTRL+V ]
+            [ PEGAR IMAGEN AQUÍ ]
         </div>
         <script>
         const area = document.getElementById('p_area');
@@ -124,10 +123,7 @@ with tabs[1]:
                 if (item.type.indexOf("image") !== -1) {
                     const reader = new FileReader();
                     reader.onload = (ev) => {
-                        window.parent.postMessage({
-                            type: 'streamlit:setComponentValue',
-                            value: ev.target.result
-                        }, '*');
+                        window.parent.postMessage({type: 'streamlit:setComponentValue', value: ev.target.result}, '*');
                     };
                     reader.readAsDataURL(item.getAsFile());
                 }
@@ -137,75 +133,73 @@ with tabs[1]:
         """, height=130,
     )
 
-    # 4. CARGADOR DE ARCHIVOS (Configuración Antierror)
-    archivo_subido = st.file_uploader(
-        "Carga de Evidencia (Imágenes o Documentos Stark):", 
-        type=tipos_permitidos,
-        key="uploader_v81"
-    )
+    # 3. CARGADOR DE ARCHIVOS
+    archivo_subido = st.file_uploader("Carga de Evidencia:", type=tipos_permitidos, key="uploader_v82")
 
-    # 5. PROCESAMIENTO DE ENTRADA (Sincronización de Memoria)
-    # Prioridad 1: Archivo subido manualmente
+    # 4. LÓGICA DE EXTRACCIÓN REAL
     if archivo_subido is not None:
-        try:
-            if archivo_subido.type.startswith('image/'):
-                # Es una imagen, la convertimos a Base64 para la IA
-                bytes_data = archivo_subido.getvalue()
-                st.session_state.stark_memory_img = f"data:image/jpeg;base64,{base64.b64encode(bytes_data).decode()}"
-                st.image(archivo_subido, caption="Imagen cargada correctamente", width=300)
-            else:
-                # Es un documento (Word/PPTX/etc)
-                st.session_state.stark_memory_img = "DOCUMENTO_DETECTADO"
-                st.success(f"✔️ Documento '{archivo_subido.name}' listo para indexación.")
-        except Exception as e:
-            st.error(f"Error al procesar archivo: {e}")
+        if archivo_subido.name.endswith('.docx'):
+            try:
+                # PROTOCOLO DE LECTURA DE WORD
+                doc = Document(archivo_subido)
+                full_text = []
+                for para in doc.paragraphs:
+                    full_text.append(para.text)
+                st.session_state.doc_content_extracted = "\n".join(full_text)
+                st.session_state.stark_memory_img = "DOCUMENTO_LISTO"
+                st.success(f"✔️ Contenido de '{archivo_subido.name}' extraído con éxito.")
+            except Exception as e:
+                st.error(f"Falla en el escáner de documentos: {e}")
+        elif archivo_subido.type.startswith('image/'):
+            bytes_data = archivo_subido.getvalue()
+            st.session_state.stark_memory_img = f"data:image/jpeg;base64,{base64.b64encode(bytes_data).decode()}"
+            st.image(archivo_subido, width=300)
 
-    # Prioridad 2: Imagen pegada (si no hay archivo subido)
     elif receptor_js and isinstance(receptor_js, str):
         st.session_state.stark_memory_img = receptor_js
-        st.image(st.session_state.stark_memory_img, caption="Imagen capturada del portapapeles", width=300)
 
-    # 6. EL BOTÓN DEFINITIVO (Inmune a la desaparición)
+    # 5. EL BOTÓN DE GENERACIÓN DE ANÁLISIS
     st.write("---")
-    # El botón siempre se muestra si hay algo en memoria
     if st.session_state.stark_memory_img:
         if st.button("🔍 GENERAR ANÁLISIS COMPLETO", type="primary", use_container_width=True):
-            with st.spinner("JARVIS analizando la composición..."):
+            with st.spinner("JARVIS decodificando el contenido..."):
                 try:
                     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
                     
-                    if st.session_state.stark_memory_img == "DOCUMENTO_DETECTADO":
-                        # Análisis para documentos
-                        res_texto = f"INFORME TÁCTICO: Documento '{archivo_subido.name}' analizado. Tamaño: {archivo_subido.size} bytes. Los protocolos de Office han sido verificados."
+                    if st.session_state.stark_memory_img == "DOCUMENTO_LISTO":
+                        # ENVIAMOS EL TEXTO REAL DEL DOCUMENTO A LA IA
+                        prompt_doc = f"Actúa como JARVIS. He extraído el siguiente texto de un documento Word llamado '{archivo_subido.name}'. Analízalo a fondo, resume los puntos clave y dime si hay algo urgente: \n\n {st.session_state.doc_content_extracted}"
+                        response = client.chat.completions.create(
+                            messages=[{"role": "user", "content": prompt_doc}],
+                            model="llama-3.1-70b-versatile", # Usamos un modelo de texto potente
+                        )
                     else:
-                        # Análisis visual profundo (Plantas, objetos, etc.)
+                        # ANÁLISIS VISUAL PARA IMÁGENES/PLANTAS
                         response = client.chat.completions.create(
                             messages=[{
                                 "role": "user",
                                 "content": [
-                                    {"type": "text", "text": "Actúa como JARVIS. Identifica qué hay en esta imagen. Si es una planta, di nombre común y científico, origen y cuidados detallados. Si es un objeto, explica su función. Sé muy extenso."},
+                                    {"type": "text", "text": "Actúa como JARVIS. Analiza esta imagen. Identifica plantas (nombre científico y cuidados) u objetos detalladamente."},
                                     {"type": "image_url", "image_url": {"url": st.session_state.stark_memory_img}}
                                 ]
                             }],
                             model="llama-3.2-11b-vision-preview",
                         )
-                        res_texto = response.choices[0].message.content
                     
-                    st.session_state.stark_memory_text = res_texto
-                    hablar("Análisis finalizado, Srta. Diana.")
+                    st.session_state.stark_memory_text = response.choices[0].message.content
+                    hablar("Análisis profundo finalizado, Srta. Diana.")
                 except Exception as e:
                     st.error(f"Falla en el enlace: {str(e)}")
-    else:
-        st.warning("⚠️ Esperando imagen o documento para habilitar el análisis.")
 
-    # 7. RESULTADO EN CUADRO DE TEXTO
+    # 6. CUADRO DE RESULTADO
     if st.session_state.stark_memory_text:
-        st.markdown("### 📝 Resultado del Escaneo")
-        st.text_area("Terminal de Datos:", value=st.session_state.stark_memory_text, height=400)
+        st.markdown("### 📝 Informe Detallado de JARVIS")
+        st.text_area("Contenido del Análisis:", value=st.session_state.stark_memory_text, height=450)
         
-        if st.button("🗑️ Resetear Sensores"):
+        if st.button("🗑️ Limpiar Memoria"):
             st.session_state.stark_memory_img = None
             st.session_state.stark_memory_text = ""
+            st.session_state.doc_content_extracted = ""
             st.rerun()
 
 # --- 3. PESTAÑA: ÓPTICO (CONSOLA DE DIAGNÓSTICO) ---
