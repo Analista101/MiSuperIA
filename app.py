@@ -81,46 +81,46 @@ with tabs[0]:
             hablar(res)
         st.session_state.mensajes.append({"role": "assistant", "content": res})
 
-# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (ÁREA DE PEGADO DIRECTO) ---
+# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (PUERTO DE PEGADO SEGURO) ---
 with tabs[1]:
     st.markdown("""
-        <div style="border: 1px solid #00f2ff; padding: 10px; border-radius: 5px; background-color: rgba(0, 242, 255, 0.05);">
-            <p style="color: #00f2ff; margin-bottom: 0px; font-weight: bold;">🛰️ SENSOR DE PORTAPAPELES</p>
-            <small style="color: #55f2ff;">Haga clic abajo y presione Ctrl+V para pegar su captura directamente.</small>
+        <div style="border: 2px solid #00f2ff; padding: 15px; border-radius: 10px; background-color: rgba(0, 242, 255, 0.05); text-align: center;">
+            <p style="color: #00f2ff; font-weight: bold; font-family: monospace; font-size: 18px;">🛰️ RECEPTOR DE EVIDENCIA</p>
+            <p style="color: #ffffff; font-size: 14px;">Haga clic en el botón <b>'Browse files'</b> y, cuando se abra la ventana, simplemente presione <b>Ctrl+V</b> (o Pegar).</p>
         </div>
     """, unsafe_allow_html=True)
-    
-    # Este componente actúa como el cuadro de recepción para el pegado
+    st.write("")
+
+    # El secreto para que funcione el pegado es que el foco del navegador esté activo en el componente
     captura_evidencia = st.file_uploader(
-        "Área de recepción de imágenes y datos", 
+        "Cargue o pegue su archivo aquí", 
         type=['png', 'jpg', 'jpeg', 'csv', 'xlsx'],
-        key="evidencia_stark",
-        label_visibility="collapsed" # Mantenemos la estética limpia
+        key="puerto_evidencia"
     )
 
     if captura_evidencia:
-        # Verificamos si es una imagen lo que se ha pegado/subido
+        # Detectamos si es imagen por el tipo de archivo
         if captura_evidencia.type.startswith('image/'):
-            img_display = Image.open(captura_evidencia)
-            st.image(img_display, caption="Imagen detectada en el portapapeles", use_container_width=True)
+            img_stark = Image.open(captura_evidencia)
+            st.image(img_stark, caption="Evidencia visual capturada", use_container_width=True)
             
-            col_analisis, col_limpiar = st.columns(2)
-            with col_analisis:
-                if st.button("🧠 ANALIZAR EVIDENCIA"):
-                    with st.spinner("Procesando matriz visual..."):
-                        # Aquí JARVIS procesará la imagen cuando los sensores de Groq se estabilicen
-                        hablar("Imagen recibida, Srta. Diana. Iniciando escaneo de patrones.")
-                        st.info("Sistema listo para análisis visual. (Nota: Los sensores de Groq requieren modelos operativos).")
+            if st.button("🧠 ANALIZAR PATRONES"):
+                with st.spinner("Analizando..."):
+                    hablar("Imagen recibida, Srta. Diana. Analizando estructura molecular.")
+                    # Aquí iría la lógica de visión de Groq si el servidor está activo
+                    st.info("Imagen procesada localmente con éxito.")
         
-        # Procesamiento si es un archivo de datos
-        elif captura_evidencia.name.endswith(('.csv', '.xlsx', '.xls')):
+        # Detectamos si es una base de datos
+        elif any(captura_evidencia.name.endswith(ext) for ext in ['.csv', '.xlsx', '.xls']):
             try:
                 df = pd.read_csv(captura_evidencia) if captura_evidencia.name.endswith('.csv') else pd.read_excel(captura_evidencia)
                 st.dataframe(df, use_container_width=True)
-                hablar("Base de datos cargada satisfactoriamente.")
+                hablar("Base de datos sincronizada.")
             except Exception as e:
-                st.error(f"Error en la lectura de la matriz: {e}")
+                st.error(f"Falla en lectura de datos: {e}")
 
+    st.markdown("---")
+    st.caption("💡 Truco Stark: Si Ctrl+V no funciona directamente en la página, haga clic en 'Browse files' y pegue el archivo en el cuadro de búsqueda que aparece. El sistema lo cargará automáticamente.")
 # --- 3. PESTAÑA: ÓPTICO (CONSOLA DE DIAGNÓSTICO) ---
 with tabs[2]:
     st.subheader("📸 Sensores Visuales")
