@@ -1,7 +1,6 @@
 streamlit
 pandas
 Pillow
-groq
 duckduckgo_search
 edge-tts
 requests

@@ -81,88 +81,81 @@ with tabs[0]:
             hablar(res)
         st.session_state.mensajes.append({"role": "assistant", "content": res})
 
-# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (MARK 95 - MODELO PIXTRAL) ---
+# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (MARK 96 - MOTOR GEMINI) ---
 with tabs[1]:
-    st.subheader("📊 Terminal de Inteligencia Mark 95")
+    st.subheader("📊 Terminal de Inteligencia Mark 96 (Powered by Gemini)")
     
-    import base64
-    from groq import Groq
+    import google.generativeai as genai
+    from PIL import Image
+    import io
     try:
         from docx import Document
     except: pass
 
-    # 1. MEMORIA DE SISTEMA
-    if 'stark_data' not in st.session_state:
-        st.session_state.stark_data = None
-    if 'stark_type' not in st.session_state:
-        st.session_state.stark_type = None
+    # 1. CONFIGURACIÓN DE NÚCLEO GOOGLE
+    try:
+        genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+        model = genai.GenerativeModel('gemini-1.5-flash')
+    except Exception as e:
+        st.error(f"Falla en la clave de acceso Google: {e}")
+
+    # 2. CELDAS DE MEMORIA
+    if 'stark_content' not in st.session_state:
+        st.session_state.stark_content = None
     if 'stark_report' not in st.session_state:
         st.session_state.stark_report = ""
 
-    st.info("🛰️ Srta. Diana, he instalado el núcleo 'Pixtral'. Los modelos anteriores han sido dados de baja por el proveedor.")
+    st.info("🛰️ Srta. Diana, he migrado los sistemas a los servidores de Google para evitar los errores 404 de Groq.")
 
-    # 2. CARGADOR NATIVO (EL ÚNICO QUE NO FALLA)
-    archivo_activo = st.file_uploader(
-        "📁 Inyectar Imagen o Documento Word:", 
+    # 3. CARGADOR NATIVO (Imagen o Word)
+    archivo = st.file_uploader(
+        "📁 Inyectar sensor visual o documento:", 
         type=["png", "jpg", "jpeg", "docx"], 
-        key="cargador_v95"
+        key="cargador_gemini"
     )
 
-    if archivo_activo:
-        if archivo_activo.name.endswith('.docx'):
-            doc = Document(archivo_activo)
-            st.session_state.stark_data = "\n".join([p.text for p in doc.paragraphs])
-            st.session_state.stark_type = "TEXTO"
-            st.success("✔️ Texto de Word listo.")
+    if archivo:
+        if archivo.name.endswith('.docx'):
+            doc = Document(archivo)
+            texto = "\n".join([p.text for p in doc.paragraphs])
+            st.session_state.stark_content = {"type": "text", "data": texto}
+            st.success("✔️ Documento Word sincronizado.")
         else:
-            # Procesamiento de imagen ultra-limpio para evitar Error 400
-            base64_img = base64.b64encode(archivo_activo.getvalue()).decode()
-            st.session_state.stark_data = f"data:image/jpeg;base64,{base64_img}"
-            st.session_state.stark_type = "IMAGEN"
-            st.image(archivo_activo, caption="Sensor visual activo", width=300)
+            # Gemini procesa imágenes directamente como objetos PIL
+            img = Image.open(archivo)
+            st.session_state.stark_content = {"type": "image", "data": img}
+            st.image(img, caption="Señal visual capturada", width=350)
 
-    # 3. BOTÓN DE DISPARO CON MODELO ACTUALIZADO
+    # 4. BOTÓN DE ANÁLISIS (Nueva Arquitectura)
     st.write("---")
-    if st.button("🔍 EJECUTAR ANÁLISIS DE JARVIS", type="primary", use_container_width=True):
-        if st.session_state.stark_data:
-            with st.spinner("JARVIS decodificando con Llama-3.2-Pixtral..."):
+    if st.button("🔍 EJECUTAR ESCANEO DE JARVIS", type="primary", use_container_width=True):
+        if st.session_state.stark_content:
+            with st.spinner("JARVIS analizando con redes neuronales de Gemini..."):
                 try:
-                    client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+                    content = st.session_state.stark_content
+                    prompt = "Actúa como JARVIS. Si es una planta, identifícala con nombre común, científico, origen y cuidados detallados. Si es un documento, resúmelo con precisión Stark."
                     
-                    if st.session_state.stark_type == "TEXTO":
-                        # Este sigue funcionando perfecto (Llama 3.3)
-                        resp = client.chat.completions.create(
-                            messages=[{"role": "user", "content": f"Analiza este documento: {st.session_state.stark_data}"}],
-                            model="llama-3.3-70b-versatile"
-                        )
+                    if content["type"] == "text":
+                        response = model.generate_content([prompt, content["data"]])
                     else:
-                        # ACTUALIZACIÓN CRÍTICA: MODELO PIXTRAL
-                        resp = client.chat.completions.create(
-                            messages=[{
-                                "role": "user",
-                                "content": [
-                                    {"type": "text", "text": "Actúa como JARVIS. Identifica esta planta o objeto. Dame nombre científico, cuidados y detalles relevantes. Sé muy extenso."},
-                                    {"type": "image_url", "image_url": {"url": st.session_state.stark_data}}
-                                ]
-                            }],
-                            model="llama-3.2-11b-vision-pixtral" # <--- EL MODELO VIGENTE
-                        )
-                    st.session_state.stark_report = resp.choices[0].message.content
-                    hablar("Análisis visual completado, Srta. Diana.")
+                        response = model.generate_content([prompt, content["data"]])
+                    
+                    st.session_state.stark_report = response.text
+                    hablar("Análisis completado con éxito mediante el enlace Gemini.")
                 except Exception as e:
-                    st.error(f"Falla de comunicación: {str(e)}")
-                    st.warning("Nota: Si el error persiste, Groq podría estar experimentando una caída en sus servicios de visión.")
+                    st.error(f"Falla crítica en el nuevo motor: {e}")
         else:
-            st.warning("⚠️ Cargue un archivo antes de iniciar el escaneo.")
+            st.warning("⚠️ Cargue un archivo para iniciar el protocolo.")
 
-    # 4. INFORME DE SALIDA
+    # 5. INFORME FINAL
     if st.session_state.stark_report:
-        st.markdown("### 📝 Informe de Diagnóstico")
-        st.info(st.session_state.stark_report)
-        if st.button("🗑️ Resetear Memoria"):
-            st.session_state.stark_data = None
+        st.markdown("### 📝 Informe de Diagnóstico Final")
+        st.markdown(st.session_state.stark_report)
+        if st.button("🗑️ Resetear Sistemas"):
+            st.session_state.stark_content = None
             st.session_state.stark_report = ""
             st.rerun()
+
 # --- 3. PESTAÑA: ÓPTICO (CONSOLA DE DIAGNÓSTICO) ---
 with tabs[2]:
     st.subheader("📸 Sensores Visuales")
