@@ -8,6 +8,7 @@ from streamlit_mic_recorder import mic_recorder
 import base64
 import io
 import datetime
+import requests
 
 # --- CONFIGURACIÓN DE LA TERMINAL STARK ---
 st.set_page_config(page_title="JARVIS: Protocolo Diana", layout="wide", page_icon="🛰️")
