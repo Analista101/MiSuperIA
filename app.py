@@ -81,9 +81,9 @@ with tabs[0]:
             hablar(res)
         st.session_state.mensajes.append({"role": "assistant", "content": res})
 
-# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (MARK 87 - FILTRO DE SEGURIDAD) ---
+# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (MARK 88 - MODELO DE VISIÓN ACTUALIZADO) ---
 with tabs[1]:
-    st.subheader("📊 Terminal de Inteligencia Mark 87")
+    st.subheader("📊 Terminal de Inteligencia Mark 88")
     
     import streamlit.components.v1 as components
     import base64
@@ -100,9 +100,9 @@ with tabs[1]:
     if 'texto_extraido_word' not in st.session_state:
         st.session_state.texto_extraido_word = ""
 
-    st.info("🛰️ Puerto Diana-1: Cargue informes .docx o pegue imágenes de especímenes.")
+    st.info("🛰️ Puerto Diana-1: Puerto de visión actualizado al último estándar de Groq.")
 
-    # 2. RECEPTOR DE PEGADO (JavaScript)
+    # 2. RECEPTOR DE PEGADO
     val_receptor = components.html(
         """
         <div id="p_area" contenteditable="true" style="
@@ -134,60 +134,55 @@ with tabs[1]:
         st.session_state.img_data_stark = val_receptor
 
     # 3. CARGADOR MANUAL
-    archivo = st.file_uploader("Carga manual:", type=["png", "jpg", "jpeg", "docx"], key="up87")
+    archivo = st.file_uploader("Carga manual:", type=["png", "jpg", "jpeg", "docx"], key="up88")
     
     if archivo:
         if archivo.name.endswith('.docx'):
             doc = Document(archivo)
             st.session_state.texto_extraido_word = "\n".join([p.text for p in doc.paragraphs])
             st.session_state.img_data_stark = "DOC_READY"
-            st.success(f"✔️ Documento '{archivo.name}' listo para análisis de texto.")
+            st.success(f"✔️ Documento '{archivo.name}' listo.")
         else:
             bytes_img = archivo.getvalue()
             st.session_state.img_data_stark = f"data:image/jpeg;base64,{base64.b64encode(bytes_img).decode()}"
 
-    # 4. VISOR DE SEGURIDAD (Aquí corregimos el error)
-    if st.session_state.img_data_stark:
-        # Solo intentamos mostrar la imagen si NO es un documento de Word
-        if st.session_state.img_data_stark != "DOC_READY":
-            try:
-                st.image(st.session_state.img_data_stark, caption="Evidencia visual detectada", width=300)
-            except Exception:
-                st.warning("⚠️ El formato visual requiere recalibración, pero los datos están en el buffer.")
+    # 4. VISOR DE SEGURIDAD
+    if st.session_state.img_data_stark and st.session_state.img_data_stark != "DOC_READY":
+        st.image(st.session_state.img_data_stark, caption="Evidencia detectada", width=300)
 
     # 5. BOTÓN DE ANÁLISIS PERMANENTE
     st.write("---")
     if st.button("🔍 EJECUTAR ANÁLISIS DE JARVIS", type="primary", use_container_width=True):
         if st.session_state.img_data_stark:
-            with st.spinner("Analizando matriz de datos..."):
+            with st.spinner("Conectando con el nuevo modelo de visión..."):
                 try:
                     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
                     
                     if st.session_state.img_data_stark == "DOC_READY":
-                        # ANALISIS DE TEXTO (Llama 3.3) - No tocamos su lógica
+                        # ANALISIS DE TEXTO (Sigue en llama-3.3-70b)
                         resp = client.chat.completions.create(
                             messages=[{"role": "user", "content": f"Analiza este documento: {st.session_state.texto_extraido_word}"}],
                             model="llama-3.3-70b-versatile"
                         )
                     else:
-                        # ANALISIS DE IMAGEN (Llama 3.2 Vision)
+                        # NUEVO MODELO DE VISIÓN (llama-3.2-11b-vision-pixtral)
                         img_url = str(st.session_state.img_data_stark)
                         resp = client.chat.completions.create(
                             messages=[{
                                 "role": "user",
                                 "content": [
-                                    {"type": "text", "text": "Identifica esta imagen. Si es planta, di nombre científico y cuidados. Sé extenso."},
+                                    {"type": "text", "text": "Actúa como JARVIS. Identifica esta imagen. Si es planta, di nombre común y científico, origen y cuidados. Sé extenso."},
                                     {"type": "image_url", "image_url": {"url": img_url}}
                                 ]
                             }],
-                            model="llama-3.2-11b-vision-preview"
+                            model="llama-3.2-11b-vision-pixtral" # <--- ACTUALIZACIÓN DE MODELO
                         )
                     st.session_state.analisis_output = resp.choices[0].message.content
-                    hablar("Análisis finalizado, Srta. Diana.")
+                    hablar("Análisis finalizado con éxito, Srta. Diana.")
                 except Exception as e:
                     st.error(f"Falla de enlace: {e}")
         else:
-            st.warning("⚠️ No hay datos para analizar.")
+            st.warning("⚠️ Sin datos en el buffer.")
 
     # 6. TERMINAL DE SALIDA
     if st.session_state.analisis_output:
