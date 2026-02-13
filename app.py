@@ -20,12 +20,19 @@ if "messages" not in st.session_state:
 def buscar_red_global(consulta):
     try:
         with DDGS() as ddgs:
-            # Forzamos que busque resultados de 2026
-            busqueda = f"{consulta} actual febrero 2026"
-            resultados = [r['body'] for r in ddgs.text(busqueda, max_results=3)]
-            return "\n".join(resultados) if resultados else "No se encontraron datos recientes."
+            # Añadimos 'news' para forzar que busque noticias actuales de 2026
+            busqueda = f"{consulta} hoy 2026"
+            # Intentamos obtener resultados de texto normal
+            resultados = list(ddgs.text(busqueda, max_results=5))
+            
+            if not resultados:
+                # Si falla, intentamos con el motor de noticias (Plan B)
+                resultados = list(ddgs.news(busqueda, max_results=3))
+            
+            texto_final = "\n".join([r['body'] for r in resultados])
+            return texto_final if len(texto_final) > 10 else "ERROR_VACIO"
     except Exception as e:
-        return f"Error de enlace: {str(e)}"
+        return f"ERROR_TECNICO: {str(e)}"
 
 def hablar(texto):
     try:
