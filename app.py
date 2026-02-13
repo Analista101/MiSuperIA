@@ -51,6 +51,25 @@ def buscar_red(consulta):
             return "\n".join([i['body'] for i in r]) if r else "SISTEMA_OFFLINE"
     except: return "SISTEMA_OFFLINE"
 
+def enviar_correo_stark(destinatario, cuerpo):
+    remitente = st.secrets["EMAIL_USER"]
+    password = st.secrets["EMAIL_PASS"]
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = f"J.A.R.V.I.S. <{remitente}>"
+        msg['To'] = destinatario
+        msg['Subject'] = "Protocolo Diana: Comunicación Prioritaria"
+        msg.attach(MIMEText(cuerpo, 'plain'))
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(remitente, password)
+        server.sendmail(remitente, destinatario, msg.as_string())
+        server.quit()
+        return True
+    except Exception as e:
+        st.error(f"Fallo en la transmisión: {e}")
+        return False
+
 # --- INICIALIZACIÓN DE ESTADOS ---
 if "messages" not in st.session_state: st.session_state.messages = []
 
@@ -58,10 +77,9 @@ if "messages" not in st.session_state: st.session_state.messages = []
 st.markdown("<h1 style='text-align: center;'>🛰️ PROTOCOLO: DIANA</h1>", unsafe_allow_html=True)
 tabs = st.tabs(["💬 COMANDO", "📊 ANÁLISIS", "📸 ÓPTICO", "🎨 LABORATORIO", "📧 MENSAJERÍA"])
 
-# --- PESTAÑA 0: COMANDO CENTRAL (VOZ Y TEXTO) ---
+# --- PESTAÑA 0: COMANDO CENTRAL ---
 with tabs[0]:
     st.subheader("🎙️ Entrada Neuronal (Voz y Texto)")
-    
     col_mic, col_txt = st.columns([1, 4])
     prompt = None
 
@@ -103,7 +121,7 @@ with tabs[1]:
     f = st.file_uploader("Cargar registros", type=['csv', 'xlsx'])
     if f:
         df = pd.read_csv(f) if 'csv' in f.name else pd.read_excel(f)
-        st.metric("Puntos de Datos", len(df))
+        st.metric("Puntos de Datos Analizados", len(df))
         st.dataframe(df, use_container_width=True)
         cols_num = df.select_dtypes(include=['number']).columns.tolist()
         if cols_num:
@@ -112,11 +130,11 @@ with tabs[1]:
 
 # --- PESTAÑA 2: ÓPTICO ---
 with tabs[2]:
-    st.header("📸 Escáner Óptico")
-    cam = st.camera_input("Iniciado reconocimiento facial...")
+    st.header("📸 Escáner Óptico Avanzado")
+    cam = st.camera_input("Iniciando escaneo visual...")
     if cam:
         img = Image.open(cam)
-        filtro = st.radio("Protocolo visual:", ["Normal", "Térmica", "Nocturna", "Rayos X"])
+        filtro = st.radio("Protocolo visual:", ["Original", "Térmica", "Nocturna", "Rayos X"])
         if filtro == "Térmica": img = ImageOps.colorize(ImageOps.grayscale(img), "blue", "red")
         elif filtro == "Nocturna": img = ImageOps.colorize(ImageOps.grayscale(img), "black", "green")
         elif filtro == "Rayos X": img = img.filter(ImageFilter.FIND_EDGES)
@@ -124,19 +142,21 @@ with tabs[2]:
 
 # --- PESTAÑA 3: LABORATORIO ---
 with tabs[3]:
-    st.header("🎨 Renderizado Mark II")
-    desc = st.text_input("Defina el prototipo:")
-    est = st.select_slider("Estilo:", ["Boceto", "CAD", "Holograma", "Realista", "Cinemático"])
+    st.header("🎨 Laboratorio de Renderizado")
+    desc = st.text_input("Defina el diseño del prototipo:")
+    est = st.select_slider("Estilo de Renderizado:", ["Boceto", "CAD", "Holograma", "Realista", "Cinemático"])
     if st.button("🚀 INICIAR RENDER"):
         url = f"https://image.pollinations.ai/prompt/{desc.replace(' ', '%20')}%20{est}%20stark%20style?model=flux"
-        st.image(url, caption="Prototipo finalizado")
-        hablar("Renderizado listo.")
+        st.image(url, caption=f"Prototipo Final: {est}")
+        hablar("El renderizado ha sido completado y almacenado en los archivos centrales, Srta. Diana.")
 
 # --- PESTAÑA 4: MENSAJERÍA ---
 with tabs[4]:
-    st.header("📧 Transmisor")
+    st.header("📧 Transmisor de Comunicaciones")
     dest = st.text_input("Destinatario:", "sandoval0193@gmail.com")
-    cuerpo = st.text_area("Contenido del mensaje:")
-    if st.button("📤 TRANSMITIR"):
-        st.success(f"Señal enviada a {dest}.")
-        hablar("Mensaje enviado con éxito, Srta. Diana.")
+    cuerpo_mail = st.text_area("Contenido del mensaje:")
+    if st.button("📤 TRANSMITIR SEÑAL"):
+        with st.spinner("Estableciendo conexión SMTP..."):
+            if enviar_correo_stark(dest, cuerpo_mail):
+                st.success(f"Señal transmitida a {dest}.")
+                hablar("El mensaje ha sido enviado con éxito, Srta. Diana.")
