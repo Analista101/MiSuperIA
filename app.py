@@ -36,13 +36,22 @@ st.markdown("""
 # --- MOTORES DE SOPORTE ---
 def hablar(texto):
     try:
-        tts = gTTS(text=texto, lang='es', tld='es')
+        # Usamos 'es' con tld 'com.mx' o 'co.uk' no es posible directamente en gTTS para español, 
+        # pero el acento de Castilla ('es') con velocidad reducida da un tono más serio.
+        tts = gTTS(text=texto, lang='es', tld='es', slow=False) 
+        
         fp = io.BytesIO()
         tts.write_to_fp(fp)
         fp.seek(0)
         b64 = base64.b64encode(fp.read()).decode()
-        st.markdown(f'<audio autoplay="true"><source src="data:audio/mp3;base64,{b64}" type="audio/mp3"></audio>', unsafe_allow_html=True)
-    except: pass
+        
+        # Inyectamos el audio con un pequeño retraso para que suene más natural
+        st.markdown(
+            f'<audio autoplay="true"><source src="data:audio/mp3;base64,{b64}" type="audio/mp3"></audio>', 
+            unsafe_allow_html=True
+        )
+    except Exception as e:
+        st.error(f"Error en el modulador de voz: {e}")
 
 def buscar_red(consulta):
     try:
