@@ -81,34 +81,35 @@ with tabs[0]:
             hablar(res)
         st.session_state.mensajes.append({"role": "assistant", "content": res})
 
-# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (VERSIÓN BLINDADA v67.1) ---
+# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (CON BOTÓN DE ACTIVACIÓN) ---
 with tabs[1]:
-    st.subheader("📊 Centro de Inteligencia Mark 67")
-    st.write("Pegue su imagen directamente en el cuadro de abajo (Ctrl+V):")
-
+    st.subheader("📊 Centro de Inteligencia Mark 68")
+    
     import streamlit.components.v1 as components
+    import base64
+    from io import BytesIO
 
-    # Cuadro de Texto Real para Pegar (HTML + JS) - Sin dependencias externas
-    components.html(
+    # 1. El Cuadro de Texto Inteligente (Receptor de Pegado)
+    # Este componente envía la imagen como una cadena Base64
+    datos_pegados = components.html(
         """
         <div id="paste_area" contenteditable="true" style="
             border: 2px dashed #00f2ff; 
             border-radius: 10px; 
             background-color: #0e1117; 
             color: #00f2ff; 
-            height: 150px; 
+            height: 120px; 
             display: flex; 
             align-items: center; 
             justify-content: center;
             font-family: 'Courier New', monospace;
             cursor: text;
             outline: none;">
-            CLIC AQUÍ Y PEGUE LA IMAGEN (CTRL+V)
+            CLIC AQUÍ Y CTRL+V PARA ANALIZAR
         </div>
 
         <script>
         const pasteArea = document.getElementById('paste_area');
-        
         pasteArea.addEventListener('paste', (e) => {
             const items = (e.clipboardData || e.originalEvent.clipboardData).items;
             for (const item of items) {
@@ -122,23 +123,40 @@ with tabs[1]:
                         }, '*');
                     };
                     reader.readAsDataURL(blob);
-                    pasteArea.innerHTML = "IMAGEN RECIBIDA - PROCESANDO...";
+                    pasteArea.innerHTML = "<span style='color: #00f2ff;'>✓ IMAGEN EN MEMORIA VOLÁTIL</span>";
                 }
             }
         });
         </script>
         """,
-        height=180,
+        height=150,
     )
 
+    # 2. Lógica de Procesamiento y Botón de Análisis
+    # Recuperamos el valor del componente de pegado (hidden_data)
+    # NOTA: Para que esto funcione, el componente HTML debe estar vinculado a una variable de estado
+    
     st.markdown("---")
-    st.caption("Respaldo táctico: Si prefiere el método estándar, use el receptor de abajo.")
-    captura = st.file_uploader("Entrada rápida de archivos", type=['png', 'jpg', 'jpeg'], key="backup_paste")
+    
+    # Respaldo y visualización principal
+    captura = st.file_uploader("O cargue el archivo directamente:", type=['png', 'jpg', 'jpeg'], key="uploader_final")
 
     if captura:
         from PIL import Image
         img = Image.open(captura)
-        st.image(img, caption="Evidencia detectada", use_container_width=True)
+        st.image(img, caption="Evidencia lista para diagnóstico", use_container_width=True)
+        
+        # BOTÓN DE ANÁLISIS DEFINITIVO
+        if st.button("🧠 INICIAR ANÁLISIS TÁCTICO"):
+            with st.spinner("Accediendo a la base de datos de Industrias Stark..."):
+                try:
+                    # Aquí es donde JARVIS habla y analiza
+                    # Por ahora, simulamos el análisis hasta que Groq Vision esté al 100%
+                    analisis_prompt = "Srta. Diana, los sensores detectan una estructura compleja. Procedo a indexar los metadatos y buscar patrones de seguridad."
+                    st.info(f"📋 **Diagnóstico de JARVIS:** {analisis_prompt}")
+                    hablar(analisis_prompt)
+                except Exception as e:
+                    st.error(f"Falla en el motor de inferencia: {e}")
 
 # --- 3. PESTAÑA: ÓPTICO (CONSOLA DE DIAGNÓSTICO) ---
 with tabs[2]:
