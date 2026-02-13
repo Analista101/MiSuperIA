@@ -81,28 +81,29 @@ with tabs[0]:
             hablar(res)
         st.session_state.mensajes.append({"role": "assistant", "content": res})
 
-# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (MARK 90 - SISTEMA DE REDUNDANCIA) ---
+# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (MARK 91 - VALIDACIÓN DE ENLACE) ---
 with tabs[1]:
-    st.subheader("📊 Terminal de Inteligencia Mark 90")
+    st.subheader("📊 Terminal de Inteligencia Mark 91")
     
     import streamlit.components.v1 as components
     import base64
+    import re
     from groq import Groq
     try:
         from docx import Document
     except: pass
 
-    # 1. CELDAS DE MEMORIA BLINDADAS
-    if 'img_data_stark' not in st.session_state:
-        st.session_state.img_data_stark = None
-    if 'analisis_output' not in st.session_state:
-        st.session_state.analisis_output = ""
-    if 'texto_extraido_word' not in st.session_state:
-        st.session_state.texto_extraido_word = ""
+    # 1. NÚCLEO DE MEMORIA PERSISTENTE
+    if 'stark_visual_buffer' not in st.session_state:
+        st.session_state.stark_visual_buffer = None
+    if 'stark_report_final' not in st.session_state:
+        st.session_state.stark_report_final = ""
+    if 'stark_word_text' not in st.session_state:
+        st.session_state.stark_word_text = ""
 
-    st.warning("🛰️ Protocolo de Redundancia Activo: JARVIS buscará modelos alternos si Groq presenta fallas.")
+    st.info("🛰️ Srta. Diana, los protocolos de enlace han sido reforzados para aceptar datos masivos.")
 
-    # 2. RECEPTOR DE PEGADO (JavaScript)
+    # 2. RECEPTOR DE PEGADO (Optimizado para enlaces largos)
     val_receptor = components.html(
         """
         <div id="p_area" contenteditable="true" style="
@@ -130,85 +131,83 @@ with tabs[1]:
         """, height=130,
     )
 
+    # 3. PROCESAMIENTO Y VALIDACIÓN DE ENLACE
     if val_receptor:
-        st.session_state.img_data_stark = val_receptor
+        # Validamos que sea un formato de imagen real antes de guardarlo
+        if isinstance(val_receptor, str) and "data:image" in val_receptor:
+            st.session_state.stark_visual_buffer = val_receptor
 
-    # 3. CARGADOR MANUAL
-    archivo = st.file_uploader("Carga de archivos (Imágenes o .docx):", type=["png", "jpg", "jpeg", "docx"], key="up90")
+    archivo = st.file_uploader("Carga manual de sensores:", type=["png", "jpg", "jpeg", "docx"], key="up91")
     
     if archivo:
         if archivo.name.endswith('.docx'):
             doc = Document(archivo)
-            st.session_state.texto_extraido_word = "\n".join([p.text for p in doc.paragraphs])
-            st.session_state.img_data_stark = "DOC_READY"
-            st.success(f"✔️ Documento '{archivo.name}' listo.")
+            st.session_state.stark_word_text = "\n".join([p.text for p in doc.paragraphs])
+            st.session_state.stark_visual_buffer = "DOC_ACTIVE"
         else:
             bytes_img = archivo.getvalue()
-            st.session_state.img_data_stark = f"data:image/jpeg;base64,{base64.b64encode(bytes_img).decode()}"
+            st.session_state.stark_visual_buffer = f"data:image/jpeg;base64,{base64.b64encode(bytes_img).decode()}"
 
-    # 4. VISOR DE SEGURIDAD (Antiextracción de errores)
-    if st.session_state.img_data_stark:
-        if isinstance(st.session_state.img_data_stark, str) and st.session_state.img_data_stark.startswith("data:image"):
-            st.image(st.session_state.img_data_stark, caption="Señal visual capturada", width=350)
-        elif st.session_state.img_data_stark == "DOC_READY":
-            st.info("📄 Documento en buffer. El sensor visual está en modo texto.")
+    # 4. VISOR DE SEGURIDAD (Solo píxeles confirmados)
+    if st.session_state.stark_visual_buffer:
+        if str(st.session_state.stark_visual_buffer).startswith("data:image"):
+            st.image(st.session_state.stark_visual_buffer, caption="Imagen verificada en el buffer", width=350)
+        elif st.session_state.stark_visual_buffer == "DOC_ACTIVE":
+            st.success("📄 Documento cargado y listo para análisis de texto.")
 
-    # 5. LÓGICA DE ANÁLISIS CON REDUNDANCIA
+    # 5. BOTÓN DE EJECUCIÓN CON REDUNDANCIA DE MODELOS
     st.write("---")
     if st.button("🔍 EJECUTAR ANÁLISIS DE JARVIS", type="primary", use_container_width=True):
-        if st.session_state.img_data_stark:
-            with st.spinner("JARVIS negociando con los servidores de Groq..."):
+        if st.session_state.stark_visual_buffer:
+            with st.spinner("JARVIS sincronizando con la red de Groq..."):
                 try:
                     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
                     
-                    if st.session_state.img_data_stark == "DOC_READY":
-                        # Análisis de Texto (Llama 3.3 estable)
+                    if st.session_state.stark_visual_buffer == "DOC_ACTIVE":
+                        # Análisis de Documento (Motor Llama 3.3)
                         resp = client.chat.completions.create(
-                            messages=[{"role": "user", "content": f"Analiza este documento: {st.session_state.texto_extraido_word}"}],
+                            messages=[{"role": "user", "content": f"Analiza este informe: {st.session_state.stark_word_text}"}],
                             model="llama-3.3-70b-versatile"
                         )
+                        st.session_state.stark_report_final = resp.choices[0].message.content
                     else:
-                        # --- PROTOCOLO DE REDUNDANCIA PARA VISIÓN ---
-                        modelos_vision = [
-                            "llama-3.2-11b-vision-preview", # Intento 1
-                            "llama-3.2-90b-vision-preview",  # Intento 2
-                            "pixtral-12b-2409"               # Intento 3 (Respaldo final)
-                        ]
-                        
+                        # --- MOTOR DE VISIÓN CON SALTO AUTOMÁTICO (FIX DEFINITIVO) ---
+                        modelos = ["llama-3.2-11b-vision-preview", "llama-3.2-90b-vision-preview"]
                         exito = False
-                        for modelo in modelos_vision:
+                        
+                        for m in modelos:
                             try:
                                 resp = client.chat.completions.create(
                                     messages=[{
                                         "role": "user",
                                         "content": [
-                                            {"type": "text", "text": "Identifica esta imagen. Si es planta, di nombre común, científico y cuidados. Sé extenso."},
-                                            {"type": "image_url", "image_url": {"url": str(st.session_state.img_data_stark)}}
+                                            {"type": "text", "text": "Actúa como JARVIS. Identifica esta especie botánica o objeto. Dame nombre científico y cuidados."},
+                                            {"type": "image_url", "image_url": {"url": st.session_state.stark_visual_buffer}}
                                         ]
                                     }],
-                                    model=modelo
+                                    model=m
                                 )
+                                st.session_state.stark_report_final = resp.choices[0].message.content
                                 exito = True
-                                break # Si funciona, salimos del bucle
-                            except Exception:
-                                continue # Si falla, prueba el siguiente modelo
+                                break
+                            except:
+                                continue
                         
                         if not exito:
-                            raise Exception("Ningún modelo de visión respondió en la red de Groq.")
+                            st.error("❌ Los servidores de visión están saturados. Intente nuevamente en 5 segundos.")
 
-                    st.session_state.analisis_output = resp.choices[0].message.content
-                    hablar("Análisis finalizado, Srta. Diana. He tenido que recalibrar los modelos en tiempo real.")
+                    hablar("Análisis completado, Srta. Diana.")
                 except Exception as e:
-                    st.error(f"Falla crítica de enlace: {e}")
+                    st.error(f"Falla crítica: {e}")
         else:
-            st.warning("⚠️ No hay datos para procesar. Por favor, cargue una imagen o documento.")
+            st.warning("⚠️ El buffer está vacío. Pegue o cargue una imagen primero.")
 
-    # 6. RESULTADO
-    if st.session_state.analisis_output:
-        st.text_area("Resultado del Diagnóstico:", value=st.session_state.analisis_output, height=450)
+    # 6. INFORME FINAL
+    if st.session_state.stark_report_final:
+        st.text_area("Resultado del Diagnóstico:", value=st.session_state.stark_report_final, height=450)
         if st.button("🗑️ Resetear"):
-            st.session_state.img_data_stark = None
-            st.session_state.analisis_output = ""
+            st.session_state.stark_visual_buffer = None
+            st.session_state.stark_report_final = ""
             st.rerun()
 
 # --- 3. PESTAÑA: ÓPTICO (CONSOLA DE DIAGNÓSTICO) ---
