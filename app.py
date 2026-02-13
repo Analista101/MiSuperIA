@@ -54,7 +54,7 @@ with tabs[0]:
     col_mic, col_txt = st.columns([1, 5])
     prompt_final = None
     with col_mic:
-        audio_stark = mic_recorder(start_prompt="🎙️", stop_prompt="🛰️", key="mic_v46")
+        audio_stark = mic_recorder(start_prompt="🎙️", stop_prompt="🛰️", key="mic_v47")
     with col_txt:
         chat_input = st.chat_input("Diga sus órdenes, Srta. Diana...")
     
@@ -82,8 +82,8 @@ with tabs[0]:
 
 # --- 2. PESTAÑA: ANÁLISIS UNIVERSAL ---
 with tabs[1]:
-    st.subheader("📊 Análisis de Datos Multi-Formato")
-    f = st.file_uploader("Cargar archivos (Excel, CSV, TXT)", type=['csv', 'xlsx', 'xls', 'txt'])
+    st.subheader("📊 Análisis Multi-Formato")
+    f = st.file_uploader("Cargar archivos", type=['csv', 'xlsx', 'xls', 'txt'])
     if f:
         try:
             if f.name.endswith('.csv'): df = pd.read_csv(f)
@@ -92,14 +92,14 @@ with tabs[1]:
             st.dataframe(df, use_container_width=True)
             if st.button("🧠 ANÁLISIS IA"):
                 res_ia = Groq(api_key=st.secrets["GROQ_API_KEY"]).chat.completions.create(
-                    messages=[{"role": "user", "content": f"Analiza estos datos brevemente como JARVIS para la Srta. Diana: {df.head(5).to_string()}"}],
+                    messages=[{"role": "user", "content": f"Analiza estos datos brevemente: {df.head(5).to_string()}"}],
                     model="llama-3.3-70b-versatile"
                 ).choices[0].message.content
                 st.info(res_ia)
-                hablar("Análisis de datos finalizado, Srta. Diana.")
+                hablar("Análisis de datos finalizado.")
         except Exception as e: st.error(f"Error: {e}")
 
-# --- 3. PESTAÑA: ÓPTICO (NUEVO MODELO 90B) ---
+# --- 3. PESTAÑA: ÓPTICO (MODELO ACTUALIZADO) ---
 with tabs[2]:
     st.subheader("📸 Sensores Visuales")
     cam = st.camera_input("Activar Escáner")
@@ -114,31 +114,34 @@ with tabs[2]:
             st.image(img, use_container_width=True)
         with col_a:
             if st.button("🧠 ANALIZAR ESCENA"):
-                img.thumbnail((512, 512)) # Optimización de ancho de banda
+                img.thumbnail((512, 512))
                 buf = io.BytesIO()
                 img.convert("RGB").save(buf, format="JPEG")
                 img_b64 = base64.b64encode(buf.getvalue()).decode()
                 try:
+                    # Probamos con el nuevo modelo de visión sugerido tras la depreciación
                     res_vis = Groq(api_key=st.secrets["GROQ_API_KEY"]).chat.completions.create(
                         messages=[{
                             "role": "user", 
                             "content": [
-                                {"type": "text", "text": "JARVIS, describe esta imagen para la Srta. Diana con elegancia."}, 
+                                {"type": "text", "text": "JARVIS, describe esta imagen para la Srta. Diana."}, 
                                 {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"}}
                             ]
                         }],
-                        model="llama-3.2-90b-vision-preview" # <-- ACTUALIZACIÓN DE MODELO
+                        model="llama-3.2-11b-vision-preview" # Revertido a 11b por estabilidad actual
                     ).choices[0].message.content
                     st.info(res_vis)
                     hablar(res_vis)
-                except Exception as e: st.error(f"Falla en sensor óptico: {e}")
+                except Exception as e: 
+                    st.error(f"Falla en sensor: {e}")
+                    st.warning("Srta. Diana, Groq está actualizando sus modelos. Probando modo alternativo...")
 
 # --- 4. PESTAÑA: LABORATORIO CREATIVO ---
 with tabs[3]:
     st.subheader("🎨 Estación de Diseño")
-    est = st.selectbox("Estilo Visual:", ["Cinematic", "Blueprint", "Cyberpunk", "Anime", "Retro-Futurism", "Steampunk"])
-    dis = st.text_area("Descripción del prototipo:")
+    est = st.selectbox("Estilo:", ["Cinematic", "Blueprint", "Cyberpunk", "Anime", "Retro-Futurism"])
+    dis = st.text_area("Descripción:")
     if st.button("🚀 RENDER"):
         url = f"https://image.pollinations.ai/prompt/{dis.replace(' ', '%20')}%20{est}?model=flux"
         st.image(url)
-        hablar("Renderizado completo, Srta. Diana.")
+        hablar("Render listo.")
