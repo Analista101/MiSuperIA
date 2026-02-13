@@ -81,87 +81,82 @@ with tabs[0]:
             hablar(res)
         st.session_state.mensajes.append({"role": "assistant", "content": res})
 
-# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (PROTOCOLO DE ACTIVACIÓN DIRECTA) ---
+# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (MARK 71 - FINAL) ---
 with tabs[1]:
-    st.subheader("📊 Centro de Inteligencia Mark 69")
+    st.subheader("📊 Centro de Inteligencia Mark 71")
     
     import streamlit.components.v1 as components
-    import base64
 
-    # Usamos una variable de estado para recordar si hay una imagen pegada
-    if 'analizar_ahora' not in st.session_state:
-        st.session_state.analizar_ahora = False
+    # 1. SOLUCIÓN A LOS MENSAJES ROJOS: Ampliamos la lista de protocolos permitidos
+    extensiones_stark = [
+        'png', 'jpg', 'jpeg', 'csv', 'xlsx', 'xls', 'txt', 
+        'pdf', 'docx', 'pptx'  # Ahora aceptamos informes y presentaciones
+    ]
+
+    # Variable de estado para el botón
+    if 'archivo_listo' not in st.session_state:
+        st.session_state.archivo_listo = False
 
     st.markdown("""
         <div style="border: 2px solid #00f2ff; padding: 10px; border-radius: 10px; background-color: rgba(0, 242, 255, 0.05); text-align: center;">
-            <p style="color: #00f2ff; font-family: monospace; font-weight: bold; margin: 0;">🛰️ PUERTO DE ENTRADA DIRECTA</p>
-            <p style="color: #ffffff; font-size: 13px;">Haga clic abajo y pegue su imagen (Ctrl+V)</p>
+            <p style="color: #00f2ff; font-family: monospace; font-weight: bold; margin: 0;">🛰️ SISTEMA DE CARGA MULTIPROTOCOLO</p>
+            <p style="color: #ffffff; font-size: 13px;">Pegue imágenes (Ctrl+V) o suelte archivos de Office/Datos</p>
         </div>
     """, unsafe_allow_html=True)
 
-    # 1. El Receptor Inteligente (HTML + JS)
-    # Este componente envía un pulso a Streamlit cuando recibe la imagen
-    resultado_pegado = components.html(
+    # 2. RECEPTOR DE PEGADO E INYECCIÓN
+    receptor_js = components.html(
         """
         <div id="p_area" contenteditable="true" style="
             border: 3px dashed #00f2ff; border-radius: 15px; 
-            background-color: #000; color: #00f2ff; height: 120px; 
+            background-color: #000; color: #00f2ff; height: 100px; 
             display: flex; align-items: center; justify-content: center;
             font-family: monospace; cursor: text; outline: none; margin-top: 10px;">
-            [ CLIC AQUÍ Y PEGUE LA IMAGEN ]
+            [ CLIC AQUÍ Y PEGUE PARA ACTIVAR ]
         </div>
         <script>
         const area = document.getElementById('p_area');
         area.addEventListener('paste', (e) => {
             const items = (e.clipboardData || e.originalEvent.clipboardData).items;
             for (const item of items) {
-                if (item.kind === 'file') {
-                    const reader = new FileReader();
-                    reader.onload = (ev) => {
-                        // Enviamos la señal al servidor
-                        window.parent.postMessage({
-                            type: 'streamlit:setComponentValue',
-                            value: "IMAGEN_RECIBIDA"
-                        }, '*');
-                        area.innerHTML = "<span style='color: #00f2ff;'>✓ IMAGEN CARGADA EN EL SISTEMA</span>";
-                    };
-                    reader.readAsDataURL(item.getAsFile());
-                }
+                window.parent.postMessage({type: 'streamlit:setComponentValue', value: true}, '*');
+                area.style.borderColor = "#00ff00";
+                area.innerHTML = "<span style='color: #00ff00;'>✓ EVIDENCIA DETECTADA</span>";
             }
         });
         </script>
         """,
-        height=160,
+        height=140,
     )
 
-    # 2. LÓGICA DE DETECCIÓN Y BOTÓN
-    # Si el componente HTML envía la señal, activamos el botón de análisis
-    if resultado_pegado == "IMAGEN_RECIBIDA" or st.session_state.analizar_ahora:
-        st.session_state.analizar_ahora = True
-        
-        st.success("🤖 Sistemas listos para el diagnóstico.")
-        
-        # El botón INFALIBLE
-        if st.button("🧠 INICIAR ANÁLISIS TÁCTICO", type="primary", use_container_width=True):
-            with st.spinner("Accediendo a la red neuronal de Stark..."):
-                try:
-                    mensaje = "Srta. Diana, he recibido los datos visuales. El análisis de patrones revela una estructura óptima. Procediendo con el escaneo de seguridad."
-                    st.info(f"**JARVIS:** {mensaje}")
-                    hablar(mensaje)
-                except Exception as e:
-                    st.error(f"Error de enlace: {e}")
-        
-        if st.button("🗑️ LIMPIAR BUFFER"):
-            st.session_state.analizar_ahora = False
-            st.rerun()
+    # 3. CARGADOR DE ARCHIVOS (Sin errores de "not allowed")
+    captura_evidencia = st.file_uploader(
+        "Puerto de carga secundaria:", 
+        type=extensiones_stark,  # Aquí incluimos la solución al mensaje rojo
+        key="puerto_unificado"
+    )
 
-    # Respaldo táctico por si el navegador bloquea el JS
-    st.markdown("---")
-    captura_manual = st.file_uploader("Entrada de respaldo (opcional):", type=['png', 'jpg', 'jpeg'])
-    if captura_manual:
-        st.image(captura_manual, caption="Evidencia cargada manualmente", width=300)
-        if st.button("🧪 ANALIZAR ARCHIVO"):
-            hablar("Procesando archivo manual, Srta. Diana.")
+    # Si se pega algo o se sube algo, activamos el botón
+    if receptor_js or captura_evidencia:
+        st.session_state.archivo_listo = True
+
+    # 4. EL BOTÓN QUE USTED NECESITA
+    if st.session_state.archivo_listo:
+        st.write("")
+        if st.button("🔍 GENERAR ANÁLISIS", type="primary", use_container_width=True):
+            with st.spinner("Decodificando archivos y buscando patrones..."):
+                # Simulación de inteligencia JARVIS
+                if captura_evidencia and captura_evidencia.name.endswith(('.docx', '.pptx')):
+                    msg = f"Srta. Diana, he analizado el documento '{captura_evidencia.name}'. Extrayendo puntos clave para su revisión."
+                else:
+                    msg = "Análisis generado. Los parámetros visuales están dentro de los límites de Industrias Stark."
+                
+                st.success(f"**INFORME TÁCTICO:** {msg}")
+                hablar(msg)
+        
+        if st.button("🗑️ Limpiar Memoria"):
+            st.session_state.archivo_listo = False
+            st.rerun()
 
 # --- 3. PESTAÑA: ÓPTICO (CONSOLA DE DIAGNÓSTICO) ---
 with tabs[2]:
