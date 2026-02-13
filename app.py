@@ -6,8 +6,9 @@ from duckduckgo_search import DDGS
 from gtts import gTTS
 import base64
 import io
+import datetime
 
-# --- CONFIGURACIÓN DE SISTEMAS STARK ---
+# --- CONFIGURACIÓN ---
 st.set_page_config(page_title="JARVIS: Protocolo Diana", layout="wide", page_icon="🛰️")
 
 ID_DE_TU_HOJA = "1ch6QcydRrTJhIVmpHLNtP1Aq60bmaZibefV3IcBu90o"
@@ -15,15 +16,16 @@ ID_DE_TU_HOJA = "1ch6QcydRrTJhIVmpHLNtP1Aq60bmaZibefV3IcBu90o"
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# --- MÓDULO DE BÚSQUEDA (CORREGIDO PARA 2026) ---
-def buscar_internet(query):
+# --- MOTOR DE BÚSQUEDA 2026 ---
+def buscar_red_global(consulta):
     try:
         with DDGS() as ddgs:
-            # Forzamos la búsqueda para que traiga datos de este año
-            search_results = list(ddgs.text(f"{query} actual 2026", max_results=3))
-            return "\n".join([r['body'] for r in search_results])
-    except:
-        return "No se pudo conectar con los satélites de búsqueda."
+            # Forzamos que busque resultados de 2026
+            busqueda = f"{consulta} actual febrero 2026"
+            resultados = [r['body'] for r in ddgs.text(busqueda, max_results=3)]
+            return "\n".join(resultados) if resultados else "No se encontraron datos recientes."
+    except Exception as e:
+        return f"Error de enlace: {str(e)}"
 
 def hablar(texto):
     try:
@@ -36,70 +38,69 @@ def hablar(texto):
         st.markdown(md, unsafe_allow_html=True)
     except: pass
 
-# --- INTERFAZ PRINCIPAL ---
+# --- INTERFAZ ---
 st.title("🛰️ Proyecto JARVIS: Protocolo Diana")
+tabs = st.tabs(["💬 Comando Central", "📊 Análisis", "📸 Óptico", "🎨 Laboratorio"])
 
-tabs = st.tabs(["💬 Comando Central", "📊 Análisis Stark", "📸 Óptico", "🎨 Laboratorio"])
-
-# --- PESTAÑA 1: CHAT + INTERNET ---
 with tabs[0]:
+    # Verificación de Base de Datos (Lectura)
     try:
         url_csv = f"https://docs.google.com/spreadsheets/d/{ID_DE_TU_HOJA}/export?format=csv"
         pd.read_csv(url_csv)
-        st.success("🛰️ Enlace con Google Sheets: ESTABLE")
+        st.success("🛰️ Enlace Satelital: ACTIVO")
     except:
-        st.warning("⚠️ Sensores de base de datos en modo local.")
+        st.warning("⚠️ Modo Local: Base de datos no detectada.")
 
     for m in st.session_state.messages:
         with st.chat_message(m["role"]): st.markdown(m["content"])
 
-    if prompt := st.chat_input("¿Qué desea, Srta. Diana?"):
+    if prompt := st.chat_input("¿Qué necesita consultar, Srta. Diana?"):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"): st.markdown(prompt)
 
-        with st.spinner("Consultando red global 2026..."):
-            info_red = buscar_internet(prompt)
+        with st.spinner("Escaneando red global..."):
+            # OBLIGAMOS a buscar antes de generar la respuesta
+            datos_tiempo_real = buscar_red_global(prompt)
+            fecha_actual = datetime.datetime.now().strftime("%d/%m/%Y")
+            
             client = Groq(api_key=st.secrets["GROQ_API_KEY"])
             
-            # System Prompt agresivo para forzar el año actual
-            sys_msg = f"""Eres JARVIS. Estamos en FEBRERO DE 2026.
-            Usa estos datos REALES para tu respuesta: {info_red}
-            Si te preguntan por el clima o noticias, usa los datos de arriba.
-            No digas que tu conocimiento es de 2023. Responde como un asistente británico."""
+            # PROMPT DE INYECCIÓN DIRECTA: Aquí es donde JARVIS deja de mentir sobre 2023
+            sys_msg = f"""ESTA ES UNA ORDEN PRIORITARIA: Estamos a {fecha_actual}. 
+            Tu memoria interna de 2023 está OBSOLETA. 
+            USA ESTOS DATOS QUE ACABO DE OBTENER DE INTERNET:
+            ---
+            {datos_tiempo_real}
+            ---
+            Responde a la Srta. Diana usando esa información. Si te pregunta por el clima, 
+            da los datos que aparecen arriba. Estilo: JARVIS (británico y eficiente)."""
 
-            response = client.chat.completions.create(
-                messages=[{"role": "system", "content": sys_msg}] + st.session_state.messages,
-                model="llama-3.3-70b-versatile"
-            ).choices[0].message.content
+            try:
+                response = client.chat.completions.create(
+                    messages=[{"role": "system", "content": sys_msg}] + st.session_state.messages,
+                    model="llama-3.3-70b-versatile"
+                ).choices[0].message.content
 
-            with st.chat_message("assistant"):
-                st.markdown(response)
-                hablar(response)
-            st.session_state.messages.append({"role": "assistant", "content": response})
+                with st.chat_message("assistant"):
+                    st.markdown(response)
+                    hablar(response)
+                st.session_state.messages.append({"role": "assistant", "content": response})
+            except Exception as e:
+                st.error(f"Error en procesador: {e}")
 
-# --- PESTAÑA 2: DATOS ---
+# --- RESTAURACIÓN DE PESTAÑAS ---
 with tabs[1]:
     st.header("📊 Procesamiento de Datos")
-    archivo = st.file_uploader("Subir archivo Excel/CSV", type=['xlsx', 'csv'], key="stark_data")
-    if archivo:
-        df = pd.read_excel(archivo) if 'xlsx' in archivo.name else pd.read_csv(archivo)
-        st.dataframe(df)
+    archivo = st.file_uploader("Subir Excel", type=['xlsx', 'csv'])
+    if archivo: st.dataframe(pd.read_excel(archivo) if 'xlsx' in archivo.name else pd.read_csv(archivo))
 
-# --- PESTAÑA 3: FOTOS ---
 with tabs[2]:
-    st.header("📸 Reconocimiento Óptico")
-    img_file = st.file_uploader("Sube una imagen", type=['jpg', 'png'], key="stark_vision")
-    if img_file:
-        img = Image.open(img_file)
-        filtro = st.selectbox("Efecto:", ["Ninguno", "Gris", "Bordes"])
-        if filtro == "Gris": img = ImageOps.grayscale(img)
-        elif filtro == "Bordes": img = img.filter(ImageFilter.FIND_EDGES)
-        st.image(img, use_container_width=True)
+    st.header("📸 Visión Óptica")
+    img_f = st.file_uploader("Imagen", type=['jpg', 'png'])
+    if img_f: st.image(Image.open(img_f))
 
-# --- PESTAÑA 4: ARTE ---
 with tabs[3]:
-    st.header("🎨 Laboratorio Artístico")
-    desc = st.text_input("Describe tu diseño:", key="stark_art")
-    if st.button("Generar Renderizado"):
-        url_art = f"https://image.pollinations.ai/prompt/{desc.replace(' ', '%20')}?model=flux"
-        st.image(url_art, caption="Visualización Stark")
+    st.header("🎨 Laboratorio de Diseño")
+    desc = st.text_input("Descripción del render:")
+    if st.button("Generar"):
+        st.image(f"https://image.pollinations.ai/prompt/{desc.replace(' ', '%20')}?model=flux")
