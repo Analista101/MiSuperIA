@@ -81,58 +81,6 @@ with tabs[0]:
             hablar(res)
         st.session_state.mensajes.append({"role": "assistant", "content": res})
 
-# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (MARK 74 - INTELIGENCIA COGNITIVA) ---
-with tabs[1]:
-    st.subheader("📊 Terminal de Inteligencia Cognitiva Mark 74")
-    
-    import streamlit.components.v1 as components
-    from PIL import Image
-    import base64
-    import io
-
-    # Estado de la memoria
-    if 'informe_detallado' not in st.session_state:
-        st.session_state.informe_detallado = ""
-
-    # 1. RECEPTOR DE IMAGEN (PEGADO Y CARGA)
-    st.info("🛰️ Srta. Diana, el sistema de visión está activo. Pegue o cargue cualquier imagen para identificar su contenido.")
-    
-    col_input, col_preview = st.columns([1, 1])
-    
-    with col_input:
-        receptor_js = components.html(
-            """
-            <div id="p_area" contenteditable="true" style="
-                border: 3px dashed #00f2ff; border-radius: 15px; 
-                background-color: #000; color: #00f2ff; height: 100px; 
-                display: flex; align-items: center; justify-content: center;
-                font-family: monospace; cursor: text; outline: none;">
-                [ PEGAR AQUÍ PARA IDENTIFICACIÓN ]
-            </div>
-            <script>
-            const area = document.getElementById('p_area');
-            area.addEventListener('paste', (e) => {
-                const items = e.clipboardData.items;
-                for (let i = 0; i < items.length; i++) {
-                    if (items[i].type.indexOf("image") !== -1) {
-                        const blob = items[i].getAsFile();
-                        const reader = new FileReader();
-                        reader.onload = (event) => {
-                            window.parent.postMessage({
-                                type: 'streamlit:setComponentValue',
-                                value: event.target.result
-                            }, '*');
-                        };
-                        reader.readAsDataURL(blob);
-                        area.innerHTML = "<span style='color: #00ff00;'>✓ IMAGEN LISTA</span>";
-                    }
-                }
-            });
-            </script>
-            """, height=130,
-        )
-        archivo = st.file_uploader("O cargue archivo:", type=['png', 'jpg', 'jpeg'])
-
 # --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (MARK 80 - UNIFICADO Y FINAL) ---
 with tabs[1]:
     st.subheader("📊 Terminal de Inteligencia Mark 80")
