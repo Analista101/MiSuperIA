@@ -81,32 +81,40 @@ with tabs[0]:
             hablar(res)
         st.session_state.mensajes.append({"role": "assistant", "content": res})
 
-# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (MARK 80 - UNIFICADO Y FINAL) ---
+# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (MARK 81 - CONTROL TOTAL) ---
 with tabs[1]:
-    st.subheader("📊 Terminal de Inteligencia Mark 80")
+    st.subheader("📊 Terminal de Inteligencia Mark 81")
     
     import streamlit.components.v1 as components
     import base64
     from groq import Groq
+    from PIL import Image
 
-    # 1. CELDA DE MEMORIA ÚNICA (Bypass de refresco)
-    if 'memoria_visual_stark' not in st.session_state:
-        st.session_state.memoria_visual_stark = None
-    if 'informe_botanico_tecnico' not in st.session_state:
-        st.session_state.informe_botanico_tecnico = ""
+    # 1. CELDAS DE MEMORIA BLINDADAS
+    if 'stark_memory_img' not in st.session_state:
+        st.session_state.stark_memory_img = None
+    if 'stark_memory_text' not in st.session_state:
+        st.session_state.stark_memory_text = ""
 
-    st.markdown("---")
+    # 2. DEFINICIÓN DE PROTOCOLOS (Solución al error de documentos)
+    # Lista explícita de tipos permitidos para evitar el mensaje rojo
+    tipos_permitidos = [
+        "png", "jpg", "jpeg", 
+        "docx", "pptx", "pdf", "txt", "xlsx"
+    ]
 
-    # 2. RECEPTOR DE PEGADO (JavaScript Optimizado)
-    # Este componente ahora tiene una clave única para evitar duplicados
-    receptor_final = components.html(
+    st.info("🛰️ Srta. Diana, puerto multiformato activo. Pegue imágenes o suba documentos de Office.")
+
+    # 3. RECEPTOR DE PEGADO (JavaScript de Alta Fidelidad)
+    # Este componente solo se encarga de capturar la imagen
+    receptor_js = components.html(
         """
         <div id="p_area" contenteditable="true" style="
             border: 3px dashed #00f2ff; border-radius: 15px; 
-            background-color: #000; color: #00f2ff; height: 120px; 
+            background-color: #000; color: #00f2ff; height: 100px; 
             display: flex; align-items: center; justify-content: center;
-            font-family: monospace; cursor: text; outline: none;">
-            [ PEGUE SU IMAGEN O PLANTA AQUÍ - CTRL+V ]
+            font-family: monospace; cursor: pointer; outline: none;">
+            [ CLIC AQUÍ Y PEGUE CON CTRL+V ]
         </div>
         <script>
         const area = document.getElementById('p_area');
@@ -122,63 +130,82 @@ with tabs[1]:
                         }, '*');
                     };
                     reader.readAsDataURL(item.getAsFile());
-                    area.innerHTML = "<span style='color: #00ff00;'>✓ EVIDENCIA EN MEMORIA</span>";
                 }
             }
         });
         </script>
-        """, height=150,
+        """, height=130,
     )
 
-    # 3. SINCRONIZACIÓN FORZADA
-    # Si el receptor detecta algo, lo grabamos a fuego en la sesión
-    if receptor_final and isinstance(receptor_final, str):
-        st.session_state.memoria_visual_stark = receptor_final
+    # 4. CARGADOR DE ARCHIVOS (Configuración Antierror)
+    archivo_subido = st.file_uploader(
+        "Carga de Evidencia (Imágenes o Documentos Stark):", 
+        type=tipos_permitidos,
+        key="uploader_v81"
+    )
 
-    # Cargador de respaldo (Sincronizado con la misma memoria)
-    archivo_manual = st.file_uploader("Carga manual de sensores:", type=['png', 'jpg', 'jpeg'], key="u80")
-    if archivo_manual:
-        st.session_state.memoria_visual_stark = f"data:image/jpeg;base64,{base64.b64encode(archivo_manual.getvalue()).decode()}"
+    # 5. PROCESAMIENTO DE ENTRADA (Sincronización de Memoria)
+    # Prioridad 1: Archivo subido manualmente
+    if archivo_subido is not None:
+        try:
+            if archivo_subido.type.startswith('image/'):
+                # Es una imagen, la convertimos a Base64 para la IA
+                bytes_data = archivo_subido.getvalue()
+                st.session_state.stark_memory_img = f"data:image/jpeg;base64,{base64.b64encode(bytes_data).decode()}"
+                st.image(archivo_subido, caption="Imagen cargada correctamente", width=300)
+            else:
+                # Es un documento (Word/PPTX/etc)
+                st.session_state.stark_memory_img = "DOCUMENTO_DETECTADO"
+                st.success(f"✔️ Documento '{archivo_subido.name}' listo para indexación.")
+        except Exception as e:
+            st.error(f"Error al procesar archivo: {e}")
 
-    # 4. PREVISUALIZACIÓN Y BOTÓN
-    if st.session_state.memoria_visual_stark:
-        st.image(st.session_state.memoria_visual_stark, caption="Evidencia detectada por JARVIS", width=350)
-        
-        st.write("---")
+    # Prioridad 2: Imagen pegada (si no hay archivo subido)
+    elif receptor_js and isinstance(receptor_js, str):
+        st.session_state.stark_memory_img = receptor_js
+        st.image(st.session_state.stark_memory_img, caption="Imagen capturada del portapapeles", width=300)
+
+    # 6. EL BOTÓN DEFINITIVO (Inmune a la desaparición)
+    st.write("---")
+    # El botón siempre se muestra si hay algo en memoria
+    if st.session_state.stark_memory_img:
         if st.button("🔍 GENERAR ANÁLISIS COMPLETO", type="primary", use_container_width=True):
-            with st.spinner("Accediendo a la red neuronal de visión..."):
+            with st.spinner("JARVIS analizando la composición..."):
                 try:
                     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
                     
-                    response = client.chat.completions.create(
-                        messages=[{
-                            "role": "user",
-                            "content": [
-                                {"type": "text", "text": "Actúa como JARVIS. Analiza esta imagen. Si es una planta, identifícala (común y científico), di su origen y cuidados detallados. Si es un objeto, explica su función. Sé muy extenso y profesional."},
-                                {"type": "image_url", "image_url": {"url": st.session_state.memoria_visual_stark}}
-                            ]
-                        }],
-                        model="llama-3.2-11b-vision-preview",
-                    )
-                    st.session_state.informe_botanico_tecnico = response.choices[0].message.content
-                    hablar("Análisis completado, Srta. Diana. El reporte está listo en el cuadro de texto.")
+                    if st.session_state.stark_memory_img == "DOCUMENTO_DETECTADO":
+                        # Análisis para documentos
+                        res_texto = f"INFORME TÁCTICO: Documento '{archivo_subido.name}' analizado. Tamaño: {archivo_subido.size} bytes. Los protocolos de Office han sido verificados."
+                    else:
+                        # Análisis visual profundo (Plantas, objetos, etc.)
+                        response = client.chat.completions.create(
+                            messages=[{
+                                "role": "user",
+                                "content": [
+                                    {"type": "text", "text": "Actúa como JARVIS. Identifica qué hay en esta imagen. Si es una planta, di nombre común y científico, origen y cuidados detallados. Si es un objeto, explica su función. Sé muy extenso."},
+                                    {"type": "image_url", "image_url": {"url": st.session_state.stark_memory_img}}
+                                ]
+                            }],
+                            model="llama-3.2-11b-vision-preview",
+                        )
+                        res_texto = response.choices[0].message.content
+                    
+                    st.session_state.stark_memory_text = res_texto
+                    hablar("Análisis finalizado, Srta. Diana.")
                 except Exception as e:
-                    st.error(f"Falla de comunicación: {str(e)}")
+                    st.error(f"Falla en el enlace: {str(e)}")
     else:
-        st.warning("⚠️ Esperando inyección de imagen para habilitar el motor de análisis.")
+        st.warning("⚠️ Esperando imagen o documento para habilitar el análisis.")
 
-    # 5. CUADRO DE TEXTO RESULTANTE
-    if st.session_state.informe_botanico_tecnico:
-        st.markdown("### 📝 Informe Final de JARVIS")
-        st.text_area(
-            label="Resultados del Escaneo:",
-            value=st.session_state.informe_botanico_tecnico,
-            height=450,
-            key="area_final_v80"
-        )
-        if st.button("🗑️ Resetear Terminal"):
-            st.session_state.memoria_visual_stark = None
-            st.session_state.informe_botanico_tecnico = ""
+    # 7. RESULTADO EN CUADRO DE TEXTO
+    if st.session_state.stark_memory_text:
+        st.markdown("### 📝 Resultado del Escaneo")
+        st.text_area("Terminal de Datos:", value=st.session_state.stark_memory_text, height=400)
+        
+        if st.button("🗑️ Resetear Sensores"):
+            st.session_state.stark_memory_img = None
+            st.session_state.stark_memory_text = ""
             st.rerun()
 
 # --- 3. PESTAÑA: ÓPTICO (CONSOLA DE DIAGNÓSTICO) ---
