@@ -81,9 +81,9 @@ with tabs[0]:
             hablar(res)
         st.session_state.mensajes.append({"role": "assistant", "content": res})
 
-# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (MARK 86 - RECONOCIMIENTO TOTAL) ---
+# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (MARK 87 - FILTRO DE SEGURIDAD) ---
 with tabs[1]:
-    st.subheader("📊 Terminal de Inteligencia Mark 86")
+    st.subheader("📊 Terminal de Inteligencia Mark 87")
     
     import streamlit.components.v1 as components
     import base64
@@ -92,7 +92,7 @@ with tabs[1]:
         from docx import Document
     except: pass
 
-    # 1. MEMORIA CENTRAL
+    # 1. CELDAS DE MEMORIA
     if 'img_data_stark' not in st.session_state:
         st.session_state.img_data_stark = None
     if 'analisis_output' not in st.session_state:
@@ -100,10 +100,9 @@ with tabs[1]:
     if 'texto_extraido_word' not in st.session_state:
         st.session_state.texto_extraido_word = ""
 
-    st.info("🛰️ Puerto de Entrada Diana-1: Cargue o pegue la imagen para análisis cognitivo.")
+    st.info("🛰️ Puerto Diana-1: Cargue informes .docx o pegue imágenes de especímenes.")
 
-    # 2. RECEPTOR DE PEGADO (JavaScript Directo)
-    # Este componente inyecta la imagen directamente en Streamlit
+    # 2. RECEPTOR DE PEGADO (JavaScript)
     val_receptor = components.html(
         """
         <div id="p_area" contenteditable="true" style="
@@ -131,51 +130,53 @@ with tabs[1]:
         """, height=130,
     )
 
-    # Sincronización inmediata de la imagen pegada
     if val_receptor:
         st.session_state.img_data_stark = val_receptor
 
-    # 3. CARGADOR MANUAL (Con bypass de error de Word)
-    archivo = st.file_uploader("O cargue manualmente:", type=["png", "jpg", "jpeg", "docx"], key="up86")
+    # 3. CARGADOR MANUAL
+    archivo = st.file_uploader("Carga manual:", type=["png", "jpg", "jpeg", "docx"], key="up87")
     
     if archivo:
         if archivo.name.endswith('.docx'):
             doc = Document(archivo)
             st.session_state.texto_extraido_word = "\n".join([p.text for p in doc.paragraphs])
             st.session_state.img_data_stark = "DOC_READY"
-            st.success("✔️ Documento Word detectado y listo.")
+            st.success(f"✔️ Documento '{archivo.name}' listo para análisis de texto.")
         else:
-            # Convertimos imagen cargada a Base64 puro
             bytes_img = archivo.getvalue()
             st.session_state.img_data_stark = f"data:image/jpeg;base64,{base64.b64encode(bytes_img).decode()}"
 
-    # 4. PREVISUALIZACIÓN DE SENSORES
-    if st.session_state.img_data_stark and st.session_state.img_data_stark != "DOC_READY":
-        st.image(st.session_state.img_data_stark, caption="Captura de sensor activa", width=300)
+    # 4. VISOR DE SEGURIDAD (Aquí corregimos el error)
+    if st.session_state.img_data_stark:
+        # Solo intentamos mostrar la imagen si NO es un documento de Word
+        if st.session_state.img_data_stark != "DOC_READY":
+            try:
+                st.image(st.session_state.img_data_stark, caption="Evidencia visual detectada", width=300)
+            except Exception:
+                st.warning("⚠️ El formato visual requiere recalibración, pero los datos están en el buffer.")
 
-    # 5. BOTÓN DE ANÁLISIS (INMOVILIZADO)
+    # 5. BOTÓN DE ANÁLISIS PERMANENTE
     st.write("---")
-    # El botón es permanente. Si no hay imagen, lanza una advertencia en lugar de desaparecer.
     if st.button("🔍 EJECUTAR ANÁLISIS DE JARVIS", type="primary", use_container_width=True):
         if st.session_state.img_data_stark:
-            with st.spinner("Procesando matriz de datos..."):
+            with st.spinner("Analizando matriz de datos..."):
                 try:
                     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
                     
                     if st.session_state.img_data_stark == "DOC_READY":
-                        # Análisis de Documento
+                        # ANALISIS DE TEXTO (Llama 3.3) - No tocamos su lógica
                         resp = client.chat.completions.create(
                             messages=[{"role": "user", "content": f"Analiza este documento: {st.session_state.texto_extraido_word}"}],
                             model="llama-3.3-70b-versatile"
                         )
                     else:
-                        # Análisis de Imagen (Visión Artificial)
+                        # ANALISIS DE IMAGEN (Llama 3.2 Vision)
                         img_url = str(st.session_state.img_data_stark)
                         resp = client.chat.completions.create(
                             messages=[{
                                 "role": "user",
                                 "content": [
-                                    {"type": "text", "text": "Identifica qué hay en esta imagen. Si es una planta, di nombre común, científico, origen y cuidados. Sé muy detallado."},
+                                    {"type": "text", "text": "Identifica esta imagen. Si es planta, di nombre científico y cuidados. Sé extenso."},
                                     {"type": "image_url", "image_url": {"url": img_url}}
                                 ]
                             }],
@@ -186,7 +187,7 @@ with tabs[1]:
                 except Exception as e:
                     st.error(f"Falla de enlace: {e}")
         else:
-            st.warning("⚠️ No se ha detectado imagen o documento en los sensores.")
+            st.warning("⚠️ No hay datos para analizar.")
 
     # 6. TERMINAL DE SALIDA
     if st.session_state.analisis_output:
