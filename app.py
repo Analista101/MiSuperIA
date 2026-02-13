@@ -23,7 +23,6 @@ st.markdown("""
     }
     @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
     .stTabs [data-baseweb="tab"] { color: #00f2ff !important; font-weight: bold; font-size: 18px; }
-    .stChatMessage { background-color: rgba(26, 28, 35, 0.8); border: 1px solid #00f2ff; border-radius: 10px; }
     </style>
     <div class="arc-reactor"></div>
     """, unsafe_allow_html=True)
@@ -54,7 +53,7 @@ with tabs[0]:
     col_mic, col_txt = st.columns([1, 5])
     prompt_final = None
     with col_mic:
-        audio_stark = mic_recorder(start_prompt="🎙️", stop_prompt="🛰️", key="mic_v47")
+        audio_stark = mic_recorder(start_prompt="🎙️", stop_prompt="🛰️", key="mic_v48")
     with col_txt:
         chat_input = st.chat_input("Diga sus órdenes, Srta. Diana...")
     
@@ -99,7 +98,7 @@ with tabs[1]:
                 hablar("Análisis de datos finalizado.")
         except Exception as e: st.error(f"Error: {e}")
 
-# --- 3. PESTAÑA: ÓPTICO (MODELO ACTUALIZADO) ---
+# --- 3. PESTAÑA: ÓPTICO (ACTUALIZADO A PIXTRAL) ---
 with tabs[2]:
     st.subheader("📸 Sensores Visuales")
     cam = st.camera_input("Activar Escáner")
@@ -119,22 +118,21 @@ with tabs[2]:
                 img.convert("RGB").save(buf, format="JPEG")
                 img_b64 = base64.b64encode(buf.getvalue()).decode()
                 try:
-                    # Probamos con el nuevo modelo de visión sugerido tras la depreciación
+                    # Usando el modelo Pixtral, el nuevo sucesor estable para visión en Groq
                     res_vis = Groq(api_key=st.secrets["GROQ_API_KEY"]).chat.completions.create(
                         messages=[{
                             "role": "user", 
                             "content": [
-                                {"type": "text", "text": "JARVIS, describe esta imagen para la Srta. Diana."}, 
+                                {"type": "text", "text": "JARVIS, describe esta imagen para la Srta. Diana con su elegancia habitual."}, 
                                 {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"}}
                             ]
                         }],
-                        model="llama-3.2-11b-vision-preview" # Revertido a 11b por estabilidad actual
+                        model="llama-3.2-11b-vision-pixtral" # <-- NUEVO MODELO ESTABLE
                     ).choices[0].message.content
                     st.info(res_vis)
                     hablar(res_vis)
                 except Exception as e: 
-                    st.error(f"Falla en sensor: {e}")
-                    st.warning("Srta. Diana, Groq está actualizando sus modelos. Probando modo alternativo...")
+                    st.error(f"Falla en sensor óptico: {e}")
 
 # --- 4. PESTAÑA: LABORATORIO CREATIVO ---
 with tabs[3]:
