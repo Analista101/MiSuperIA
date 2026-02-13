@@ -48,12 +48,12 @@ if "mensajes" not in st.session_state: st.session_state.mensajes = []
 st.markdown("<h1 style='text-align: center; color: #00f2ff;'>🛰️ JARVIS: SISTEMA INTEGRADO DIANA</h1>", unsafe_allow_html=True)
 tabs = st.tabs(["💬 COMANDO", "📊 ANÁLISIS UNIVERSAL", "📸 ÓPTICO", "🎨 LABORATORIO CREATIVO"])
 
-# --- 1. PESTAÑA: COMANDO ---
+# --- (MODULOS DE COMANDO Y ANALISIS MANTENIDOS) ---
 with tabs[0]:
     col_mic, col_txt = st.columns([1, 5])
     prompt_final = None
     with col_mic:
-        audio_stark = mic_recorder(start_prompt="🎙️", stop_prompt="🛰️", key="mic_v48")
+        audio_stark = mic_recorder(start_prompt="🎙️", stop_prompt="🛰️", key="mic_v49")
     with col_txt:
         chat_input = st.chat_input("Diga sus órdenes, Srta. Diana...")
     
@@ -79,7 +79,6 @@ with tabs[0]:
             hablar(res)
         st.session_state.mensajes.append({"role": "assistant", "content": res})
 
-# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL ---
 with tabs[1]:
     st.subheader("📊 Análisis Multi-Formato")
     f = st.file_uploader("Cargar archivos", type=['csv', 'xlsx', 'xls', 'txt'])
@@ -98,7 +97,7 @@ with tabs[1]:
                 hablar("Análisis de datos finalizado.")
         except Exception as e: st.error(f"Error: {e}")
 
-# --- 3. PESTAÑA: ÓPTICO (ACTUALIZADO A PIXTRAL) ---
+# --- 3. PESTAÑA: ÓPTICO (PROTOCOLO DE EMERGENCIA) ---
 with tabs[2]:
     st.subheader("📸 Sensores Visuales")
     cam = st.camera_input("Activar Escáner")
@@ -117,22 +116,28 @@ with tabs[2]:
                 buf = io.BytesIO()
                 img.convert("RGB").save(buf, format="JPEG")
                 img_b64 = base64.b64encode(buf.getvalue()).decode()
-                try:
-                    # Usando el modelo Pixtral, el nuevo sucesor estable para visión en Groq
-                    res_vis = Groq(api_key=st.secrets["GROQ_API_KEY"]).chat.completions.create(
-                        messages=[{
-                            "role": "user", 
-                            "content": [
-                                {"type": "text", "text": "JARVIS, describe esta imagen para la Srta. Diana con su elegancia habitual."}, 
-                                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"}}
-                            ]
-                        }],
-                        model="llama-3.2-11b-vision-pixtral" # <-- NUEVO MODELO ESTABLE
-                    ).choices[0].message.content
-                    st.info(res_vis)
-                    hablar(res_vis)
-                except Exception as e: 
-                    st.error(f"Falla en sensor óptico: {e}")
+                
+                # Lista de modelos de visión para probar en cascada
+                modelos_vision = ["llama-3.2-11b-vision-preview", "llava-v1.5-7b-4096-preview"]
+                
+                exito = False
+                for model_id in modelos_vision:
+                    try:
+                        res_vis = Groq(api_key=st.secrets["GROQ_API_KEY"]).chat.completions.create(
+                            messages=[{"role": "user", "content": [{"type": "text", "text": "JARVIS, describe esta imagen para la Srta. Diana."}, {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"}}]}],
+                            model=model_id
+                        ).choices[0].message.content
+                        st.info(f"Análisis (Sensor {model_id}):\n\n{res_vis}")
+                        hablar(res_vis)
+                        exito = True
+                        break
+                    except:
+                        continue
+                
+                if not exito:
+                    msg_error = "Srta. Diana, los sensores ópticos externos de Groq están fuera de servicio. He activado el protocolo de diagnóstico manual."
+                    st.warning(msg_error)
+                    hablar(msg_error)
 
 # --- 4. PESTAÑA: LABORATORIO CREATIVO ---
 with tabs[3]:
