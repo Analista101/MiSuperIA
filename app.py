@@ -81,80 +81,58 @@ with tabs[0]:
             hablar(res)
         st.session_state.mensajes.append({"role": "assistant", "content": res})
 
-# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (MARK 96 - MOTOR GEMINI) ---
+# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (MARK 97 - ADIÓS A GROQ) ---
 with tabs[1]:
-    st.subheader("📊 Terminal de Inteligencia Mark 96 (Powered by Gemini)")
+    st.subheader("📊 Terminal de Inteligencia Mark 97 (Protocolo Gemini)")
     
     import google.generativeai as genai
     from PIL import Image
-    import io
     try:
         from docx import Document
     except: pass
 
-    # 1. CONFIGURACIÓN DE NÚCLEO GOOGLE
-    try:
+    # 1. ENLACE CON LOS SERVIDORES DE GOOGLE
+    if "GOOGLE_API_KEY" in st.secrets:
         genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-        model = genai.GenerativeModel('gemini-1.5-flash')
-    except Exception as e:
-        st.error(f"Falla en la clave de acceso Google: {e}")
+        # Usamos Gemini 1.5 Flash: es rápido, gratuito y estable
+        model_gemini = genai.GenerativeModel('gemini-1.5-flash')
+    else:
+        st.error("⚠️ Falta la GOOGLE_API_KEY en los secretos de la armadura.")
 
-    # 2. CELDAS DE MEMORIA
-    if 'stark_content' not in st.session_state:
-        st.session_state.stark_content = None
-    if 'stark_report' not in st.session_state:
-        st.session_state.stark_report = ""
-
-    st.info("🛰️ Srta. Diana, he migrado los sistemas a los servidores de Google para evitar los errores 404 de Groq.")
-
-    # 3. CARGADOR NATIVO (Imagen o Word)
-    archivo = st.file_uploader(
-        "📁 Inyectar sensor visual o documento:", 
-        type=["png", "jpg", "jpeg", "docx"], 
-        key="cargador_gemini"
-    )
+    # 2. CARGADOR DE ARCHIVOS
+    archivo = st.file_uploader("📁 Inyectar Imagen o Documento:", type=["png", "jpg", "jpeg", "docx"], key="up97")
 
     if archivo:
         if archivo.name.endswith('.docx'):
             doc = Document(archivo)
-            texto = "\n".join([p.text for p in doc.paragraphs])
-            st.session_state.stark_content = {"type": "text", "data": texto}
-            st.success("✔️ Documento Word sincronizado.")
+            content = "\n".join([p.text for p in doc.paragraphs])
+            st.session_state.tipo = "TEXTO"
+            st.session_state.datos = content
+            st.success("✔️ Documento Word analizado por los sensores.")
         else:
-            # Gemini procesa imágenes directamente como objetos PIL
             img = Image.open(archivo)
-            st.session_state.stark_content = {"type": "image", "data": img}
-            st.image(img, caption="Señal visual capturada", width=350)
+            st.session_state.tipo = "IMAGEN"
+            st.session_state.datos = img
+            st.image(img, caption="Señal visual confirmada", width=350)
 
-    # 4. BOTÓN DE ANÁLISIS (Nueva Arquitectura)
+    # 3. BOTÓN DE EJECUCIÓN (Ya no depende de Groq)
     st.write("---")
-    if st.button("🔍 EJECUTAR ESCANEO DE JARVIS", type="primary", use_container_width=True):
-        if st.session_state.stark_content:
-            with st.spinner("JARVIS analizando con redes neuronales de Gemini..."):
+    if st.button("🔍 EJECUTAR ANÁLISIS DE JARVIS", type="primary", use_container_width=True):
+        if 'datos' in st.session_state:
+            with st.spinner("JARVIS procesando datos mediante el enlace Gemini..."):
                 try:
-                    content = st.session_state.stark_content
-                    prompt = "Actúa como JARVIS. Si es una planta, identifícala con nombre común, científico, origen y cuidados detallados. Si es un documento, resúmelo con precisión Stark."
+                    prompt = "Actúa como JARVIS. Si es imagen de planta, di nombre común, científico y cuidados. Si es documento, resúmelo."
                     
-                    if content["type"] == "text":
-                        response = model.generate_content([prompt, content["data"]])
-                    else:
-                        response = model.generate_content([prompt, content["data"]])
+                    # Gemini acepta la imagen o el texto directamente sin conversiones raras
+                    response = model_gemini.generate_content([prompt, st.session_state.datos])
                     
-                    st.session_state.stark_report = response.text
-                    hablar("Análisis completado con éxito mediante el enlace Gemini.")
+                    st.markdown("### 📝 Informe Stark")
+                    st.info(response.text)
+                    hablar("Análisis finalizado con éxito, Srta. Diana.")
                 except Exception as e:
-                    st.error(f"Falla crítica en el nuevo motor: {e}")
+                    st.error(f"Falla de comunicación con Google: {e}")
         else:
-            st.warning("⚠️ Cargue un archivo para iniciar el protocolo.")
-
-    # 5. INFORME FINAL
-    if st.session_state.stark_report:
-        st.markdown("### 📝 Informe de Diagnóstico Final")
-        st.markdown(st.session_state.stark_report)
-        if st.button("🗑️ Resetear Sistemas"):
-            st.session_state.stark_content = None
-            st.session_state.stark_report = ""
-            st.rerun()
+            st.warning("⚠️ Cargue un archivo primero.")
 
 # --- 3. PESTAÑA: ÓPTICO (CONSOLA DE DIAGNÓSTICO) ---
 with tabs[2]:
