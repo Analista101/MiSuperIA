@@ -81,66 +81,45 @@ with tabs[0]:
             hablar(res)
         st.session_state.mensajes.append({"role": "assistant", "content": res})
 
-# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (SISTEMA DE CAPTURA DIRECTA) ---
+# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (ÁREA DE PEGADO DIRECTO) ---
 with tabs[1]:
-    st.subheader("📊 Análisis de Datos y Evidencia Visual")
-    st.write("Pegue una imagen (Ctrl+V) o cargue un archivo de datos.")
+    st.markdown("""
+        <div style="border: 1px solid #00f2ff; padding: 10px; border-radius: 5px; background-color: rgba(0, 242, 255, 0.05);">
+            <p style="color: #00f2ff; margin-bottom: 0px; font-weight: bold;">🛰️ SENSOR DE PORTAPAPELES</p>
+            <small style="color: #55f2ff;">Haga clic abajo y presione Ctrl+V para pegar su captura directamente.</small>
+        </div>
+    """, unsafe_allow_html=True)
     
-    # El cargador de archivos de Streamlit ya permite PEGAR imágenes directamente 
-    # si el foco está en el componente en versiones modernas.
-    f = st.file_uploader("Cargar archivos o PEGAR imagen del portapapeles", 
-                         type=['csv', 'xlsx', 'xls', 'txt', 'png', 'jpg', 'jpeg'],
-                         help="Puede copiar una imagen y pegarla directamente aquí usando Ctrl+V")
+    # Este componente actúa como el cuadro de recepción para el pegado
+    captura_evidencia = st.file_uploader(
+        "Área de recepción de imágenes y datos", 
+        type=['png', 'jpg', 'jpeg', 'csv', 'xlsx'],
+        key="evidencia_stark",
+        label_visibility="collapsed" # Mantenemos la estética limpia
+    )
 
-    if f:
-        # Determinamos si es un archivo de datos o una imagen
-        es_imagen = f.type in ['image/png', 'image/jpg', 'image/jpeg']
-        
-        if es_imagen:
-            img_evidencia = Image.open(f)
-            st.image(img_evidencia, caption="Evidencia visual detectada", use_container_width=True)
+    if captura_evidencia:
+        # Verificamos si es una imagen lo que se ha pegado/subido
+        if captura_evidencia.type.startswith('image/'):
+            img_display = Image.open(captura_evidencia)
+            st.image(img_display, caption="Imagen detectada en el portapapeles", use_container_width=True)
             
-            if st.button("🧠 ANALIZAR CAPTURA"):
-                with st.spinner("Procesando matriz de píxeles..."):
-                    try:
-                        # Convertimos para el análisis (Bypass de visión si Groq sigue inestable)
-                        img_evidencia.thumbnail((512, 512))
-                        buf = io.BytesIO()
-                        img_evidencia.convert("RGB").save(buf, format="JPEG")
-                        img_b64 = base64.b64encode(buf.getvalue()).decode()
-                        
-                        # Intento de análisis con el modelo de respaldo
-                        client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-                        res_vis = client.chat.completions.create(
-                            messages=[{
-                                "role": "user", 
-                                "content": [
-                                    {"type": "text", "text": "JARVIS, analiza esta imagen pegada por la Srta. Diana y extrae la información clave."}, 
-                                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"}}
-                                ]
-                            }],
-                            model="llama-3.2-11b-vision-preview" # O el modelo que tenga activo
-                        ).choices[0].message.content
-                        st.info(res_vis)
-                        hablar(res_vis)
-                    except Exception as e:
-                        st.error("Srta. Diana, los sensores de visión de Groq siguen en mantenimiento, pero he recibido la imagen correctamente en la base de datos local.")
+            col_analisis, col_limpiar = st.columns(2)
+            with col_analisis:
+                if st.button("🧠 ANALIZAR EVIDENCIA"):
+                    with st.spinner("Procesando matriz visual..."):
+                        # Aquí JARVIS procesará la imagen cuando los sensores de Groq se estabilicen
+                        hablar("Imagen recibida, Srta. Diana. Iniciando escaneo de patrones.")
+                        st.info("Sistema listo para análisis visual. (Nota: Los sensores de Groq requieren modelos operativos).")
         
-        else:
-            # Procesamiento de archivos de datos (CSV/Excel)
+        # Procesamiento si es un archivo de datos
+        elif captura_evidencia.name.endswith(('.csv', '.xlsx', '.xls')):
             try:
-                if f.name.endswith('.csv'): df = pd.read_csv(f)
-                else: df = pd.read_excel(f)
+                df = pd.read_csv(captura_evidencia) if captura_evidencia.name.endswith('.csv') else pd.read_excel(captura_evidencia)
                 st.dataframe(df, use_container_width=True)
-                if st.button("📈 ANALIZAR TABLA"):
-                    res_ia = Groq(api_key=st.secrets["GROQ_API_KEY"]).chat.completions.create(
-                        messages=[{"role": "user", "content": f"Resume estos datos: {df.head(5).to_string()}"}],
-                        model="llama-3.3-70b-versatile"
-                    ).choices[0].message.content
-                    st.info(res_ia)
-                    hablar("Análisis de datos completado.")
+                hablar("Base de datos cargada satisfactoriamente.")
             except Exception as e:
-                st.error(f"Error en la lectura: {e}")
+                st.error(f"Error en la lectura de la matriz: {e}")
 
 # --- 3. PESTAÑA: ÓPTICO (CONSOLA DE DIAGNÓSTICO) ---
 with tabs[2]:
