@@ -30,29 +30,36 @@ st.markdown("""
 # --- MOTORES DE SOPORTE ---
 def hablar(texto):
     try:
-        # Prioridad: ElevenLabs (Voz de Paul Bettany / Adam)
         api_key = st.secrets["ELEVEN_API_KEY"]
         voice_id = st.secrets["VOICE_ID"]
+        
+        # Cambiamos al modelo Flash 2.5 (Más rápido y compatible)
         url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
         headers = {"xi-api-key": api_key, "Content-Type": "application/json"}
         data = {
             "text": texto, 
-            "model_id": "eleven_multilingual_v1", 
-            "voice_settings": {"stability": 0.5, "similarity_boost": 0.8}
+            "model_id": "eleven_flash_v2_5", 
+            "voice_settings": {"stability": 0.5, "similarity_boost": 0.75}
         }
+        
         res = requests.post(url, json=data, headers=headers)
+        
         if res.status_code == 200:
             b64 = base64.b64encode(res.content).decode()
-            st.markdown(f'<audio autoplay><source src="data:audio/mp3;base64,{b64}" type="audio/mp3"></audio>', unsafe_allow_html=True)
+            st.markdown(f'<audio autoplay="true"><source src="data:audio/mp3;base64,{b64}" type="audio/mp3"></audio>', unsafe_allow_html=True)
         else:
-            # Respaldo de emergencia: gTTS
+            # ESTA LÍNEA NOS DIRÁ EL ERROR REAL
+            st.error(f"Error de ElevenLabs: {res.status_code} - {res.text}")
+            
+            # Respaldo gTTS
             tts = gTTS(text=texto, lang='es', tld='es')
             fp = io.BytesIO()
             tts.write_to_fp(fp)
             fp.seek(0)
             b64 = base64.b64encode(fp.read()).decode()
-            st.markdown(f'<audio autoplay><source src="data:audio/mp3;base64,{b64}" type="audio/mp3"></audio>', unsafe_allow_html=True)
-    except: pass
+            st.markdown(f'<audio autoplay="true"><source src="data:audio/mp3;base64,{b64}" type="audio/mp3"></audio>', unsafe_allow_html=True)
+    except Exception as e:
+        st.error(f"Falla total: {e}")
 
 def buscar_datos_tiempo_real(q):
     try:
