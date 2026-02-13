@@ -33,18 +33,20 @@ def buscar_en_red(consulta):
 # --- MÓDULO 2: MEMORIA EN LA NUBE ---
 def conectar_google_sheets():
     try:
-        # Método alternativo más estable para Streamlit
-        url_csv = f"https://docs.google.com/spreadsheets/d/{ID_DE_TU_HOJA}/export?format=csv"
-        # Esto verifica si la hoja es accesible
-        df = pd.read_csv(url_csv)
-        
-        # Para escribir, necesitamos gspread con la URL completa
-        url_full = f"https://docs.google.com/spreadsheets/d/{ID_DE_TU_HOJA}"
-        gc = gspread.public_open(url_full)
-        return gc.get_worksheet(0)
+        # Usamos el cliente de gspread básico
+        gc = gspread.service_account_from_dict(st.secrets["gcp_service_account"])
+        sh = gc.open_by_key(ID_DE_TU_HOJA)
+        return sh.get_worksheet(0)
     except Exception as e:
-        st.error(f"Error técnico: {e}")
-        return None
+        # Si no tienes el JSON de Google Cloud todavía, usaremos este modo de lectura rápida
+        try:
+            url_csv = f"https://docs.google.com/spreadsheets/d/{ID_DE_TU_HOJA}/export?format=csv"
+            pd.read_csv(url_csv)
+            # Si llega aquí, es que al menos puede leer la hoja
+            st.info("🛰️ Conexión de lectura: ESTABLE")
+            return None
+        except:
+            return None
 
 # --- MÓDULO 3: PROTOCOLO DE VOZ ---
 def hablar(texto):
