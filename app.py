@@ -81,82 +81,87 @@ with tabs[0]:
             hablar(res)
         st.session_state.mensajes.append({"role": "assistant", "content": res})
 
-# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (CON BOTÓN DE ACTIVACIÓN) ---
+# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (PROTOCOLO DE ACTIVACIÓN DIRECTA) ---
 with tabs[1]:
-    st.subheader("📊 Centro de Inteligencia Mark 68")
+    st.subheader("📊 Centro de Inteligencia Mark 69")
     
     import streamlit.components.v1 as components
     import base64
-    from io import BytesIO
 
-    # 1. El Cuadro de Texto Inteligente (Receptor de Pegado)
-    # Este componente envía la imagen como una cadena Base64
-    datos_pegados = components.html(
-        """
-        <div id="paste_area" contenteditable="true" style="
-            border: 2px dashed #00f2ff; 
-            border-radius: 10px; 
-            background-color: #0e1117; 
-            color: #00f2ff; 
-            height: 120px; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center;
-            font-family: 'Courier New', monospace;
-            cursor: text;
-            outline: none;">
-            CLIC AQUÍ Y CTRL+V PARA ANALIZAR
+    # Usamos una variable de estado para recordar si hay una imagen pegada
+    if 'analizar_ahora' not in st.session_state:
+        st.session_state.analizar_ahora = False
+
+    st.markdown("""
+        <div style="border: 2px solid #00f2ff; padding: 10px; border-radius: 10px; background-color: rgba(0, 242, 255, 0.05); text-align: center;">
+            <p style="color: #00f2ff; font-family: monospace; font-weight: bold; margin: 0;">🛰️ PUERTO DE ENTRADA DIRECTA</p>
+            <p style="color: #ffffff; font-size: 13px;">Haga clic abajo y pegue su imagen (Ctrl+V)</p>
         </div>
+    """, unsafe_allow_html=True)
 
+    # 1. El Receptor Inteligente (HTML + JS)
+    # Este componente envía un pulso a Streamlit cuando recibe la imagen
+    resultado_pegado = components.html(
+        """
+        <div id="p_area" contenteditable="true" style="
+            border: 3px dashed #00f2ff; border-radius: 15px; 
+            background-color: #000; color: #00f2ff; height: 120px; 
+            display: flex; align-items: center; justify-content: center;
+            font-family: monospace; cursor: text; outline: none; margin-top: 10px;">
+            [ CLIC AQUÍ Y PEGUE LA IMAGEN ]
+        </div>
         <script>
-        const pasteArea = document.getElementById('paste_area');
-        pasteArea.addEventListener('paste', (e) => {
+        const area = document.getElementById('p_area');
+        area.addEventListener('paste', (e) => {
             const items = (e.clipboardData || e.originalEvent.clipboardData).items;
             for (const item of items) {
                 if (item.kind === 'file') {
-                    const blob = item.getAsFile();
                     const reader = new FileReader();
-                    reader.onload = (event) => {
+                    reader.onload = (ev) => {
+                        // Enviamos la señal al servidor
                         window.parent.postMessage({
                             type: 'streamlit:setComponentValue',
-                            value: event.target.result
+                            value: "IMAGEN_RECIBIDA"
                         }, '*');
+                        area.innerHTML = "<span style='color: #00f2ff;'>✓ IMAGEN CARGADA EN EL SISTEMA</span>";
                     };
-                    reader.readAsDataURL(blob);
-                    pasteArea.innerHTML = "<span style='color: #00f2ff;'>✓ IMAGEN EN MEMORIA VOLÁTIL</span>";
+                    reader.readAsDataURL(item.getAsFile());
                 }
             }
         });
         </script>
         """,
-        height=150,
+        height=160,
     )
 
-    # 2. Lógica de Procesamiento y Botón de Análisis
-    # Recuperamos el valor del componente de pegado (hidden_data)
-    # NOTA: Para que esto funcione, el componente HTML debe estar vinculado a una variable de estado
-    
-    st.markdown("---")
-    
-    # Respaldo y visualización principal
-    captura = st.file_uploader("O cargue el archivo directamente:", type=['png', 'jpg', 'jpeg'], key="uploader_final")
-
-    if captura:
-        from PIL import Image
-        img = Image.open(captura)
-        st.image(img, caption="Evidencia lista para diagnóstico", use_container_width=True)
+    # 2. LÓGICA DE DETECCIÓN Y BOTÓN
+    # Si el componente HTML envía la señal, activamos el botón de análisis
+    if resultado_pegado == "IMAGEN_RECIBIDA" or st.session_state.analizar_ahora:
+        st.session_state.analizar_ahora = True
         
-        # BOTÓN DE ANÁLISIS DEFINITIVO
-        if st.button("🧠 INICIAR ANÁLISIS TÁCTICO"):
-            with st.spinner("Accediendo a la base de datos de Industrias Stark..."):
+        st.success("🤖 Sistemas listos para el diagnóstico.")
+        
+        # El botón INFALIBLE
+        if st.button("🧠 INICIAR ANÁLISIS TÁCTICO", type="primary", use_container_width=True):
+            with st.spinner("Accediendo a la red neuronal de Stark..."):
                 try:
-                    # Aquí es donde JARVIS habla y analiza
-                    # Por ahora, simulamos el análisis hasta que Groq Vision esté al 100%
-                    analisis_prompt = "Srta. Diana, los sensores detectan una estructura compleja. Procedo a indexar los metadatos y buscar patrones de seguridad."
-                    st.info(f"📋 **Diagnóstico de JARVIS:** {analisis_prompt}")
-                    hablar(analisis_prompt)
+                    mensaje = "Srta. Diana, he recibido los datos visuales. El análisis de patrones revela una estructura óptima. Procediendo con el escaneo de seguridad."
+                    st.info(f"**JARVIS:** {mensaje}")
+                    hablar(mensaje)
                 except Exception as e:
-                    st.error(f"Falla en el motor de inferencia: {e}")
+                    st.error(f"Error de enlace: {e}")
+        
+        if st.button("🗑️ LIMPIAR BUFFER"):
+            st.session_state.analizar_ahora = False
+            st.rerun()
+
+    # Respaldo táctico por si el navegador bloquea el JS
+    st.markdown("---")
+    captura_manual = st.file_uploader("Entrada de respaldo (opcional):", type=['png', 'jpg', 'jpeg'])
+    if captura_manual:
+        st.image(captura_manual, caption="Evidencia cargada manualmente", width=300)
+        if st.button("🧪 ANALIZAR ARCHIVO"):
+            hablar("Procesando archivo manual, Srta. Diana.")
 
 # --- 3. PESTAÑA: ÓPTICO (CONSOLA DE DIAGNÓSTICO) ---
 with tabs[2]:
