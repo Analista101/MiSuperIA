@@ -33,10 +33,17 @@ def buscar_en_red(consulta):
 # --- MÓDULO 2: MEMORIA EN LA NUBE ---
 def conectar_google_sheets():
     try:
-        url = f"https://docs.google.com/spreadsheets/d/{ID_DE_TU_HOJA}"
-        gc = gspread.public_open(url)
+        # Método alternativo más estable para Streamlit
+        url_csv = f"https://docs.google.com/spreadsheets/d/{ID_DE_TU_HOJA}/export?format=csv"
+        # Esto verifica si la hoja es accesible
+        df = pd.read_csv(url_csv)
+        
+        # Para escribir, necesitamos gspread con la URL completa
+        url_full = f"https://docs.google.com/spreadsheets/d/{ID_DE_TU_HOJA}"
+        gc = gspread.public_open(url_full)
         return gc.get_worksheet(0)
-    except:
+    except Exception as e:
+        st.error(f"Error técnico: {e}")
         return None
 
 # --- MÓDULO 3: PROTOCOLO DE VOZ ---
