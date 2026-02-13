@@ -9,3 +9,4 @@ PyPDF2
 requests
 gTTS
 duckduckgo-search
+streamlit-mic-recorder
