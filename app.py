@@ -81,42 +81,73 @@ with tabs[0]:
             hablar(res)
         st.session_state.mensajes.append({"role": "assistant", "content": res})
 
-# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (NÚCLEO DE PEGADO DIRECTO) ---
+# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (CUADRO DE TEXTO PARA PEGAR) ---
 with tabs[1]:
-    st.subheader("📊 Centro de Inteligencia Mark 66")
-    st.markdown("### 🧬 Puerto de Entrada Neuronal")
-    st.write("Haga clic en el cuadro de abajo y presione **Ctrl+V** para pegar su imagen directamente.")
+    st.subheader("📊 Centro de Inteligencia Mark 67")
+    st.write("Pegue su imagen directamente en el cuadro de abajo (Ctrl+V):")
 
-    # 1. COMPONENTE DE CAPTURA (Invisible pero funcional)
-    # Usamos un text_area como receptor de eventos del portapapeles
-    img_data = st.text_area("Terminal de Datos (Pegue aquí su captura):", 
-                            height=100, 
-                            placeholder="Esperando señal del portapapeles... [Ctrl+V]",
-                            key="input_neuronal")
+    # Inyección de JavaScript para capturar el pegado (Paste Event)
+    # Este componente crea un área "editable" que captura la imagen del portapapeles
+    from streamlit_extras.colored_header import colored_header
+    import streamlit.components.v1 as components
 
-    # 2. EL RECEPTOR TÁCTICO (file_uploader modificado para recibir el pegado)
-    # Lo mantenemos porque es el único que puede procesar el 'binario' de la imagen pegada
-    captura = st.file_uploader("Procesador de Imagen", type=['png', 'jpg', 'jpeg'], key="receptor_binario")
+    # 1. El receptor de datos (oculto para procesar lo que envíe el JS)
+    img_data = st.text_input("Token de datos (oculto)", key="hidden_data", label_visibility="collapsed")
+
+    # 2. El Cuadro de Texto Real para Pegar (HTML + JS)
+    components.html(
+        """
+        <div id="paste_area" contenteditable="true" style="
+            border: 2px dashed #00f2ff; 
+            border-radius: 10px; 
+            background-color: #0e1117; 
+            color: #00f2ff; 
+            height: 150px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            font-family: monospace;
+            cursor: text;">
+            CLIC AQUÍ Y PEGUE (CTRL+V)
+        </div>
+
+        <script>
+        const pasteArea = document.getElementById('paste_area');
+        
+        pasteArea.addEventListener('paste', (e) => {
+            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+            for (const item of items) {
+                if (item.kind === 'file') {
+                    const blob = item.getAsFile();
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        // Enviamos la imagen de vuelta a Streamlit (vía el componente)
+                        window.parent.postMessage({
+                            type: 'streamlit:setComponentValue',
+                            value: event.target.result
+                        }, '*');
+                    };
+                    reader.readAsDataURL(blob);
+                }
+            }
+        });
+        </script>
+        """,
+        height=180,
+    )
+
+    # 3. Procesamiento de la imagen pegada
+    # Nota: Usamos un file_uploader de respaldo automático porque Streamlit 
+    # nativamente permite pegar si haces clic en él.
+    st.markdown("---")
+    st.write("Respaldo táctico (si el cuadro superior falla en su navegador):")
+    captura = st.file_uploader("Cuadro de entrada rápida", type=['png', 'jpg', 'jpeg'], key="backup_paste")
 
     if captura:
-        img_visual = Image.open(captura)
-        st.image(img_visual, caption="Evidencia cargada con éxito", use_container_width=True)
-        
-        if st.button("🧠 INICIAR ANÁLISIS DE PÍXELES"):
-            with st.spinner("Decodificando matriz..."):
-                hablar("Srta. Diana, he recibido los datos. Iniciando escaneo de patrones avanzados.")
-                st.success("Análisis completo: Imagen procesada en los servidores locales.")
-
-    # 3. INSTRUCCIÓN VISUAL
-    st.markdown("""
-        <div style="background-color: #001a1a; border-left: 5px solid #00f2ff; padding: 15px; margin-top: 20px;">
-            <p style="color: #00f2ff; font-family: monospace; margin: 0;">
-                [ INFO ] En la web, para pegar una imagen física (no una URL), 
-                el navegador requiere que el foco esté en el área de 'Drag and Drop'. 
-                Basta con copiar su imagen y presionar <b>Ctrl+V</b> teniendo el cursor sobre el área gris.
-            </p>
-        </div>
-    """, unsafe_allow_html=True)
+        img = Image.open(captura)
+        st.image(img, caption="Evidencia detectada", use_container_width=True)
+        if st.button("🧠 ANALIZAR CAPTURA"):
+            hablar("He recibido la imagen, Srta. Diana. Iniciando análisis de superficie.")
 
 # --- 3. PESTAÑA: ÓPTICO (CONSOLA DE DIAGNÓSTICO) ---
 with tabs[2]:
