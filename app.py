@@ -23,6 +23,7 @@ st.markdown("""
     }
     @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
     .stTabs [data-baseweb="tab"] { color: #00f2ff !important; font-weight: bold; font-size: 18px; }
+    .stChatMessage { background-color: rgba(26, 28, 35, 0.8); border: 1px solid #00f2ff; border-radius: 10px; }
     </style>
     <div class="arc-reactor"></div>
     """, unsafe_allow_html=True)
@@ -46,69 +47,93 @@ def hablar(texto):
 if "mensajes" not in st.session_state: st.session_state.mensajes = []
 
 st.markdown("<h1 style='text-align: center; color: #00f2ff;'>🛰️ JARVIS: SISTEMA INTEGRADO DIANA</h1>", unsafe_allow_html=True)
-tabs = st.tabs(["💬 COMANDO", "📊 ANÁLISIS UNIVERSAL", "📸 ÓPTICO INTELIGENTE", "🎨 LABORATORIO CREATIVO"])
+tabs = st.tabs(["💬 COMANDO", "📊 ANÁLISIS UNIVERSAL", "📸 ÓPTICO", "🎨 LABORATORIO CREATIVO"])
 
-# (Omitimos COMANDO y ANÁLISIS para centrarnos en sus peticiones)
+# --- 1. PESTAÑA: COMANDO (RESTAURADA) ---
+with tabs[0]:
+    col_mic, col_txt = st.columns([1, 5])
+    prompt_final = None
+    with col_mic:
+        # El micrófono vuelve a estar operativo
+        audio_stark = mic_recorder(start_prompt="🎙️", stop_prompt="🛰️", key="mic_v45")
+    with col_txt:
+        chat_input = st.chat_input("Diga sus órdenes, Srta. Diana...")
+    
+    if audio_stark:
+        with st.spinner("Traduciendo frecuencia..."):
+            audio_bio = io.BytesIO(audio_stark['bytes'])
+            audio_bio.name = "audio.wav"
+            client_w = Groq(api_key=st.secrets["GROQ_API_KEY"])
+            prompt_final = client_w.audio.transcriptions.create(file=audio_bio, model="whisper-large-v3", response_format="text")
+    elif chat_input:
+        prompt_final = chat_input
 
-# --- 3. PESTAÑA: ÓPTICO INTELIGENTE (NUEVO ANÁLISIS IA) ---
+    if prompt_final:
+        st.session_state.mensajes.append({"role": "user", "content": prompt_final})
+        with st.chat_message("user"): st.markdown(prompt_final)
+        client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+        res = client.chat.completions.create(
+            messages=[{"role": "system", "content": "Eres JARVIS, elegante británico. Llama a la usuaria Srta. Diana."}] + st.session_state.mensajes,
+            model="llama-3.3-70b-versatile"
+        ).choices[0].message.content
+        with st.chat_message("assistant"):
+            st.markdown(res)
+            hablar(res)
+        st.session_state.mensajes.append({"role": "assistant", "content": res})
+
+# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL ---
+with tabs[1]:
+    st.subheader("📊 Análisis de Datos Multi-Formato")
+    f = st.file_uploader("Cargar archivos (Excel, CSV, TXT)", type=['csv', 'xlsx', 'xls', 'txt'])
+    if f:
+        try:
+            if f.name.endswith('.csv'): df = pd.read_csv(f)
+            elif f.name.endswith(('.xlsx', '.xls')): df = pd.read_excel(f)
+            else: df = pd.read_csv(f, sep=None, engine='python')
+            st.dataframe(df, use_container_width=True)
+            if st.button("🧠 ANÁLISIS IA"):
+                res_ia = Groq(api_key=st.secrets["GROQ_API_KEY"]).chat.completions.create(
+                    messages=[{"role": "user", "content": f"Analiza estos datos brevemente: {df.head(5).to_string()}"}],
+                    model="llama-3.3-70b-versatile"
+                ).choices[0].message.content
+                st.info(res_ia)
+        except Exception as e: st.error(f"Error: {e}")
+
+# --- 3. PESTAÑA: ÓPTICO (ESTABILIZADA) ---
 with tabs[2]:
-    st.subheader("📸 Sensores Visuales con Análisis de IA")
+    st.subheader("📸 Sensores Visuales")
     cam = st.camera_input("Activar Escáner")
     if cam:
         img = Image.open(cam)
-        col_img, col_an = st.columns([1, 1])
-        
-        with col_img:
-            modo = st.selectbox("Filtro de Espectro:", ["Normal", "Grises", "Térmico", "Nocturno"])
-            if modo == "Grises": img = ImageOps.grayscale(img)
-            elif modo == "Térmico": img = ImageOps.colorize(ImageOps.grayscale(img), "blue", "red")
-            elif modo == "Nocturno": img = ImageOps.colorize(ImageOps.grayscale(img), "black", "green")
+        col_i, col_a = st.columns(2)
+        with col_i:
+            f_modo = st.selectbox("Filtro:", ["Normal", "Grises", "Térmico", "Nocturno"])
+            if f_modo == "Grises": img = ImageOps.grayscale(img)
+            elif f_modo == "Térmico": img = ImageOps.colorize(ImageOps.grayscale(img), "blue", "red")
+            elif f_modo == "Nocturno": img = ImageOps.colorize(ImageOps.grayscale(img), "black", "green")
             st.image(img, use_container_width=True)
-        
-        with col_an:
-            st.write("🔍 **Protocolo de Reconocimiento Activo**")
+        with col_a:
             if st.button("🧠 ANALIZAR ESCENA"):
-                # Convertimos imagen a base64 para la IA (Groq Vision)
-                buffered = io.BytesIO()
-                img.save(buffered, format="JPEG")
-                img_b64 = base64.b64encode(buffered.getvalue()).decode()
-                
-                with st.spinner("Analizando patrones visuales..."):
-                    client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-                    # Usamos el modelo Llama Vision para describir la imagen
-                    res = client.chat.completions.create(
-                        messages=[{
-                            "role": "user",
-                            "content": [
-                                {"type": "text", "text": "Describe lo que ves en esta imagen de forma profesional y elegante como JARVIS para la Srta. Diana."},
-                                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"}}
-                            ]
-                        }],
+                # Redimensionamos para evitar el error de BadRequest
+                img.thumbnail((512, 512))
+                buf = io.BytesIO()
+                img.convert("RGB").save(buf, format="JPEG")
+                img_b64 = base64.b64encode(buf.getvalue()).decode()
+                try:
+                    res_vis = Groq(api_key=st.secrets["GROQ_API_KEY"]).chat.completions.create(
+                        messages=[{"role": "user", "content": [{"type": "text", "text": "JARVIS, ¿qué ves?"}, {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"}}]}],
                         model="llama-3.2-11b-vision-preview"
                     ).choices[0].message.content
-                    st.info(res)
-                    hablar(res)
+                    st.info(res_vis)
+                    hablar(res_vis)
+                except Exception as e: st.error(f"Falla en sensor óptico: {e}")
 
-# --- 4. PESTAÑA: LABORATORIO CREATIVO (BIBLIOTECA EXPANDIDA) ---
+# --- 4. PESTAÑA: LABORATORIO CREATIVO ---
 with tabs[3]:
-    st.subheader("🎨 Estación de Diseño Mark 44")
-    c1, c2 = st.columns([2, 1])
-    with c2:
-        # Biblioteca de estilos ampliada
-        estilo = st.selectbox("Estilo Visual:", [
-            "Cinematic", "Blueprint (Technical Drawing)", "Cyberpunk 2077", 
-            "Hyper-Realistic", "Steampunk", "Watercolor Art", 
-            "Retro-Futurism (1950s)", "Low-Poly Digital", "Anime Studio Ghibli",
-            "Oil Painting", "Concept Art", "Neon Lights"
-        ])
-        calidad = st.select_slider("Nivel de Detalle:", options=["Draft", "Standard", "Ultra High Res"])
-        iluminacion = st.radio("Iluminación:", ["Natural", "Cinematic Gold", "Cold Neon", "Dramatic Shadow"])
-    
-    with c1:
-        diseno = st.text_area("Descripción del prototipo:", placeholder="Describa su visión, Srta. Diana...")
-        if st.button("🚀 INICIAR SÍNTESIS VISUAL"):
-            with st.spinner("Generando render..."):
-                full_prompt = f"{diseno}, {estilo} style, {iluminacion} lighting, {calidad}, masterpiece"
-                url = f"https://image.pollinations.ai/prompt/{full_prompt.replace(' ', '%20')}?model=flux"
-                st.image(url, caption=f"Sintetizador completado: Estilo {estilo}")
-                hablar(f"El prototipo ha sido renderizado en estilo {estilo}, Srta. Diana.")
+    st.subheader("🎨 Estación de Diseño")
+    est = st.selectbox("Estilo:", ["Cinematic", "Blueprint", "Cyberpunk", "Anime", "Retro-Futurism", "Steampunk"])
+    dis = st.text_area("Descripción:")
+    if st.button("🚀 RENDER"):
+        url = f"https://image.pollinations.ai/prompt/{dis.replace(' ', '%20')}%20{est}?model=flux"
+        st.image(url)
+        hablar("Render listo.")
