@@ -133,32 +133,31 @@ with tabs[1]:
         )
         archivo = st.file_uploader("O cargue archivo:", type=['png', 'jpg', 'jpeg'])
 
-# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (MARK 77 - BOTÓN FIJO) ---
+# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (MARK 79 - MEMORIA PERSISTENTE) ---
 with tabs[1]:
-    st.subheader("📊 Terminal de Inteligencia Mark 77")
+    st.subheader("📊 Terminal de Inteligencia Mark 79")
     
     import streamlit.components.v1 as components
     import base64
     from groq import Groq
 
-    # 1. ESTADO DE MEMORIA
-    if 'img_data_final' not in st.session_state:
-        st.session_state.img_data_final = None
-    if 'reporte_ia' not in st.session_state:
-        st.session_state.reporte_ia = ""
+    # 1. NÚCLEO DE MEMORIA (No se borra al presionar botones)
+    if 'img_stark_permanente' not in st.session_state:
+        st.session_state.img_stark_permanente = None
+    if 'reporte_final' not in st.session_state:
+        st.session_state.reporte_final = ""
 
-    st.info("🛰️ Srta. Diana, el puerto está abierto. Pegue (Ctrl+V) o cargue su imagen aquí.")
+    st.info("🛰️ Srta. Diana, inyecte la evidencia. El sistema mantendrá la carga activa para el análisis.")
 
-    # 2. RECEPTOR DE PEGADO (JavaScript)
-    # Este componente es solo para capturar la imagen del portapapeles
-    receptor_html = components.html(
+    # 2. PUERTO DE PEGADO (JavaScript con persistencia)
+    receptor_js = components.html(
         """
         <div id="p_area" contenteditable="true" style="
             border: 3px dashed #00f2ff; border-radius: 15px; 
             background-color: #000; color: #00f2ff; height: 100px; 
             display: flex; align-items: center; justify-content: center;
             font-family: monospace; cursor: pointer; outline: none;">
-            [ HAGA CLIC AQUÍ Y PEGUE LA IMAGEN - CTRL+V ]
+            [ CLIC AQUÍ Y CTRL+V ]
         </div>
         <script>
         const area = document.getElementById('p_area');
@@ -174,7 +173,6 @@ with tabs[1]:
                         }, '*');
                     };
                     reader.readAsDataURL(item.getAsFile());
-                    area.innerHTML = "<span style='color: #00ff00;'>✓ SEÑAL CAPTURADA</span>";
                 }
             }
         });
@@ -182,55 +180,55 @@ with tabs[1]:
         """, height=130,
     )
 
-    # 3. CARGADOR DE RESPALDO
-    archivo_subido = st.file_uploader("Carga manual de archivos:", type=['png', 'jpg', 'jpeg'])
+    # 3. SINCRONIZACIÓN DE MEMORIA
+    # Si el receptor detecta algo nuevo, lo guarda para siempre en la sesión
+    if receptor_js and isinstance(receptor_js, str):
+        st.session_state.img_stark_permanente = receptor_js
+    
+    archivo_manual = st.file_uploader("Carga de respaldo:", type=['png', 'jpg', 'jpeg'])
+    if archivo_manual:
+        st.session_state.img_stark_permanente = f"data:image/jpeg;base64,{base64.b64encode(archivo_manual.getvalue()).decode()}"
 
-    # Sincronización de datos al Session State
-    if receptor_html and isinstance(receptor_html, str):
-        st.session_state.img_data_final = receptor_html
-    elif archivo_subido:
-        st.session_state.img_data_final = f"data:image/jpeg;base64,{base64.b64encode(archivo_subido.getvalue()).decode()}"
-        st.image(archivo_subido, caption="Imagen en sensor", width=200)
+    # Visualización de la imagen cargada
+    if st.session_state.img_stark_permanente:
+        st.image(st.session_state.img_stark_permanente, caption="Evidencia en Memoria Volátil", width=300)
 
-    # 4. EL BOTÓN - AHORA SIEMPRE VISIBLE
+    # 4. BOTÓN DE COMANDO (Siempre visible y funcional)
     st.write("---")
-    # He eliminado el 'if' que ocultaba el botón. Ahora siempre estará ahí para usted.
     if st.button("🔍 GENERAR ANÁLISIS COMPLETO", type="primary", use_container_width=True):
-        if st.session_state.img_data_final:
-            with st.spinner("JARVIS analizando contenido biológico/técnico..."):
+        if st.session_state.img_stark_permanente:
+            with st.spinner("JARVIS identificando especie/objeto..."):
                 try:
                     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+                    # Forzamos que la imagen sea tratada como String puro
+                    imagen_final = str(st.session_state.img_stark_permanente)
                     
                     response = client.chat.completions.create(
                         messages=[{
                             "role": "user",
                             "content": [
-                                {"type": "text", "text": "Actúa como JARVIS. Identifica qué hay en esta imagen. Si es una planta, di su nombre común y científico, origen y cuidados. Si es un objeto, explica qué es. Sé extremadamente detallado y profesional."},
-                                {"type": "image_url", "image_url": {"url": st.session_state.img_data_final}}
+                                {"type": "text", "text": "Identifica qué es esto. Si es una planta, di nombre común, científico y cuidados. Si es un objeto, explica su función. Sé muy extenso."},
+                                {"type": "image_url", "image_url": {"url": imagen_final}}
                             ]
                         }],
                         model="llama-3.2-11b-vision-preview",
                     )
-                    st.session_state.reporte_ia = response.choices[0].message.content
-                    hablar("Análisis finalizado, Srta. Diana. La información está lista.")
+                    st.session_state.reporte_final = response.choices[0].message.content
                 except Exception as e:
-                    st.error(f"Falla de enlace neuronal: {str(e)}")
+                    st.error(f"Error de enlace: {str(e)}")
         else:
-            st.warning("⚠️ Srta. Diana, el buffer está vacío. Por favor, pegue o cargue una imagen primero.")
+            st.warning("⚠️ No hay imagen en el buffer. Por favor, pegue una primero.")
 
-    # 5. CUADRO DE RESULTADO
-    if st.session_state.reporte_ia:
-        st.markdown("### 📝 Informe de Inteligencia Visual")
-        st.text_area(
-            label="Análisis de JARVIS:",
-            value=st.session_state.reporte_ia,
-            height=400,
-            key="area_reporte"
-        )
-        if st.button("🗑️ Resetear Puerto"):
-            st.session_state.img_data_final = None
-            st.session_state.reporte_ia = ""
+    # 5. RESULTADO EN PANTALLA
+    if st.session_state.reporte_final:
+        st.markdown("### 📝 Informe de Diagnóstico")
+        st.text_area("Resultados:", value=st.session_state.reporte_final, height=400)
+        
+        if st.button("🗑️ Resetear Sistemas"):
+            st.session_state.img_stark_permanente = None
+            st.session_state.reporte_final = ""
             st.rerun()
+            
 # --- 3. PESTAÑA: ÓPTICO (CONSOLA DE DIAGNÓSTICO) ---
 with tabs[2]:
     st.subheader("📸 Sensores Visuales")
