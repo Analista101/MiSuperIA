@@ -29,11 +29,17 @@ st.markdown("""
 # --- MOTOR VOCAL (ELEVENLABS PRIORITARIO) ---
 def hablar(texto):
     try:
+        # El .strip() elimina cualquier espacio rebelde al principio o final
         api_key = st.secrets["ELEVEN_API_KEY"].strip()
         voice_id = st.secrets["VOICE_ID"].strip()
+        
         url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
         
-        headers = {"xi-api-key": api_key, "Content-Type": "application/json"}
+        headers = {
+            "xi-api-key": api_key,
+            "Content-Type": "application/json"
+        }
+        
         data = {
             "text": texto,
             "model_id": "eleven_multilingual_v2",
@@ -46,15 +52,17 @@ def hablar(texto):
             b64 = base64.b64encode(res.content).decode()
             st.markdown(f'<audio autoplay="true"><source src="data:audio/mp3;base64,{b64}" type="audio/mp3"></audio>', unsafe_allow_html=True)
         else:
-            # Si falla ElevenLabs, mostramos el error y usamos gTTS de respaldo
-            st.warning(f"⚠️ Aviso del sistema: Error {res.status_code}. Usando protocolo de voz de emergencia.")
+            # Si aún sale error, nos dirá exactamente qué falta
+            st.error(f"⚠️ Error {res.status_code}: {res.json().get('detail', {}).get('message', 'Fallo de autenticación')}")
+            # Voz de respaldo de la Srta. Diana
             tts = gTTS(text=texto, lang='es', tld='es')
             fp = io.BytesIO()
             tts.write_to_fp(fp)
             fp.seek(0)
             b64 = base64.b64encode(fp.read()).decode()
             st.markdown(f'<audio autoplay="true"><source src="data:audio/mp3;base64,{b64}" type="audio/mp3"></audio>', unsafe_allow_html=True)
-    except: pass
+    except Exception as e:
+        st.error(f"Falla crítica en el sistema de audio: {e}")
 
 # --- SENSORES DE RED ---
 def buscar_clima():
