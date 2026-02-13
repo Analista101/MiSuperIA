@@ -81,19 +81,19 @@ with tabs[0]:
             hablar(res)
         st.session_state.mensajes.append({"role": "assistant", "content": res})
 
-# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (MARK 82 - EXTRACCIÓN DE TEXTO) ---
+# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (MARK 83 - MODELO ACTUALIZADO) ---
 with tabs[1]:
-    st.subheader("📊 Terminal de Inteligencia Mark 82")
+    st.subheader("📊 Terminal de Inteligencia Mark 83")
     
     import streamlit.components.v1 as components
     import base64
     from groq import Groq
     try:
-        from docx import Document  # Protocolo para leer archivos Word
+        from docx import Document
     except ImportError:
-        st.error("⚠️ Falta la librería 'python-docx'. Por favor, ejecute: pip install python-docx")
+        st.error("⚠️ Falta la librería 'python-docx'. Asegúrese de tenerla en requirements.txt")
 
-    # 1. CELDAS DE MEMORIA BLINDADAS
+    # 1. CELDAS DE MEMORIA
     if 'stark_memory_img' not in st.session_state:
         st.session_state.stark_memory_img = None
     if 'stark_memory_text' not in st.session_state:
@@ -102,10 +102,8 @@ with tabs[1]:
         st.session_state.doc_content_extracted = ""
 
     # 2. PUERTO MULTIFORMATO
-    tipos_permitidos = ["png", "jpg", "jpeg", "docx"]
-    st.info("🛰️ Srta. Diana, el escáner de texto profundo está en línea. Suba su 'ORDEN DE SERVICIO' para lectura completa.")
+    st.info("🛰️ Srta. Diana, modelo Llama-3.3 en línea. El sistema de análisis de texto ha sido actualizado.")
 
-    # RECEPTOR DE PEGADO (Solo para imágenes)
     receptor_js = components.html(
         """
         <div id="p_area" contenteditable="true" style="
@@ -133,23 +131,19 @@ with tabs[1]:
         """, height=130,
     )
 
-    # 3. CARGADOR DE ARCHIVOS
-    archivo_subido = st.file_uploader("Carga de Evidencia:", type=tipos_permitidos, key="uploader_v82")
+    archivo_subido = st.file_uploader("Carga de Evidencia:", type=["png", "jpg", "jpeg", "docx"], key="uploader_v83")
 
-    # 4. LÓGICA DE EXTRACCIÓN REAL
+    # 3. EXTRACCIÓN DE CONTENIDO
     if archivo_subido is not None:
         if archivo_subido.name.endswith('.docx'):
             try:
-                # PROTOCOLO DE LECTURA DE WORD
                 doc = Document(archivo_subido)
-                full_text = []
-                for para in doc.paragraphs:
-                    full_text.append(para.text)
+                full_text = [para.text for para in doc.paragraphs]
                 st.session_state.doc_content_extracted = "\n".join(full_text)
                 st.session_state.stark_memory_img = "DOCUMENTO_LISTO"
-                st.success(f"✔️ Contenido de '{archivo_subido.name}' extraído con éxito.")
+                st.success(f"✔️ Contenido de '{archivo_subido.name}' extraído.")
             except Exception as e:
-                st.error(f"Falla en el escáner de documentos: {e}")
+                st.error(f"Falla en el escáner: {e}")
         elif archivo_subido.type.startswith('image/'):
             bytes_data = archivo_subido.getvalue()
             st.session_state.stark_memory_img = f"data:image/jpeg;base64,{base64.b64encode(bytes_data).decode()}"
@@ -158,28 +152,28 @@ with tabs[1]:
     elif receptor_js and isinstance(receptor_js, str):
         st.session_state.stark_memory_img = receptor_js
 
-    # 5. EL BOTÓN DE GENERACIÓN DE ANÁLISIS
+    # 4. BOTÓN DE ANÁLISIS (Con el nuevo modelo Llama-3.3)
     st.write("---")
     if st.session_state.stark_memory_img:
         if st.button("🔍 GENERAR ANÁLISIS COMPLETO", type="primary", use_container_width=True):
-            with st.spinner("JARVIS decodificando el contenido..."):
+            with st.spinner("JARVIS procesando con Llama-3.3..."):
                 try:
                     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
                     
                     if st.session_state.stark_memory_img == "DOCUMENTO_LISTO":
-                        # ENVIAMOS EL TEXTO REAL DEL DOCUMENTO A LA IA
-                        prompt_doc = f"Actúa como JARVIS. He extraído el siguiente texto de un documento Word llamado '{archivo_subido.name}'. Analízalo a fondo, resume los puntos clave y dime si hay algo urgente: \n\n {st.session_state.doc_content_extracted}"
+                        # MODELO ACTUALIZADO PARA TEXTO
+                        prompt_doc = f"Actúa como JARVIS. Analiza a fondo este documento Word: \n\n {st.session_state.doc_content_extracted}"
                         response = client.chat.completions.create(
                             messages=[{"role": "user", "content": prompt_doc}],
-                            model="llama-3.1-70b-versatile", # Usamos un modelo de texto potente
+                            model="llama-3.3-70b-versatile", # <--- NUEVO MODELO
                         )
                     else:
-                        # ANÁLISIS VISUAL PARA IMÁGENES/PLANTAS
+                        # MODELO DE VISIÓN (Sigue siendo el mismo)
                         response = client.chat.completions.create(
                             messages=[{
                                 "role": "user",
                                 "content": [
-                                    {"type": "text", "text": "Actúa como JARVIS. Analiza esta imagen. Identifica plantas (nombre científico y cuidados) u objetos detalladamente."},
+                                    {"type": "text", "text": "Actúa como JARVIS. Identifica esta planta o objeto detalladamente."},
                                     {"type": "image_url", "image_url": {"url": st.session_state.stark_memory_img}}
                                 ]
                             }],
@@ -187,16 +181,16 @@ with tabs[1]:
                         )
                     
                     st.session_state.stark_memory_text = response.choices[0].message.content
-                    hablar("Análisis profundo finalizado, Srta. Diana.")
+                    hablar("Actualización de sistema completada. Análisis listo, Srta. Diana.")
                 except Exception as e:
                     st.error(f"Falla en el enlace: {str(e)}")
 
-    # 6. CUADRO DE RESULTADO
+    # 5. CUADRO DE RESULTADO
     if st.session_state.stark_memory_text:
-        st.markdown("### 📝 Informe Detallado de JARVIS")
-        st.text_area("Contenido del Análisis:", value=st.session_state.stark_memory_text, height=450)
+        st.markdown("### 📝 Informe Stark (v3.3)")
+        st.text_area("Análisis:", value=st.session_state.stark_memory_text, height=450)
         
-        if st.button("🗑️ Limpiar Memoria"):
+        if st.button("🗑️ Resetear Memoria"):
             st.session_state.stark_memory_img = None
             st.session_state.stark_memory_text = ""
             st.session_state.doc_content_extracted = ""
