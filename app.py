@@ -40,13 +40,48 @@ else:
 # --- MOTORES DE SOPORTE ---
 def hablar(texto):
     try:
-        tts = gTTS(text=texto, lang='es', tld='es') 
-        fp = io.BytesIO()
-        tts.write_to_fp(fp)
-        fp.seek(0)
-        b64 = base64.b64encode(fp.read()).decode()
-        st.markdown(f'<audio autoplay="true"><source src="data:audio/mp3;base64,{b64}" type="audio/mp3"></audio>', unsafe_allow_html=True)
-    except: pass
+        # Recuperamos las llaves de los Secrets de Industrias Stark
+        api_key = st.secrets["ELEVEN_API_KEY"]
+        voice_id = st.secrets["VOICE_ID"]
+        
+        # Endpoint del motor ElevenLabs
+        url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
+        
+        headers = {
+            "Accept": "audio/mpeg",
+            "Content-Type": "application/json",
+            "xi-api-key": api_key
+        }
+        
+        data = {
+            "text": texto,
+            "model_id": "eleven_multilingual_v2",
+            "voice_settings": {
+                "stability": 0.55,        # Equilibrio entre emoción y calma
+                "similarity_boost": 0.75, # Máxima fidelidad a la voz original
+                "style": 0.0,
+                "use_speaker_boost": True
+            }
+        }
+
+        response = requests.post(url, json=data, headers=headers)
+
+        if response.status_code == 200:
+            # Si la conexión es exitosa, reproducimos la voz de alta fidelidad
+            b64 = base64.b64encode(response.content).decode()
+            st.markdown(f'<audio autoplay="true"><source src="data:audio/mp3;base64,{b64}" type="audio/mp3"></audio>', unsafe_allow_html=True)
+        else:
+            # Protocolo de Respaldo: gTTS (Voz estándar)
+            st.warning("⚠️ El motor ElevenLabs no responde. Iniciando voz de emergencia.")
+            tts = gTTS(text=texto, lang='es', tld='es')
+            fp = io.BytesIO()
+            tts.write_to_fp(fp)
+            fp.seek(0)
+            b64 = base64.b64encode(fp.read()).decode()
+            st.markdown(f'<audio autoplay="true"><source src="data:audio/mp3;base64,{b64}" type="audio/mp3"></audio>', unsafe_allow_html=True)
+            
+    except Exception as e:
+        st.error(f"Falla en el modulador: {e}")
 
 def buscar_red(consulta):
     try:
