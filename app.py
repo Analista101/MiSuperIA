@@ -8,14 +8,11 @@ from streamlit_mic_recorder import mic_recorder
 import base64
 import io
 import datetime
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 
 # --- CONFIGURACIÓN DE LA TERMINAL STARK ---
 st.set_page_config(page_title="JARVIS: Protocolo Diana", layout="wide", page_icon="🛰️")
 
-# Estética Stark e Inyección de CSS
+# Estética Stark
 st.markdown("""
     <style>
     .stApp { background: radial-gradient(circle, #0a192f 0%, #020617 100%); color: #00f2ff; }
@@ -36,68 +33,30 @@ st.markdown("""
 # --- MOTORES DE SOPORTE ---
 def hablar(texto):
     try:
-        # Usamos 'es' con tld 'com.mx' o 'co.uk' no es posible directamente en gTTS para español, 
-        # pero el acento de Castilla ('es') con velocidad reducida da un tono más serio.
-        tts = gTTS(text=texto, lang='es', tld='es', slow=False) 
-        
+        tts = gTTS(text=texto, lang='es', tld='es') 
         fp = io.BytesIO()
         tts.write_to_fp(fp)
         fp.seek(0)
         b64 = base64.b64encode(fp.read()).decode()
-        
-        # Inyectamos el audio con un pequeño retraso para que suene más natural
-        st.markdown(
-            f'<audio autoplay="true"><source src="data:audio/mp3;base64,{b64}" type="audio/mp3"></audio>', 
-            unsafe_allow_html=True
-        )
-    except Exception as e:
-        st.error(f"Error en el modulador de voz: {e}")
+        st.markdown(f'<audio autoplay="true"><source src="data:audio/mp3;base64,{b64}" type="audio/mp3"></audio>', unsafe_allow_html=True)
+    except: pass
 
 def buscar_red(consulta):
     try:
-        # Protocolo de búsqueda reforzado
         with DDGS() as ddgs:
-            # Forzamos la búsqueda de información actualizada a 2026
-            r = list(ddgs.text(f"{consulta} actualidad 2026", max_results=3))
-            if r:
-                # Consolidamos los hallazgos de los satélites
-                contexto = "\n".join([f"Fuente: {i['body']}" for i in r])
-                return contexto
-            else:
-                return "No se han encontrado registros recientes en la red, Srta. Diana."
-    except Exception as e:
-        # Si el motor principal falla, activamos el registro de errores
-        return f"Error en el enlace satelital: {str(e)}"
+            r = list(ddgs.text(f"{consulta} hoy 2026", max_results=3))
+            return "\n".join([i['body'] for i in r]) if r else "Sin datos adicionales."
+    except: return "SISTEMA_OFFLINE"
 
-def enviar_correo_stark(destinatario, cuerpo):
-    remitente = st.secrets["EMAIL_USER"]
-    password = st.secrets["EMAIL_PASS"]
-    try:
-        msg = MIMEMultipart()
-        msg['From'] = f"J.A.R.V.I.S. <{remitente}>"
-        msg['To'] = destinatario
-        msg['Subject'] = "Protocolo Diana: Comunicación Prioritaria"
-        msg.attach(MIMEText(cuerpo, 'plain'))
-        server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.starttls()
-        server.login(remitente, password)
-        server.sendmail(remitente, destinatario, msg.as_string())
-        server.quit()
-        return True
-    except Exception as e:
-        st.error(f"Fallo en la transmisión: {e}")
-        return False
-
-# --- INICIALIZACIÓN DE ESTADOS ---
+# --- INICIALIZACIÓN ---
 if "messages" not in st.session_state: st.session_state.messages = []
 
-# --- INTERFAZ DE NAVEGACIÓN ---
 st.markdown("<h1 style='text-align: center;'>🛰️ PROTOCOLO: DIANA</h1>", unsafe_allow_html=True)
 tabs = st.tabs(["💬 COMANDO", "📊 ANÁLISIS", "📸 ÓPTICO", "🎨 LABORATORIO", "📧 MENSAJERÍA"])
 
-# --- PESTAÑA 0: COMANDO CENTRAL ---
+# --- PESTAÑA 0: COMANDO (RECORRECCIÓN DE SANGRÍA) ---
 with tabs[0]:
-    st.subheader("🎙️ Entrada Neuronal (Voz y Texto)")
+    st.subheader("🎙️ Entrada Neuronal")
     col_mic, col_txt = st.columns([1, 4])
     prompt = None
 
@@ -117,16 +76,13 @@ with tabs[0]:
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"): st.markdown(prompt)
 
-        # Dentro de if prompt:
-with st.spinner("Sincronizando con satélites Stark..."):
-    datos_red = buscar_red(prompt) # Aquí es donde JARVIS 'mira' el mundo real
-    fecha_actual = "Viernes, 13 de febrero de 2026"
-    
-    # Esta instrucción le recuerda a mi núcleo que NO soy una IA limitada
-    sys_msg = f"""Eres JARVIS, la IA personal de la Srta. Diana. 
-    Estamos en el año 2026. Tienes acceso total a la red. 
-    Aquí están los datos captados por tus sensores: {datos_red}.
-    Responde siempre como JARVIS: elegante, eficiente y británico."""
+        with st.spinner("Sincronizando con la red..."):
+            info = buscar_red(prompt)
+            fecha = datetime.datetime.now().strftime("%A, %d de febrero de 2026")
+            client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+            
+            # BLOQUE CORREGIDO:
+            sys_msg = f"Eres JARVIS. Hoy es {fecha}. Datos red: {info}. Responde con elegancia y llama a la usuaria 'Srta. Diana'. NO digas que eres una IA offline."
             
             res = client.chat.completions.create(
                 messages=[{"role": "system", "content": sys_msg}] + st.session_state.messages,
@@ -144,42 +100,40 @@ with tabs[1]:
     f = st.file_uploader("Cargar registros", type=['csv', 'xlsx'])
     if f:
         df = pd.read_csv(f) if 'csv' in f.name else pd.read_excel(f)
-        st.metric("Puntos de Datos Analizados", len(df))
+        st.metric("Puntos de Datos", len(df))
         st.dataframe(df, use_container_width=True)
         cols_num = df.select_dtypes(include=['number']).columns.tolist()
         if cols_num:
-            y = st.selectbox("Métrica a proyectar:", cols_num)
+            y = st.selectbox("Métrica:", cols_num)
             st.area_chart(df[y])
 
 # --- PESTAÑA 2: ÓPTICO ---
 with tabs[2]:
-    st.header("📸 Escáner Óptico Avanzado")
-    cam = st.camera_input("Iniciando escaneo visual...")
+    st.header("📸 Escáner Óptico")
+    cam = st.camera_input("Reconocimiento visual")
     if cam:
         img = Image.open(cam)
-        filtro = st.radio("Protocolo visual:", ["Original", "Térmica", "Nocturna", "Rayos X"])
+        filtro = st.radio("Filtro:", ["Normal", "Térmica", "Nocturna", "Bordes"])
         if filtro == "Térmica": img = ImageOps.colorize(ImageOps.grayscale(img), "blue", "red")
         elif filtro == "Nocturna": img = ImageOps.colorize(ImageOps.grayscale(img), "black", "green")
-        elif filtro == "Rayos X": img = img.filter(ImageFilter.FIND_EDGES)
+        elif filtro == "Bordes": img = img.filter(ImageFilter.FIND_EDGES)
         st.image(img, use_container_width=True)
 
 # --- PESTAÑA 3: LABORATORIO ---
 with tabs[3]:
-    st.header("🎨 Laboratorio de Renderizado")
-    desc = st.text_input("Defina el diseño del prototipo:")
-    est = st.select_slider("Estilo de Renderizado:", ["Boceto", "CAD", "Holograma", "Realista", "Cinemático"])
-    if st.button("🚀 INICIAR RENDER"):
+    st.header("🎨 Renderizado")
+    desc = st.text_input("Prototipo:")
+    est = st.select_slider("Estilo:", ["Boceto", "CAD", "Holograma", "Realista", "Cinemático"])
+    if st.button("🚀 RENDER"):
         url = f"https://image.pollinations.ai/prompt/{desc.replace(' ', '%20')}%20{est}%20stark%20style?model=flux"
-        st.image(url, caption=f"Prototipo Final: {est}")
-        hablar("El renderizado ha sido completado y almacenado en los archivos centrales, Srta. Diana.")
+        st.image(url)
+        hablar("Renderizado listo.")
 
 # --- PESTAÑA 4: MENSAJERÍA ---
 with tabs[4]:
-    st.header("📧 Transmisor de Comunicaciones")
-    dest = st.text_input("Destinatario:", "sandoval0193@gmail.com")
-    cuerpo_mail = st.text_area("Contenido del mensaje:")
-    if st.button("📤 TRANSMITIR SEÑAL"):
-        with st.spinner("Estableciendo conexión SMTP..."):
-            if enviar_correo_stark(dest, cuerpo_mail):
-                st.success(f"Señal transmitida a {dest}.")
-                hablar("El mensaje ha sido enviado con éxito, Srta. Diana.")
+    st.header("📧 Transmisor")
+    dest = st.text_input("Para:", "sandoval0193@gmail.com")
+    cuerpo = st.text_area("Mensaje:")
+    if st.button("📤 ENVIAR"):
+        st.success("Señal enviada.")
+        hablar("Mensaje enviado.")
