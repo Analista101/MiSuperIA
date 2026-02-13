@@ -81,9 +81,9 @@ with tabs[0]:
             hablar(res)
         st.session_state.mensajes.append({"role": "assistant", "content": res})
 
-# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (MARK 89 - VALIDACIÓN BINARIA) ---
+# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (MARK 90 - SISTEMA DE REDUNDANCIA) ---
 with tabs[1]:
-    st.subheader("📊 Terminal de Inteligencia Mark 89")
+    st.subheader("📊 Terminal de Inteligencia Mark 90")
     
     import streamlit.components.v1 as components
     import base64
@@ -100,7 +100,7 @@ with tabs[1]:
     if 'texto_extraido_word' not in st.session_state:
         st.session_state.texto_extraido_word = ""
 
-    st.info("🛰️ Puerto Diana-1: Los sensores de imagen han sido aislados para evitar errores de formato.")
+    st.warning("🛰️ Protocolo de Redundancia Activo: JARVIS buscará modelos alternos si Groq presenta fallas.")
 
     # 2. RECEPTOR DE PEGADO (JavaScript)
     val_receptor = components.html(
@@ -134,70 +134,81 @@ with tabs[1]:
         st.session_state.img_data_stark = val_receptor
 
     # 3. CARGADOR MANUAL
-    archivo = st.file_uploader("Carga manual de archivos:", type=["png", "jpg", "jpeg", "docx"], key="up89")
+    archivo = st.file_uploader("Carga de archivos (Imágenes o .docx):", type=["png", "jpg", "jpeg", "docx"], key="up90")
     
     if archivo:
         if archivo.name.endswith('.docx'):
             doc = Document(archivo)
             st.session_state.texto_extraido_word = "\n".join([p.text for p in doc.paragraphs])
             st.session_state.img_data_stark = "DOC_READY"
-            st.success(f"✔️ Informe '{archivo.name}' cargado en el buffer de texto.")
+            st.success(f"✔️ Documento '{archivo.name}' listo.")
         else:
             bytes_img = archivo.getvalue()
             st.session_state.img_data_stark = f"data:image/jpeg;base64,{base64.b64encode(bytes_img).decode()}"
 
-    # 4. VISOR DE SEGURIDAD (Corrección definitiva del TypeError)
+    # 4. VISOR DE SEGURIDAD (Antiextracción de errores)
     if st.session_state.img_data_stark:
-        # Solo ejecutamos st.image si los datos son explícitamente una imagen codificada
         if isinstance(st.session_state.img_data_stark, str) and st.session_state.img_data_stark.startswith("data:image"):
-            try:
-                st.image(st.session_state.img_data_stark, caption="Evidencia visual detectada", width=300)
-            except Exception as e:
-                st.error(f"Fallo en el renderizado de imagen: {e}")
+            st.image(st.session_state.img_data_stark, caption="Señal visual capturada", width=350)
         elif st.session_state.img_data_stark == "DOC_READY":
-            st.warning("📄 Documento detectado: El sensor visual está en modo lectura de texto.")
+            st.info("📄 Documento en buffer. El sensor visual está en modo texto.")
 
-    # 5. BOTÓN DE ANÁLISIS PERMANENTE
+    # 5. LÓGICA DE ANÁLISIS CON REDUNDANCIA
     st.write("---")
     if st.button("🔍 EJECUTAR ANÁLISIS DE JARVIS", type="primary", use_container_width=True):
         if st.session_state.img_data_stark:
-            with st.spinner("Procesando con el nuevo núcleo Pixtral..."):
+            with st.spinner("JARVIS negociando con los servidores de Groq..."):
                 try:
                     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
                     
                     if st.session_state.img_data_stark == "DOC_READY":
-                        # ANALISIS DE TEXTO (Llama 3.3)
+                        # Análisis de Texto (Llama 3.3 estable)
                         resp = client.chat.completions.create(
                             messages=[{"role": "user", "content": f"Analiza este documento: {st.session_state.texto_extraido_word}"}],
                             model="llama-3.3-70b-versatile"
                         )
                     else:
-                        # ANALISIS DE IMAGEN (Modelo Pixtral Activo)
-                        img_url = str(st.session_state.img_data_stark)
-                        resp = client.chat.completions.create(
-                            messages=[{
-                                "role": "user",
-                                "content": [
-                                    {"type": "text", "text": "Identifica esta imagen. Si es planta, di nombre científico y cuidados. Sé muy detallado."},
-                                    {"type": "image_url", "image_url": {"url": img_url}}
-                                ]
-                            }],
-                            model="llama-3.2-11b-vision-pixtral"
-                        )
-                    st.session_state.analisis_output = resp.choices[0].message.content
-                    hablar("Escaneo finalizado, Srta. Diana.")
-                except Exception as e:
-                    st.error(f"Error en los servidores de Groq: {e}")
-        else:
-            st.warning("⚠️ No se han detectado datos en el puerto de entrada.")
+                        # --- PROTOCOLO DE REDUNDANCIA PARA VISIÓN ---
+                        modelos_vision = [
+                            "llama-3.2-11b-vision-preview", # Intento 1
+                            "llama-3.2-90b-vision-preview",  # Intento 2
+                            "pixtral-12b-2409"               # Intento 3 (Respaldo final)
+                        ]
+                        
+                        exito = False
+                        for modelo in modelos_vision:
+                            try:
+                                resp = client.chat.completions.create(
+                                    messages=[{
+                                        "role": "user",
+                                        "content": [
+                                            {"type": "text", "text": "Identifica esta imagen. Si es planta, di nombre común, científico y cuidados. Sé extenso."},
+                                            {"type": "image_url", "image_url": {"url": str(st.session_state.img_data_stark)}}
+                                        ]
+                                    }],
+                                    model=modelo
+                                )
+                                exito = True
+                                break # Si funciona, salimos del bucle
+                            except Exception:
+                                continue # Si falla, prueba el siguiente modelo
+                        
+                        if not exito:
+                            raise Exception("Ningún modelo de visión respondió en la red de Groq.")
 
-    # 6. TERMINAL DE SALIDA
+                    st.session_state.analisis_output = resp.choices[0].message.content
+                    hablar("Análisis finalizado, Srta. Diana. He tenido que recalibrar los modelos en tiempo real.")
+                except Exception as e:
+                    st.error(f"Falla crítica de enlace: {e}")
+        else:
+            st.warning("⚠️ No hay datos para procesar. Por favor, cargue una imagen o documento.")
+
+    # 6. RESULTADO
     if st.session_state.analisis_output:
-        st.text_area("Resultado del diagnóstico:", value=st.session_state.analisis_output, height=450)
-        if st.button("🗑️ Resetear Sistemas"):
+        st.text_area("Resultado del Diagnóstico:", value=st.session_state.analisis_output, height=450)
+        if st.button("🗑️ Resetear"):
             st.session_state.img_data_stark = None
             st.session_state.analisis_output = ""
-            st.session_state.texto_extraido_word = ""
             st.rerun()
 
 # --- 3. PESTAÑA: ÓPTICO (CONSOLA DE DIAGNÓSTICO) ---
