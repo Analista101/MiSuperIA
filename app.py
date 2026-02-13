@@ -135,13 +135,49 @@ with tabs[0]:
             except Exception as e:
                 st.error(f"Error en procesador central: {e}")
 
-# --- PESTAÑA 1: DATOS ---
+# --- PESTAÑA 1: ANÁLISIS STARK (PROTOCOLO OMNI-FORMATO) ---
 with tabs[1]:
-    st.header("📊 Procesamiento de Datos")
-    archivo = st.file_uploader("Cargar archivo de datos", type=['xlsx', 'csv'], key="data_stark")
+    st.header("📊 Procesamiento de Datos Multi-Sistema")
+    st.write("Cargue cualquier protocolo de datos (CSV, XLSX, JSON, TXT) para su análisis inmediato.")
+    
+    archivo = st.file_uploader("Subir archivo de datos", type=['xlsx', 'csv', 'json', 'txt'], key="data_stark")
+    
     if archivo:
-        df = pd.read_excel(archivo) if 'xlsx' in archivo.name else pd.read_csv(archivo)
-        st.dataframe(df)
+        try:
+            # Protocolo de identificación de formato
+            nombre = archivo.name.lower()
+            
+            if nombre.endswith('.csv'):
+                df = pd.read_csv(archivo)
+            elif nombre.endswith('.xlsx') or nombre.endswith('.xls'):
+                df = pd.read_excel(archivo)
+            elif nombre.endswith('.json'):
+                df = pd.read_json(archivo)
+            elif nombre.endswith('.txt'):
+                # Lectura de texto plano para análisis de logs
+                contenido = archivo.read().decode("utf-8")
+                st.text_area("Contenido del archivo de texto:", contenido, height=300)
+                df = None
+            
+            if df is not None:
+                st.success(f"🛰️ Archivo {nombre} procesado con éxito.")
+                
+                # Herramientas de análisis rápido Stark
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.metric("Total de Registros", len(df))
+                with col2:
+                    st.metric("Columnas Detectadas", len(df.columns))
+                
+                st.dataframe(df, use_container_width=True)
+                
+                # Opción de análisis estadístico
+                if st.checkbox("Ejecutar análisis estadístico de Industrias Stark"):
+                    st.write(df.describe())
+                    
+        except Exception as e:
+            st.error(f"Error crítico en el escaneo de datos: {e}")
+            st.info("Srta. Diana, verifique que el archivo no esté corrupto o cifrado.")
 
 # --- PESTAÑA 2: VISIÓN ---
 with tabs[2]:
