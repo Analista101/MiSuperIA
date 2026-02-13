@@ -54,14 +54,12 @@ def hablar(texto):
             "xi-api-key": api_key
         }
         
-        data = {
+ data = {
             "text": texto,
-            "model_id": "eleven_multilingual_v2",
+            "model_id": "eleven_flash_v2.5", # Modelo de ultra-baja latencia
             "voice_settings": {
-                "stability": 0.55,        # Equilibrio entre emoción y calma
-                "similarity_boost": 0.75, # Máxima fidelidad a la voz original
-                "style": 0.0,
-                "use_speaker_boost": True
+                "stability": 0.5,
+                "similarity_boost": 0.75
             }
         }
 
