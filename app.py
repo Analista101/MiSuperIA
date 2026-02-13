@@ -116,9 +116,9 @@ with tabs[2]:
         with col_v2:
             st.warning("⚠️ SATÉLITES DE VISIÓN EN MANTENIMIENTO")
             st.write("Srta. Diana, Groq ha desactivado temporalmente sus modelos de visión. Los filtros visuales internos (Térmico/Nocturno) siguen operativos.")
-# --- 4. PESTAÑA: LABORATORIO CREATIVO (MARK 56 - RESILIENCIA TOTAL) ---
+# --- 4. PESTAÑA: LABORATORIO CREATIVO (MARK 57 - DEFINITIVO) ---
 with tabs[3]:
-    st.subheader("🎨 Estación de Diseño Mark 56")
+    st.subheader("🎨 Estación de Diseño Mark 57")
     c1, c2 = st.columns([2, 1])
     
     with c2:
@@ -126,39 +126,50 @@ with tabs[3]:
             "Cinematic", "Blueprint", "Cyberpunk", "Hyper-Realistic", 
             "Anime", "Retro-Futurism", "Steampunk"
         ])
-        
+        st.info("💡 Si la imagen no aparece abajo, use el botón de 'Ver en Pantalla Completa' para saltar el cortafuegos.")
+    
     with c1:
         diseno = st.text_area("Descripción:", placeholder="Ej: Nueva armadura Mark 85...")
         
         if st.button("🚀 INICIAR SÍNTESIS"):
             if diseno:
-                with st.spinner("Sintetizando..."):
+                with st.spinner("Estableciendo conexión con satélites..."):
                     import random
                     seed = random.randint(0, 999999)
-                    # Limpiamos el texto para la URL
-                    prompt_clean = diseno.replace(" ", "+")
-                    style_clean = estilo.replace(" ", "+")
                     
-                    # Usamos una URL de respaldo que suele evadir el error 530
-                    url = f"https://pollinations.ai/p/{prompt_clean}+{style_clean}?width=1024&height=1024&seed={seed}&nofeed=true"
+                    # Protocolo de limpieza de prompt para evitar bloqueos
+                    prompt_encoded = diseno.replace(" ", "+")
+                    style_encoded = estilo.replace(" ", "+")
                     
-                    # Intentamos la carga visual
+                    # URL Maestra - Usamos el subdominio 'image' que es más estable
+                    url = f"https://image.pollinations.ai/prompt/{prompt_encoded}+{style_encoded}?width=1024&height=1024&seed={seed}&nologo=true"
+                    
+                    # 1. INTENTO DE VISUALIZACIÓN POR MARKDOWN (Más robusto que st.image)
                     st.markdown(f"""
-                        <div style="border: 2px solid #00f2ff; border-radius: 15px; padding: 10px; background-color: #000; text-align: center;">
-                            <img src="{url}" style="width: 100%; border-radius: 10px;" onerror="this.onerror=null; this.src='https://via.placeholder.com/1024x1024.png?text=ERROR+DE+ENLACE+REINTENTANDO...';">
-                            <p style="color: #00f2ff; margin-top: 10px;">PROTOCOL {estilo} ACTIVE</p>
+                        <div style="border: 2px solid #00f2ff; border-radius: 15px; padding: 10px; background-color: #1a1a1a; text-align: center;">
+                            <p style="color: #00f2ff; font-family: monospace;">[ ESCANEANDO PROTOTIPO... ]</p>
+                            <img src="{url}" style="width: 100%; border-radius: 10px; border: 1px solid #333;" 
+                                 alt="Si no ve la imagen, use el enlace de abajo." 
+                                 onerror="this.src='https://via.placeholder.com/1024x1024.png?text=ERROR+DE+REDIRECCION+DE+DATOS';">
                         </div>
                     """, unsafe_allow_html=True)
                     
-                    # BOTÓN DE RESPALDO: Si la imagen falla en el cuadro, este enlace SIEMPRE funciona
-                    st.markdown(f'''
+                    # 2. SOLUCIÓN DEFINITIVA: BOTÓN DE ACCESO DIRECTO (Bypass de CORS)
+                    st.write("")
+                    st.markdown(f"""
                         <a href="{url}" target="_blank" style="text-decoration: none;">
-                            <div style="background-color: #00f2ff; color: black; padding: 10px; border-radius: 5px; text-align: center; font-weight: bold; margin-top: 10px;">
-                                🛰️ ABRIR PROTOTIPO EN PANTALLA COMPLETA
+                            <div style="background: linear-gradient(90deg, #00f2ff, #0066ff); 
+                                        color: white; padding: 15px; border-radius: 10px; 
+                                        text-align: center; font-weight: bold; 
+                                        box-shadow: 0 4px 15px rgba(0,242,255,0.4);">
+                                🛰️ VER PROTOTIPO EN PANTALLA COMPLETA (SISTEMA SEGURO)
                             </div>
                         </a>
-                    ''', unsafe_allow_html=True)
+                        <p style="text-align: center; font-size: 12px; color: #555; margin-top: 5px;">
+                            Click para abrir el túnel de datos directo del satélite.
+                        </p>
+                    """, unsafe_allow_html=True)
                     
-                    hablar(f"He generado el renderizado, Srta. Diana. Si el cortafuegos bloquea la vista previa, use el botón de pantalla completa.")
+                    hablar(f"Srta. Diana, he enviado el diseño al servidor. Si el proyector interno falla por el cortafuegos, el botón de pantalla completa abrirá una conexión directa.")
             else:
-                st.warning("Srta. Diana, proporcione los datos del diseño.")
+                st.warning("Srta. Diana, se requiere una descripción para el sintetizador.")
