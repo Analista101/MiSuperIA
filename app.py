@@ -7,46 +7,35 @@ from gtts import gTTS
 import gspread
 import base64
 import io
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 
-# --- CONFIGURACIÓN DE SISTEMAS ---
-st.set_page_config(page_title="JARVIS: Protocolo Diana", layout="wide")
+# --- CONFIGURACIÓN DE SISTEMAS STARK ---
+st.set_page_config(page_title="JARVIS: Protocolo Diana", layout="wide", page_icon="🛰️")
 
-# ID de tu base de datos conectada
+# ID de tu base de datos (Verificado)
 ID_DE_TU_HOJA = "1ch6QcydRrTJhIVmpHLNtP1Aq60bmaZibefV3IcBu90o"
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# --- MÓDULO 1: BÚSQUEDA SATELITAL (INTERNET) ---
+# --- MÓDULO 1: BÚSQUEDA SATELITAL (INTERNET EN TIEMPO REAL) ---
 def buscar_en_red(consulta):
     try:
         with DDGS() as ddgs:
-            # Buscamos los 3 resultados más relevantes
+            # Buscamos los resultados más recientes para evitar datos de 2023
             resultados = [r['body'] for r in ddgs.text(consulta, max_results=3)]
             return "\n".join(resultados)
     except Exception as e:
-        return "Conexión limitada a los satélites externos."
+        return f"Error en sensores de red: {e}"
 
-# --- MÓDULO 2: MEMORIA EN LA NUBE ---
+# --- MÓDULO 2: CONEXIÓN A BASE DE DATOS (CORREGIDO) ---
 def conectar_google_sheets():
     try:
-        # Usamos el cliente de gspread básico
-        gc = gspread.service_account_from_dict(st.secrets["gcp_service_account"])
-        sh = gc.open_by_key(ID_DE_TU_HOJA)
-        return sh.get_worksheet(0)
-    except Exception as e:
-        # Si no tienes el JSON de Google Cloud todavía, usaremos este modo de lectura rápida
-        try:
-            url_csv = f"https://docs.google.com/spreadsheets/d/{ID_DE_TU_HOJA}/export?format=csv"
-            pd.read_csv(url_csv)
-            # Si llega aquí, es que al menos puede leer la hoja
-            st.info("🛰️ Conexión de lectura: ESTABLE")
-            return None
-        except:
-            return None
+        # Usamos pandas para una lectura rápida y compatible
+        url_csv = f"https://docs.google.com/spreadsheets/d/{ID_DE_TU_HOJA}/export?format=csv"
+        df = pd.read_csv(url_csv)
+        return df
+    except:
+        return None
 
 # --- MÓDULO 3: PROTOCOLO DE VOZ ---
 def hablar(texto):
@@ -61,56 +50,85 @@ def hablar(texto):
     except:
         pass
 
-# --- INTERFAZ PRINCIPAL ---
+# --- INTERFAZ DE USUARIO ---
 st.title("🛰️ Proyecto JARVIS: Protocolo Diana")
 
-tabs = st.tabs(["💬 Centro de Comando", "📊 Análisis", "📸 Óptico", "🎨 Laboratorio"])
+tabs = st.tabs(["💬 Comando Central", "📊 Análisis Stark", "📸 Óptico", "🎨 Laboratorio"])
 
 with tabs[0]:
-    hoja = conectar_google_sheets()
-    if hoja: st.success("🛰️ Memoria Global: CONECTADA")
-    else: st.warning("⚠️ Base de datos fuera de línea.")
+    # Verificar conexión
+    db = conectar_google_sheets()
+    if db is not None:
+        st.success("🛰️ Enlace con Google Sheets: ESTABLE")
+    else:
+        st.warning("⚠️ Sensores de base de datos en modo lectura limitada.")
 
-    # Mostrar historial de la sesión
+    # Mostrar historial
     for m in st.session_state.messages:
-        with st.chat_message(m["role"]): st.markdown(m["content"])
+        with st.chat_message(m["role"]):
+            st.markdown(m["content"])
 
-    # Entrada de comando
+    # Entrada de comandos
     if prompt := st.chat_input("Sistemas listos. ¿Qué desea, Srta. Diana?"):
         st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"): st.markdown(prompt)
+        with st.chat_message("user"):
+            st.markdown(prompt)
 
-        with st.spinner("Procesando datos en tiempo real..."):
-            # Lógica de detección de búsqueda (Internet)
+        with st.spinner("Consultando satélites y procesando..."):
+            # Obligar a JARVIS a buscar en internet para temas actuales
             contexto_web = ""
-            palabras_red = ["clima", "tiempo", "noticias", "hoy", "precio", "dólar", "bitcoin"]
+            palabras_clave = ["clima", "tiempo", "noticias", "hoy", "precio", "bitcoin", "dólar"]
             
-            if any(p in prompt.lower() for p in palabras_red):
-                contexto_web = f"\nInformación obtenida de la red: {buscar_en_red(prompt)}"
+            if any(p in prompt.lower() for p in palabras_clave):
+                contexto_web = buscar_en_red(prompt)
 
-            # Llamada a la IA (Groq)
+            # Configuración de la IA con fecha actualizada de 2026
             client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-            sys_msg = f"Eres JARVIS. Sofisticado, británico y eficiente. Responde con elegancia. Datos actuales: {contexto_web}"
             
+            # El System Prompt es la clave para que no use datos de 2023
+            sys_msg = f"""Eres JARVIS, el asistente personal de la Srta. Diana. 
+            Estamos en el año 2026. Tu base de datos interna está desactualizada, 
+            por lo que DEBES confiar en estos datos de búsqueda para responder:
+            {contexto_web}
+            
+            Responde con el estilo de JARVIS: educado, eficiente y británico."""
+
             mensajes_completos = [{"role": "system", "content": sys_msg}] + st.session_state.messages
             
-            response = client.chat.completions.create(
+            completion = client.chat.completions.create(
                 messages=mensajes_completos,
                 model="llama-3.3-70b-versatile"
-            ).choices[0].message.content
+            )
+            
+            response = completion.choices[0].message.content
 
-            # Respuesta visual y sonora
             with st.chat_message("assistant"):
                 st.markdown(response)
                 hablar(response)
             
             st.session_state.messages.append({"role": "assistant", "content": response})
 
-            # Guardar en Google Sheets
-            if hoja:
-                try:
-                    hoja.append_row([prompt, response])
-                    st.toast("✅ Memoria sincronizada")
-                except: pass
+# --- LAS DEMÁS PESTAÑAS (ANÁLISIS, ÓPTICO, LABORATORIO) ---
+with tabs[1]:
+    st.header("📊 Procesamiento de Datos")
+    archivo = st.file_uploader("Subir archivo Excel/CSV", type=['xlsx', 'csv'])
+    if archivo:
+        df_subido = pd.read_excel(archivo) if 'xlsx' in archivo.name else pd.read_csv(archivo)
+        st.dataframe(df_subido)
 
-# --- (Las pestañas de Datos, Óptico y Laboratorio se mantienen íntegras) ---
+with tabs[2]:
+    st.header("📸 Reconocimiento Óptico")
+    img_file = st.file_uploader("Sube una imagen", type=['jpg', 'png'])
+    if img_file:
+        img = Image.open(img_file)
+        filtro = st.selectbox("Efecto:", ["Ninguno", "Gris", "Bordes"])
+        if filtro == "Gris": img = ImageOps.grayscale(img)
+        elif filtro == "Bordes": img = img.filter(ImageFilter.FIND_EDGES)
+        st.image(img)
+
+with tabs[3]:
+    st.header("🎨 Laboratorio Artístico")
+    desc = st.text_input("Describe tu diseño:")
+    if st.button("Generar Renderizado"):
+        url_art = f"https://image.pollinations.ai/prompt/{desc.replace(' ', '%20')}?model=flux"
+        st.image(url_art, caption="Visualización Stark")
