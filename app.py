@@ -133,51 +133,103 @@ with tabs[1]:
         )
         archivo = st.file_uploader("O cargue archivo:", type=['png', 'jpg', 'jpeg'])
 
-    # 2. PROCESAMIENTO CON IA DE VISIÓN
-    # Usamos la imagen ya sea del pegado o del uploader
-    img_para_ia = receptor_js if receptor_js and isinstance(receptor_js, str) else None
+ # --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (MARK 75 - RESTAURACIÓN TOTAL) ---
+with tabs[1]:
+    st.subheader("📊 Terminal de Inteligencia Cognitiva Mark 75")
     
-    if archivo:
-        bytes_data = archivo.getvalue()
-        img_para_ia = f"data:image/jpeg;base64,{base64.b64encode(bytes_data).decode()}"
-        with col_preview:
-            st.image(archivo, caption="Previsualización de Sensor", width=200)
+    import streamlit.components.v1 as components
+    import base64
+    from groq import Groq
 
-    if img_para_ia:
-        if st.button("🧠 GENERAR ANÁLISIS COGNITIVO", type="primary", use_container_width=True):
-            with st.spinner("JARVIS está analizando la composición biológica/técnica..."):
+    # 1. ESTADO DE MEMORIA (Persistencia de datos)
+    if 'img_buffer' not in st.session_state:
+        st.session_state.img_buffer = None
+    if 'informe_final' not in st.session_state:
+        st.session_state.informe_final = ""
+
+    st.info("🛰️ Srta. Diana, pegue o cargue una imagen. Identificaré plantas, objetos o documentos al instante.")
+
+    # 2. RECEPTOR DE IMAGEN (Pegado con Ctrl+V)
+    # Este componente captura la imagen y la guarda en el estado de la sesión
+    receptor_html = components.html(
+        """
+        <div id="p_area" contenteditable="true" style="
+            border: 3px dashed #00f2ff; border-radius: 15px; 
+            background-color: #000; color: #00f2ff; height: 100px; 
+            display: flex; align-items: center; justify-content: center;
+            font-family: monospace; cursor: text; outline: none;">
+            [ CLIC AQUÍ Y PEGUE LA IMAGEN - CTRL+V ]
+        </div>
+        <script>
+        const area = document.getElementById('p_area');
+        area.addEventListener('paste', (e) => {
+            const items = e.clipboardData.items;
+            for (const item of items) {
+                if (item.type.indexOf("image") !== -1) {
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                        window.parent.postMessage({
+                            type: 'streamlit:setComponentValue',
+                            value: ev.target.result
+                        }, '*');
+                    };
+                    reader.readAsDataURL(item.getAsFile());
+                    area.innerHTML = "<span style='color: #00ff00;'>✓ SEÑAL DE IMAGEN DETECTADA</span>";
+                }
+            }
+        });
+        </script>
+        """, height=130,
+    )
+
+    # 3. CARGADOR DE RESPALDO
+    archivo = st.file_uploader("O cargue manualmente:", type=['png', 'jpg', 'jpeg'], key="uploader_m75")
+
+    # Sincronizamos la imagen (ya sea pegada o cargada)
+    if receptor_html:
+        st.session_state.img_buffer = receptor_html
+    if archivo:
+        st.session_state.img_buffer = f"data:image/jpeg;base64,{base64.b64encode(archivo.getvalue()).decode()}"
+        st.image(archivo, caption="Previsualización de Sensor", width=250)
+
+    # 4. EL BOTÓN (Ahora blindado y persistente)
+    # Si hay algo en el buffer, mostramos el botón de análisis
+    if st.session_state.img_buffer:
+        st.write("---")
+        if st.button("🔍 GENERAR ANÁLISIS COGNITIVO", type="primary", use_container_width=True):
+            with st.spinner("JARVIS está procesando la matriz visual..."):
                 try:
-                    from groq import Groq
                     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
                     
-                    # Llamada al modelo de visión
+                    # Solicitamos análisis profundo (Plantas, objetos, etc.)
                     response = client.chat.completions.create(
                         messages=[{
                             "role": "user",
                             "content": [
-                                {"type": "text", "text": "Actúa como JARVIS. Analiza esta imagen detalladamente. Si es una planta, identifícala y da cuidados. Si es un objeto, explica qué es y su función. Sé muy completo y profesional."},
-                                {"type": "image_url", "image_url": {"url": img_para_ia}}
+                                {"type": "text", "text": "Actúa como JARVIS. Analiza esta imagen con extremo detalle. Si es una planta, identifícala científicamente y da consejos. Si es un objeto, explica su función. Si es texto, transcríbelo. Sé elegante y muy completo."},
+                                {"type": "image_url", "image_url": {"url": st.session_state.img_buffer}}
                             ]
                         }],
                         model="llama-3.2-11b-vision-preview",
                     )
                     
-                    st.session_state.informe_detallado = response.choices[0].message.content
-                    hablar("Análisis cognitivo completado, Srta. Diana. Los resultados están en su terminal.")
+                    st.session_state.informe_final = response.choices[0].message.content
+                    hablar("Análisis cognitivo finalizado, Srta. Diana. He volcado toda la información en su terminal.")
                 except Exception as e:
-                    st.error(f"Error en enlace neuronal: {e}")
+                    st.error(f"Falla en el enlace con la red neuronal: {e}")
 
-    # 3. CUADRO DE RESULTADOS
-    if st.session_state.informe_detallado:
+    # 5. RESULTADO EN CUADRO DE TEXTO
+    if st.session_state.informe_final:
         st.markdown("### 📝 Informe de Inteligencia Visual")
         st.text_area(
-            label="Análisis de JARVIS:",
-            value=st.session_state.informe_detallado,
+            label="Resultados del Escaneo:",
+            value=st.session_state.informe_final,
             height=400,
-            key="terminal_vision"
+            key="area_informe"
         )
-        if st.button("🗑️ Resetear Sensores"):
-            st.session_state.informe_detallado = ""
+        if st.button("🗑️ Limpiar Buffer y Reiniciar"):
+            st.session_state.img_buffer = None
+            st.session_state.informe_final = ""
             st.rerun()
 
 # --- 3. PESTAÑA: ÓPTICO (CONSOLA DE DIAGNÓSTICO) ---
