@@ -116,55 +116,56 @@ with tabs[2]:
         with col_v2:
             st.warning("⚠️ SATÉLITES DE VISIÓN EN MANTENIMIENTO")
             st.write("Srta. Diana, Groq ha desactivado temporalmente sus modelos de visión. Los filtros visuales internos (Térmico/Nocturno) siguen operativos.")
-            
-# --- 4. PESTAÑA: LABORATORIO CREATIVO (MARK 58 - ANTI-BLOCK) ---
+
+# --- 4. PESTAÑA: LABORATORIO CREATIVO (MARK 59 - COMPATIBILIDAD UNIVERSAL) ---
 with tabs[3]:
-    st.subheader("🎨 Estación de Diseño Mark 58 (Redención)")
+    st.subheader("🎨 Estación de Diseño Mark 59")
     
-    # Selector de Motor de Renderizado
-    motor = st.segmented_control("Seleccionar Satélite:", ["Principal (SDXL)", "Respaldo (DALL-E Style)"], default="Principal (SDXL)")
+    # Selector compatible con versiones antiguas
+    motor_opciones = ["Satélite Alpha (SDXL)", "Satélite Beta (Bypass)"]
+    motor = st.selectbox("Seleccionar Satélite de Red:", motor_opciones)
     
     c1, c2 = st.columns([2, 1])
     with c2:
         estilo = st.selectbox("Estilo Visual:", [
-            "Cinematic", "Blueprint", "Cyberpunk", "Hyper-Realistic", 
-            "Anime Studio Ghibli", "Steampunk", "Neon Glow"
+            "Cinematic", "Blueprint", "Cyberpunk", "Steampunk", "Anime"
         ])
-        resolucion = st.select_slider("Resolución:", options=["720p", "1080p", "4K"])
+        # Slider simple para evitar errores de versión
+        calidad = st.slider("Intensidad de Render:", 1, 10, 5)
     
     with c1:
-        diseno = st.text_area("Descripción del prototipo:", placeholder="Ej: Nueva armadura Mark 85 con detalles en oro...")
+        diseno = st.text_area("Descripción del prototipo:", placeholder="Ej: Nueva armadura Mark 85...")
         
         if st.button("🚀 INICIAR SÍNTESIS"):
             if diseno:
-                with st.spinner("Sintetizando a través de satélites de respaldo..."):
+                with st.spinner("Sintetizando..."):
                     try:
                         import random
-                        seed = random.randint(1, 1000000)
-                        prompt_final = f"{diseno}, {estilo} style, highly detailed, 8k".replace(" ", "%20")
+                        seed = random.randint(1, 99999)
+                        prompt_url = diseno.replace(" ", "+")
                         
-                        # MOTOR 1: Estabilidad (Vía MagicStudio/Stable Diffusion Proxy)
-                        if motor == "Principal (SDXL)":
-                            url = f"https://ai-api.magicstudio.com/magicedit/generate?prompt={prompt_final}&output_format=jpg&seed={seed}"
-                        # MOTOR 2: Respaldo (Vía PromptHero/Lexica)
+                        # Usamos una ruta de API que no requiere túneles Argo (Evita Error 1033)
+                        if motor == "Satélite Alpha (SDXL)":
+                            # Motor de respaldo estable via Lexica/SD
+                            url = f"https://image.pollinations.ai/prompt/{prompt_url}+{estilo}?width=1024&height=1024&seed={seed}&nologo=true"
                         else:
-                            url = f"https://image.pollinations.ai/prompt/{prompt_final}?nologo=true&private=true&enhance=true&seed={seed}"
+                            # Motor de bypass directo
+                            url = f"https://embed.pollinations.ai/prompt/{prompt_url}+{estilo}?seed={seed}"
 
-                        # Bypass de Seguridad: Cargamos la imagen mediante un contenedor de datos puro
+                        # Visualización mediante HTML simple (Máxima compatibilidad)
                         st.markdown(f"""
-                            <div style="border: 2px solid #00f2ff; border-radius: 15px; padding: 10px; background-color: #000; text-align: center; box-shadow: 0 0 20px #00f2ff;">
-                                <p style="color: #00f2ff; font-family: 'Courier New', monospace; font-size: 12px;">ESTABLECIENDO CONEXIÓN SEGURA...</p>
-                                <img src="{url}" style="width: 100%; border-radius: 10px;" 
-                                     onerror="this.onerror=null; this.src='https://via.placeholder.com/1024x1024.png?text=ERROR+DE+TUNEL+1033+-+REINTENTANDO';">
+                            <div style="border: 2px solid #00f2ff; border-radius: 10px; padding: 10px; background-color: #000; text-align: center;">
+                                <img src="{url}" style="width: 100%; border-radius: 5px;">
+                                <p style="color: #00f2ff; font-family: monospace; margin-top: 10px;">PROTOTIPO RENDERIZADO</p>
                             </div>
                         """, unsafe_allow_html=True)
                         
-                        # Enlace de descarga directa por si el navegador bloquea el render
-                        st.download_button("📂 DESCARGAR PLANOS (JPG)", requests.get(url).content, file_name="prototipo_stark.jpg", mime="image/jpeg")
+                        # Botón de seguridad: Si la imagen no carga, este enlace siempre funciona
+                        st.markdown(f'<a href="{url}" target="_blank" style="color: #00f2ff;">🛰️ Si la imagen no carga, haga click aquí para verla directamente</a>', unsafe_allow_html=True)
                         
-                        hablar(f"Srta. Diana, he evadido el bloqueo 1033. El renderizado del {diseno} está en proceso.")
+                        hablar("He finalizado el proceso de diseño, Srta. Diana. La imagen debería estar visible en su terminal.")
                         
                     except Exception as e:
-                        st.error(f"Falla crítica en el sintetizador: {e}")
+                        st.error(f"Error en el núcleo: {e}")
             else:
-                st.warning("Srta. Diana, el sistema requiere una descripción válida.")
+                st.warning("Srta. Diana, proporcione una descripción.")
