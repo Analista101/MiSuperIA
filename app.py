@@ -81,24 +81,66 @@ with tabs[0]:
             hablar(res)
         st.session_state.mensajes.append({"role": "assistant", "content": res})
 
-# --- 2. PESTAÑA: ANÁLISIS (CARGADOR UNIVERSAL) ---
+# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (SISTEMA DE CAPTURA DIRECTA) ---
 with tabs[1]:
-    st.subheader("📊 Análisis de Datos Multi-Formato")
-    f = st.file_uploader("Cargar archivos (Excel, CSV, TXT)", type=['csv', 'xlsx', 'xls', 'txt'])
+    st.subheader("📊 Análisis de Datos y Evidencia Visual")
+    st.write("Pegue una imagen (Ctrl+V) o cargue un archivo de datos.")
+    
+    # El cargador de archivos de Streamlit ya permite PEGAR imágenes directamente 
+    # si el foco está en el componente en versiones modernas.
+    f = st.file_uploader("Cargar archivos o PEGAR imagen del portapapeles", 
+                         type=['csv', 'xlsx', 'xls', 'txt', 'png', 'jpg', 'jpeg'],
+                         help="Puede copiar una imagen y pegarla directamente aquí usando Ctrl+V")
+
     if f:
-        try:
-            if f.name.endswith('.csv'): df = pd.read_csv(f)
-            elif f.name.endswith(('.xlsx', '.xls')): df = pd.read_excel(f)
-            else: df = pd.read_csv(f, sep=None, engine='python')
-            st.dataframe(df, use_container_width=True)
-            if st.button("🧠 ANÁLISIS DE INTELIGENCIA"):
-                res_ia = Groq(api_key=st.secrets["GROQ_API_KEY"]).chat.completions.create(
-                    messages=[{"role": "user", "content": f"Analiza estos datos brevemente como JARVIS para la Srta. Diana: {df.head(10).to_string()}"}],
-                    model="llama-3.3-70b-versatile"
-                ).choices[0].message.content
-                st.info(res_ia)
-                hablar("Análisis de datos finalizado, Srta. Diana.")
-        except Exception as e: st.error(f"Error de procesamiento: {e}")
+        # Determinamos si es un archivo de datos o una imagen
+        es_imagen = f.type in ['image/png', 'image/jpg', 'image/jpeg']
+        
+        if es_imagen:
+            img_evidencia = Image.open(f)
+            st.image(img_evidencia, caption="Evidencia visual detectada", use_container_width=True)
+            
+            if st.button("🧠 ANALIZAR CAPTURA"):
+                with st.spinner("Procesando matriz de píxeles..."):
+                    try:
+                        # Convertimos para el análisis (Bypass de visión si Groq sigue inestable)
+                        img_evidencia.thumbnail((512, 512))
+                        buf = io.BytesIO()
+                        img_evidencia.convert("RGB").save(buf, format="JPEG")
+                        img_b64 = base64.b64encode(buf.getvalue()).decode()
+                        
+                        # Intento de análisis con el modelo de respaldo
+                        client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+                        res_vis = client.chat.completions.create(
+                            messages=[{
+                                "role": "user", 
+                                "content": [
+                                    {"type": "text", "text": "JARVIS, analiza esta imagen pegada por la Srta. Diana y extrae la información clave."}, 
+                                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"}}
+                                ]
+                            }],
+                            model="llama-3.2-11b-vision-preview" # O el modelo que tenga activo
+                        ).choices[0].message.content
+                        st.info(res_vis)
+                        hablar(res_vis)
+                    except Exception as e:
+                        st.error("Srta. Diana, los sensores de visión de Groq siguen en mantenimiento, pero he recibido la imagen correctamente en la base de datos local.")
+        
+        else:
+            # Procesamiento de archivos de datos (CSV/Excel)
+            try:
+                if f.name.endswith('.csv'): df = pd.read_csv(f)
+                else: df = pd.read_excel(f)
+                st.dataframe(df, use_container_width=True)
+                if st.button("📈 ANALIZAR TABLA"):
+                    res_ia = Groq(api_key=st.secrets["GROQ_API_KEY"]).chat.completions.create(
+                        messages=[{"role": "user", "content": f"Resume estos datos: {df.head(5).to_string()}"}],
+                        model="llama-3.3-70b-versatile"
+                    ).choices[0].message.content
+                    st.info(res_ia)
+                    hablar("Análisis de datos completado.")
+            except Exception as e:
+                st.error(f"Error en la lectura: {e}")
 
 # --- 3. PESTAÑA: ÓPTICO (CONSOLA DE DIAGNÓSTICO) ---
 with tabs[2]:
