@@ -133,31 +133,31 @@ with tabs[1]:
         )
         archivo = st.file_uploader("O cargue archivo:", type=['png', 'jpg', 'jpeg'])
 
- # --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (MARK 75 - RESTAURACIÓN TOTAL) ---
+# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (MARK 76 - CORRECCIÓN DE ENLACE) ---
 with tabs[1]:
-    st.subheader("📊 Terminal de Inteligencia Cognitiva Mark 75")
+    st.subheader("📊 Terminal de Inteligencia Mark 76")
     
     import streamlit.components.v1 as components
     import base64
     from groq import Groq
 
     # 1. ESTADO DE MEMORIA (Persistencia de datos)
-    if 'img_buffer' not in st.session_state:
-        st.session_state.img_buffer = None
-    if 'informe_final' not in st.session_state:
-        st.session_state.informe_final = ""
+    if 'img_base64_final' not in st.session_state:
+        st.session_state.img_base64_final = None
+    if 'analisis_cognitivo' not in st.session_state:
+        st.session_state.analisis_cognitivo = ""
 
-    st.info("🛰️ Srta. Diana, pegue o cargue una imagen. Identificaré plantas, objetos o documentos al instante.")
+    st.info("🛰️ Srta. Diana, inyecte la imagen. Identificaré especies biológicas o tecnología Stark.")
 
-    # 2. RECEPTOR DE IMAGEN (Pegado con Ctrl+V)
-    # Este componente captura la imagen y la guarda en el estado de la sesión
-    receptor_html = components.html(
+    # 2. RECEPTOR DE IMAGEN (JS con retorno de valor limpio)
+    # Este componente captura la imagen y la devuelve como una cadena de texto pura
+    datos_receptor = components.html(
         """
         <div id="p_area" contenteditable="true" style="
             border: 3px dashed #00f2ff; border-radius: 15px; 
             background-color: #000; color: #00f2ff; height: 100px; 
             display: flex; align-items: center; justify-content: center;
-            font-family: monospace; cursor: text; outline: none;">
+            font-family: monospace; cursor: pointer; outline: none;">
             [ CLIC AQUÍ Y PEGUE LA IMAGEN - CTRL+V ]
         </div>
         <script>
@@ -174,7 +174,7 @@ with tabs[1]:
                         }, '*');
                     };
                     reader.readAsDataURL(item.getAsFile());
-                    area.innerHTML = "<span style='color: #00ff00;'>✓ SEÑAL DE IMAGEN DETECTADA</span>";
+                    area.innerHTML = "<span style='color: #00ff00;'>✓ SEÑAL DETECTADA</span>";
                 }
             }
         });
@@ -182,54 +182,55 @@ with tabs[1]:
         """, height=130,
     )
 
-    # 3. CARGADOR DE RESPALDO
-    archivo = st.file_uploader("O cargue manualmente:", type=['png', 'jpg', 'jpeg'], key="uploader_m75")
+    # 3. CARGADOR MANUAL (Sincronización)
+    archivo_manual = st.file_uploader("Carga manual:", type=['png', 'jpg', 'jpeg'], key="uploader_m76")
 
-    # Sincronizamos la imagen (ya sea pegada o cargada)
-    if receptor_html:
-        st.session_state.img_buffer = receptor_html
-    if archivo:
-        st.session_state.img_buffer = f"data:image/jpeg;base64,{base64.b64encode(archivo.getvalue()).decode()}"
-        st.image(archivo, caption="Previsualización de Sensor", width=250)
+    # Decidimos qué imagen usar (Prioridad al pegado, luego al archivo)
+    if datos_receptor and isinstance(datos_receptor, str):
+        st.session_state.img_base64_final = datos_receptor
+    elif archivo_manual:
+        st.session_state.img_base64_final = f"data:image/jpeg;base64,{base64.b64encode(archivo_manual.getvalue()).decode()}"
+        st.image(archivo_manual, caption="Previsualización de Sensor", width=250)
 
-    # 4. EL BOTÓN (Ahora blindado y persistente)
-    # Si hay algo en el buffer, mostramos el botón de análisis
-    if st.session_state.img_buffer:
+    # 4. EL BOTÓN DE GENERAR ANÁLISIS (Blindado contra errores de serialización)
+    if st.session_state.img_base64_final:
         st.write("---")
-        if st.button("🔍 GENERAR ANÁLISIS COGNITIVO", type="primary", use_container_width=True):
-            with st.spinner("JARVIS está procesando la matriz visual..."):
+        if st.button("🔍 GENERAR ANÁLISIS COMPLETO", type="primary", use_container_width=True):
+            with st.spinner("JARVIS está accediendo a la red neuronal..."):
                 try:
+                    # EXTRAEMOS SOLO EL STRING (Evitamos enviar el objeto DeltaGenerator)
+                    imagen_pura = str(st.session_state.img_base64_final)
+                    
                     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
                     
-                    # Solicitamos análisis profundo (Plantas, objetos, etc.)
                     response = client.chat.completions.create(
                         messages=[{
                             "role": "user",
                             "content": [
-                                {"type": "text", "text": "Actúa como JARVIS. Analiza esta imagen con extremo detalle. Si es una planta, identifícala científicamente y da consejos. Si es un objeto, explica su función. Si es texto, transcríbelo. Sé elegante y muy completo."},
-                                {"type": "image_url", "image_url": {"url": st.session_state.img_buffer}}
+                                {"type": "text", "text": "Actúa como JARVIS. Identifica qué hay en esta imagen. Si es una planta, di su nombre común y científico, origen y cuidados. Si es un objeto, explica qué es. Sé extremadamente detallado y usa un tono elegante."},
+                                {"type": "image_url", "image_url": {"url": imagen_pura}}
                             ]
                         }],
                         model="llama-3.2-11b-vision-preview",
                     )
                     
-                    st.session_state.informe_final = response.choices[0].message.content
-                    hablar("Análisis cognitivo finalizado, Srta. Diana. He volcado toda la información en su terminal.")
+                    st.session_state.analisis_cognitivo = response.choices[0].message.content
+                    hablar("Análisis completado, Srta. Diana. Los resultados están en pantalla.")
                 except Exception as e:
-                    st.error(f"Falla en el enlace con la red neuronal: {e}")
+                    st.error(f"Falla en el enlace: {str(e)}")
 
-    # 5. RESULTADO EN CUADRO DE TEXTO
-    if st.session_state.informe_final:
+    # 5. CUADRO DE TEXTO RESULTANTE
+    if st.session_state.analisis_cognitivo:
         st.markdown("### 📝 Informe de Inteligencia Visual")
         st.text_area(
-            label="Resultados del Escaneo:",
-            value=st.session_state.informe_final,
+            label="Análisis de JARVIS:",
+            value=st.session_state.analisis_cognitivo,
             height=400,
-            key="area_informe"
+            key="terminal_v76"
         )
-        if st.button("🗑️ Limpiar Buffer y Reiniciar"):
-            st.session_state.img_buffer = None
-            st.session_state.informe_final = ""
+        if st.button("🗑️ Reiniciar Terminal"):
+            st.session_state.img_base64_final = None
+            st.session_state.analisis_cognitivo = ""
             st.rerun()
 
 # --- 3. PESTAÑA: ÓPTICO (CONSOLA DE DIAGNÓSTICO) ---
