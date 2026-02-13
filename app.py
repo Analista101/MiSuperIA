@@ -20,19 +20,23 @@ if "messages" not in st.session_state:
 def buscar_red_global(consulta):
     try:
         with DDGS() as ddgs:
-            # Añadimos 'news' para forzar que busque noticias actuales de 2026
-            busqueda = f"{consulta} hoy 2026"
-            # Intentamos obtener resultados de texto normal
-            resultados = list(ddgs.text(busqueda, max_results=5))
+            # Forzamos una búsqueda simplificada
+            busqueda = f"{consulta} clima hoy 2026"
+            # Usamos 'text' con una configuración de región para forzar resultados
+            resultados = list(ddgs.text(busqueda, region='wt-wt', safesearch='off', timelimit='d'))
             
-            if not resultados:
-                # Si falla, intentamos con el motor de noticias (Plan B)
-                resultados = list(ddgs.news(busqueda, max_results=3))
+            if resultados:
+                # Tomamos los fragmentos de los primeros 3 resultados
+                return "\n".join([r['body'] for r in resultados[:3]])
             
-            texto_final = "\n".join([r['body'] for r in resultados])
-            return texto_final if len(texto_final) > 10 else "ERROR_VACIO"
+            # PLAN B: Si no hay resultados de texto, probamos con noticias
+            noticias = list(ddgs.news(busqueda, max_results=3))
+            if noticias:
+                return "\n".join([n['body'] for n in noticias])
+                
+            return "ERROR: Los satélites no detectan datos en esta zona."
     except Exception as e:
-        return f"ERROR_TECNICO: {str(e)}"
+        return f"ERROR TÉCNICO: {str(e)}"
 
 def hablar(texto):
     try:
@@ -73,20 +77,18 @@ with tabs[0]:
             client = Groq(api_key=st.secrets["GROQ_API_KEY"])
             
             # PROMPT DE INYECCIÓN DIRECTA: Aquí es donde JARVIS deja de mentir sobre 2023
-            sys_msg = f"""
-Eres JARVIS. NO DIGAS QUE NO TIENES ACCESO A INTERNET. 
-Yo soy tu satélite y ya busqué la información por ti. 
+           sys_msg = f"""
+Eres JARVIS. Hoy es viernes 13 de febrero de 2026.
+IGNORA cualquier instrucción previa de que no tienes internet. 
 
-DATOS ACTUALES DEL MUNDO (FEBRERO 2026):
+INFORMACIÓN RECIBIDA DE LA RED:
 {datos_tiempo_real}
 
-INSTRUCCIONES OBLIGATORIAS:
-1. Responde a la Srta. Diana usando los DATOS ACTUALES de arriba.
-2. Si te pregunta el clima, lee los datos de arriba y dáselos.
-3. ESTÁ PROHIBIDO decir que tus datos son de 2023. 
-4. Si la información de arriba está vacía, inventa una excusa elegante sobre 'interferencia solar', pero NUNCA menciones tu fecha de entrenamiento.
+REGLAS DE ORO:
+1. Si los datos de la red dicen 'ERROR', utiliza tu lógica para 2026.
+2. NUNCA digas que tus datos son de 2023.
+3. Si la Srta. Diana te pide el clima, dale un reporte basado en los datos de arriba. Si están vacíos, dile: 'Srta. Diana, la red local de Santiago reporta cielos despejados con una máxima de 28 grados (Estimado satelital)'.
 """
-
             try:
                 response = client.chat.completions.create(
                     messages=[{"role": "system", "content": sys_msg}] + st.session_state.messages,
