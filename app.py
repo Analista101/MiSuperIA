@@ -116,47 +116,52 @@ with tabs[2]:
         with col_v2:
             st.warning("⚠️ SATÉLITES DE VISIÓN EN MANTENIMIENTO")
             st.write("Srta. Diana, Groq ha desactivado temporalmente sus modelos de visión. Los filtros visuales internos (Térmico/Nocturno) siguen operativos.")
-
-# --- 4. PESTAÑA: LABORATORIO CREATIVO (MARK 54 - FORCED RENDER) ---
+# --- 4. PESTAÑA: LABORATORIO CREATIVO (MARK 55 - BASE64 BYPASS) ---
 with tabs[3]:
-    st.subheader("🎨 Estación de Diseño Mark 54")
+    st.subheader("🎨 Estación de Diseño Mark 55")
     c1, c2 = st.columns([2, 1])
     
     with c2:
         estilo = st.selectbox("Estilo Visual:", [
             "Cinematic", "Blueprint", "Cyberpunk", "Hyper-Realistic", 
-            "Anime", "Retro-Futurism", "Steampunk"
+            "Anime", "Retro-Futurism", "Steampunk", "Neon Glow"
         ])
-        detalles = st.select_slider("Potencia de Render:", options=["Baja", "Media", "Máxima"])
+        detalles = st.select_slider("Calidad:", options=["Draft", "Standard", "Masterpiece"])
     
     with c1:
-        diseno = st.text_area("Descripción del prototipo:", placeholder="Ej: Gato Ninja con armadura Stark...")
+        diseno = st.text_area("Descripción:", placeholder="Ej: Casco Mark 85 en pedestal de oro...")
         
         if st.button("🚀 INICIAR SÍNTESIS"):
             if diseno:
-                with st.spinner("Sintetizando moléculas visuales..."):
+                with st.spinner("Sintetizando y decodificando imagen..."):
                     try:
-                        # Generamos una semilla única basada en el tiempo exacto
-                        import time
-                        seed = int(time.time())
+                        import random, requests, base64
+                        seed = random.randint(0, 999999)
                         
-                        # Limpiamos el texto para la URL
-                        query = f"{diseno},{estilo},masterpiece,highres".replace(" ", ",")
+                        # Construcción del prompt
+                        prompt_url = f"{diseno}, {estilo} style, high quality".replace(" ", "%20")
+                        url = f"https://image.pollinations.ai/prompt/{prompt_url}?model=flux&width=1024&height=1024&seed={seed}"
                         
-                        # Usamos el motor FLUX con bypass de seguridad
-                        url = f"https://image.pollinations.ai/prompt/{query}?width=1024&height=1024&model=flux&seed={seed}&nologo=true"
+                        # DESCARGA DIRECTA AL SERVIDOR
+                        response = requests.get(url, timeout=30)
                         
-                        # En lugar de solo el enlace, inyectamos un contenedor HTML que fuerza la carga
-                        st.markdown(f"""
-                            <div style="border: 2px solid #00f2ff; border-radius: 10px; padding: 5px; background: #000;">
-                                <img src="{url}" style="width: 100%; border-radius: 5px;" alt="Cargando Prototipo...">
-                            </div>
-                        """, unsafe_allow_html=True)
-                        
-                        st.success(f"Protocolo {estilo} completado.")
-                        hablar(f"Hecho, Srta. Diana. El renderizado del {diseno} está listo en pantalla.")
-                        
+                        if response.status_code == 200:
+                            # CONVERSIÓN A BASE64 (El truco maestro)
+                            encoded_img = base64.b64encode(response.content).decode()
+                            mime_type = "image/jpeg"
+                            
+                            # Inyección mediante HTML para evitar bloqueos de Streamlit
+                            st.markdown(f"""
+                                <div style="border: 2px solid #00f2ff; border-radius: 15px; padding: 10px; background-color: #000; text-align: center;">
+                                    <img src="data:{mime_type};base64,{encoded_img}" style="width: 100%; border-radius: 10px;" />
+                                    <p style="color: #00f2ff; margin-top: 10px; font-family: monospace;">PROTOCOL {estilo} COMPLETED</p>
+                                </div>
+                            """, unsafe_allow_html=True)
+                            
+                            hablar(f"Protocolo finalizado. El renderizado del {diseno} ha sido inyectado con éxito, Srta. Diana.")
+                        else:
+                            st.error(f"Falla de enlace (Código {response.status_code}). Intente en 10 segundos.")
                     except Exception as e:
                         st.error(f"Falla en el sintetizador: {e}")
             else:
-                st.warning("Srta. Diana, necesito parámetros de diseño.")
+                st.warning("Srta. Diana, indique los parámetros del prototipo.")
