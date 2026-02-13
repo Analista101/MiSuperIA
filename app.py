@@ -81,121 +81,103 @@ with tabs[0]:
             hablar(res)
         st.session_state.mensajes.append({"role": "assistant", "content": res})
 
-# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (MARK 73 - REPORTE DETALLADO) ---
+# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (MARK 74 - INTELIGENCIA COGNITIVA) ---
 with tabs[1]:
-    st.subheader("📊 terminal de Inteligencia Mark 73")
+    st.subheader("📊 Terminal de Inteligencia Cognitiva Mark 74")
     
     import streamlit.components.v1 as components
     from PIL import Image
-    import datetime
+    import base64
+    import io
 
-    # Variables de estado para persistencia
-    if 'analisis_extenso' not in st.session_state:
-        st.session_state.analisis_extenso = ""
-    if 'hay_evidencia' not in st.session_state:
-        st.session_state.hay_evidencia = False
+    # Estado de la memoria
+    if 'informe_detallado' not in st.session_state:
+        st.session_state.informe_detallado = ""
 
-    # 1. PUERTO DE ENTRADA
-    receptor_js = components.html(
-        """
-        <div id="p_area" contenteditable="true" style="
-            border: 3px dashed #00f2ff; border-radius: 15px; 
-            background-color: #050505; color: #00f2ff; height: 100px; 
-            display: flex; align-items: center; justify-content: center;
-            font-family: 'Courier New', monospace; cursor: text; outline: none;">
-            [ PEGAR CAPTURA O DOCUMENTO AQUÍ ]
-        </div>
-        <script>
-        const area = document.getElementById('p_area');
-        area.addEventListener('paste', (e) => {
-            window.parent.postMessage({type: 'streamlit:setComponentValue', value: true}, '*');
-            area.innerHTML = "<span style='color: #00ff00;'>✓ SEÑAL RECIBIDA</span>";
-        });
-        </script>
-        """, height=130,
-    )
-
-    archivo = st.file_uploader("O cargue manualmente:", type=['png', 'jpg', 'jpeg', 'csv', 'xlsx', 'pdf', 'docx'])
-
-    if receptor_js or archivo:
-        st.session_state.hay_evidencia = True
-
-    # 2. EL BOTÓN DE GENERACIÓN DE ANÁLISIS
-    if st.session_state.hay_evidencia:
-        if st.button("🔍 GENERAR ANÁLISIS COMPLETO", type="primary", use_container_width=True):
-            with st.spinner("Desencriptando archivos de Industrias Stark..."):
-                ahora = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                
-                # --- CASO A: ES UNA IMAGEN ---
-                if archivo and archivo.type.startswith('image/'):
-                    img = Image.open(archivo)
-                    res = (
-                        f"📑 INFORME DE ANÁLISIS VISUAL - PROTOCOLO {archivo.name.upper()}\n"
-                        f"FECHA: {ahora}\n"
-                        f"----------------------------------------------------------------\n"
-                        f"1. METADATOS TÉCNICOS:\n"
-                        f"   - Origen: Captura de Sensor Local\n"
-                        f"   - Formato: {img.format} | Modo: {img.mode}\n"
-                        f"   - Resolución: {img.size[0]} x {img.size[1]} Píxeles\n\n"
-                        f"2. ESCANEO DE SUPERFICIE:\n"
-                        f"   - Se ha detectado una matriz de píxeles consistente.\n"
-                        f"   - Los niveles de contraste sugieren datos alfanuméricos o diagramas técnicos.\n"
-                        f"   - Integridad de imagen: 100% (Sin ruido electromagnético detectado).\n\n"
-                        f"3. CONCLUSIÓN DE JARVIS:\n"
-                        f"   Srta. Diana, la imagen cargada ha sido procesada. El sistema identifica\n"
-                        f"   patrones de diseño que coinciden con los estándares de la Suite Stark.\n"
-                        f"   Se recomienda procedencia segura."
-                    )
-                
-                # --- CASO B: ES UN DOCUMENTO ---
-                elif archivo:
-                    res = (
-                        f"📑 INFORME DE DOCUMENTO - PROTOCOLO {archivo.name.upper()}\n"
-                        f"FECHA: {ahora}\n"
-                        f"----------------------------------------------------------------\n"
-                        f"1. IDENTIFICACIÓN DEL ARCHIVO:\n"
-                        f"   - Nombre: {archivo.name}\n"
-                        f"   - Tamaño: {archivo.size / 1024:.2f} KB\n"
-                        f"   - Tipo MIME: {archivo.type}\n\n"
-                        f"2. EXTRACTO DE CONTENIDO:\n"
-                        f"   - El archivo ha sido indexado completamente.\n"
-                        f"   - Se han detectado tablas de datos y párrafos de texto técnico.\n"
-                        f"   - Estado de seguridad: Verificado por el Firewall de Stark.\n\n"
-                        f"3. DIAGNÓSTICO:\n"
-                        f"   Srta. Diana, el archivo '{archivo.name}' contiene información lista\n"
-                        f"   para ser integrada en sus informes trimestrales. No se detectan errores de formato."
-                    )
-                
-                # --- CASO C: ES UNA IMAGEN PEGADA (SIN ARCHIVO FÍSICO) ---
-                else:
-                    res = (
-                        f"📑 ANÁLISIS DE CAPTURA RÁPIDA (PORTAPAPELES)\n"
-                        f"FECHA: {ahora}\n"
-                        f"----------------------------------------------------------------\n"
-                        f"ATENCIÓN: Se ha detectado una imagen desde el buffer temporal.\n\n"
-                        f"DIAGNÓSTICO:\n"
-                        f"La captura de pantalla ha sido procesada con éxito. He analizado la\n"
-                        f"composición visual y parece ser una captura de la interfaz de usuario.\n"
-                        f"Todos los sistemas están operativos. El análisis visual indica que\n"
-                        f"no hay discrepancias en la renderización de la app."
-                    )
-                
-                st.session_state.analisis_extenso = res
-                hablar("Srta. Diana, el análisis está listo y desplegado en su terminal.")
-
-    # 3. EL CUADRO DE TEXTO DEFINITIVO
-    if st.session_state.analisis_extenso:
-        st.markdown("### 📝 Resultado del Escaneo Stark")
-        st.text_area(
-            label="Terminal de Datos:",
-            value=st.session_state.analisis_extenso,
-            height=350,
-            key="display_analisis"
+    # 1. RECEPTOR DE IMAGEN (PEGADO Y CARGA)
+    st.info("🛰️ Srta. Diana, el sistema de visión está activo. Pegue o cargue cualquier imagen para identificar su contenido.")
+    
+    col_input, col_preview = st.columns([1, 1])
+    
+    with col_input:
+        receptor_js = components.html(
+            """
+            <div id="p_area" contenteditable="true" style="
+                border: 3px dashed #00f2ff; border-radius: 15px; 
+                background-color: #000; color: #00f2ff; height: 100px; 
+                display: flex; align-items: center; justify-content: center;
+                font-family: monospace; cursor: text; outline: none;">
+                [ PEGAR AQUÍ PARA IDENTIFICACIÓN ]
+            </div>
+            <script>
+            const area = document.getElementById('p_area');
+            area.addEventListener('paste', (e) => {
+                const items = e.clipboardData.items;
+                for (let i = 0; i < items.length; i++) {
+                    if (items[i].type.indexOf("image") !== -1) {
+                        const blob = items[i].getAsFile();
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                            window.parent.postMessage({
+                                type: 'streamlit:setComponentValue',
+                                value: event.target.result
+                            }, '*');
+                        };
+                        reader.readAsDataURL(blob);
+                        area.innerHTML = "<span style='color: #00ff00;'>✓ IMAGEN LISTA</span>";
+                    }
+                }
+            });
+            </script>
+            """, height=130,
         )
-        
-        if st.button("🗑️ LIMPIAR TERMINAL Y REINICIAR"):
-            st.session_state.analisis_extenso = ""
-            st.session_state.hay_evidencia = False
+        archivo = st.file_uploader("O cargue archivo:", type=['png', 'jpg', 'jpeg'])
+
+    # 2. PROCESAMIENTO CON IA DE VISIÓN
+    # Usamos la imagen ya sea del pegado o del uploader
+    img_para_ia = receptor_js if receptor_js and isinstance(receptor_js, str) else None
+    
+    if archivo:
+        bytes_data = archivo.getvalue()
+        img_para_ia = f"data:image/jpeg;base64,{base64.b64encode(bytes_data).decode()}"
+        with col_preview:
+            st.image(archivo, caption="Previsualización de Sensor", width=200)
+
+    if img_para_ia:
+        if st.button("🧠 GENERAR ANÁLISIS COGNITIVO", type="primary", use_container_width=True):
+            with st.spinner("JARVIS está analizando la composición biológica/técnica..."):
+                try:
+                    from groq import Groq
+                    client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+                    
+                    # Llamada al modelo de visión
+                    response = client.chat.completions.create(
+                        messages=[{
+                            "role": "user",
+                            "content": [
+                                {"type": "text", "text": "Actúa como JARVIS. Analiza esta imagen detalladamente. Si es una planta, identifícala y da cuidados. Si es un objeto, explica qué es y su función. Sé muy completo y profesional."},
+                                {"type": "image_url", "image_url": {"url": img_para_ia}}
+                            ]
+                        }],
+                        model="llama-3.2-11b-vision-preview",
+                    )
+                    
+                    st.session_state.informe_detallado = response.choices[0].message.content
+                    hablar("Análisis cognitivo completado, Srta. Diana. Los resultados están en su terminal.")
+                except Exception as e:
+                    st.error(f"Error en enlace neuronal: {e}")
+
+    # 3. CUADRO DE RESULTADOS
+    if st.session_state.informe_detallado:
+        st.markdown("### 📝 Informe de Inteligencia Visual")
+        st.text_area(
+            label="Análisis de JARVIS:",
+            value=st.session_state.informe_detallado,
+            height=400,
+            key="terminal_vision"
+        )
+        if st.button("🗑️ Resetear Sensores"):
+            st.session_state.informe_detallado = ""
             st.rerun()
 
 # --- 3. PESTAÑA: ÓPTICO (CONSOLA DE DIAGNÓSTICO) ---
