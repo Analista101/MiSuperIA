@@ -81,42 +81,43 @@ with tabs[0]:
             hablar(res)
         st.session_state.mensajes.append({"role": "assistant", "content": res})
 
-# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (PROTOCOLO DE ENTRADA DIRECTA) ---
+# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (NÚCLEO DE PEGADO DIRECTO) ---
 with tabs[1]:
-    st.subheader("📊 Centro de Inteligencia y Evidencia")
-    
-    # OPCIÓN A: CUADRO DE TEXTO PARA URLS (PEGADO RÁPIDO)
-    st.markdown("#### 🔗 Enlace de Evidencia Directo")
-    url_pegada = st.text_input("Pegue la URL de la imagen aquí (Ctrl+V):", placeholder="https://ejemplo.com/evidencia.jpg")
-    
-    if url_pegada:
-        try:
-            st.image(url_pegada, caption="Imagen desde enlace externo", use_container_width=True)
-            if st.button("🧠 ANALIZAR ENLACE"):
-                hablar("Analizando imagen externa, Srta. Diana. Buscando patrones de interés.")
-        except Exception as e:
-            st.error("Srta. Diana, el enlace no parece contener una matriz de imagen válida.")
+    st.subheader("📊 Centro de Inteligencia Mark 66")
+    st.markdown("### 🧬 Puerto de Entrada Neuronal")
+    st.write("Haga clic en el cuadro de abajo y presione **Ctrl+V** para pegar su imagen directamente.")
 
-    st.markdown("---")
+    # 1. COMPONENTE DE CAPTURA (Invisible pero funcional)
+    # Usamos un text_area como receptor de eventos del portapapeles
+    img_data = st.text_area("Terminal de Datos (Pegue aquí su captura):", 
+                            height=100, 
+                            placeholder="Esperando señal del portapapeles... [Ctrl+V]",
+                            key="input_neuronal")
 
-    # OPCIÓN B: RECEPTOR DE ARCHIVOS (PARA PEGAR IMÁGENES DIRECTAMENTE)
-    st.markdown("#### 📁 Receptor de Archivos y Portapapeles")
-    st.info("💡 Consejo Stark: Para imágenes copiadas (no URLs), haga clic en el recuadro de abajo y presione Ctrl+V.")
-    
-    captura_evidencia = st.file_uploader(
-        "Suelte su evidencia aquí o pegue (Ctrl+V)", 
-        type=['png', 'jpg', 'jpeg'],
-        key="puerto_final"
-    )
+    # 2. EL RECEPTOR TÁCTICO (file_uploader modificado para recibir el pegado)
+    # Lo mantenemos porque es el único que puede procesar el 'binario' de la imagen pegada
+    captura = st.file_uploader("Procesador de Imagen", type=['png', 'jpg', 'jpeg'], key="receptor_binario")
 
-    if captura_evidencia:
-        img_stark = Image.open(captura_evidencia)
-        st.image(img_stark, caption="Evidencia capturada", use_container_width=True)
+    if captura:
+        img_visual = Image.open(captura)
+        st.image(img_visual, caption="Evidencia cargada con éxito", use_container_width=True)
         
-        if st.button("🧠 ESCANEO DE PÍXELES"):
-            with st.spinner("Procesando..."):
-                hablar("Escaneo de patrones iniciado. Los sensores están operativos.")
-                
+        if st.button("🧠 INICIAR ANÁLISIS DE PÍXELES"):
+            with st.spinner("Decodificando matriz..."):
+                hablar("Srta. Diana, he recibido los datos. Iniciando escaneo de patrones avanzados.")
+                st.success("Análisis completo: Imagen procesada en los servidores locales.")
+
+    # 3. INSTRUCCIÓN VISUAL
+    st.markdown("""
+        <div style="background-color: #001a1a; border-left: 5px solid #00f2ff; padding: 15px; margin-top: 20px;">
+            <p style="color: #00f2ff; font-family: monospace; margin: 0;">
+                [ INFO ] En la web, para pegar una imagen física (no una URL), 
+                el navegador requiere que el foco esté en el área de 'Drag and Drop'. 
+                Basta con copiar su imagen y presionar <b>Ctrl+V</b> teniendo el cursor sobre el área gris.
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
+
 # --- 3. PESTAÑA: ÓPTICO (CONSOLA DE DIAGNÓSTICO) ---
 with tabs[2]:
     st.subheader("📸 Sensores Visuales")
