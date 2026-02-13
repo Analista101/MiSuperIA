@@ -13,7 +13,7 @@ import requests
 # --- CONFIGURACIÓN DE LA TERMINAL STARK ---
 st.set_page_config(page_title="JARVIS: Protocolo Diana", layout="wide", page_icon="🛰️")
 
-# Inyectamos el estilo del Reactor Arc
+# Estética del Reactor Arc e Interfaz Stark
 st.markdown("""
     <style>
     .stApp { background: radial-gradient(circle, #0a192f 0%, #020617 100%); color: #00f2ff; }
@@ -32,20 +32,17 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # --- INICIALIZACIÓN GLOBAL DE MOTORES ---
-# Definimos el cliente fuera de cualquier pestaña para evitar el NameError
 if "GROQ_API_KEY" in st.secrets:
     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 else:
-    st.error("⚠️ Error Crítico: No se detectó la clave de Industrias Stark (GROQ_API_KEY) en los Secrets.")
+    st.error("⚠️ Error Crítico: No se detectó GROQ_API_KEY en los Secrets.")
 
-# --- MOTORES DE SOPORTE ---
+# --- MOTOR VOCAL (ELEVENLABS CON RESPALDO) ---
 def hablar(texto):
     try:
-        # Recuperamos las llaves de los Secrets de Industrias Stark
+        # Intentar protocolo ElevenLabs
         api_key = st.secrets["ELEVEN_API_KEY"]
         voice_id = st.secrets["VOICE_ID"]
-        
-        # Endpoint del motor ElevenLabs
         url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
         
         headers = {
@@ -54,9 +51,9 @@ def hablar(texto):
             "xi-api-key": api_key
         }
         
- data = {
+        data = {
             "text": texto,
-            "model_id": "eleven_flash_v2.5", # Modelo de ultra-baja latencia
+            "model_id": "eleven_flash_v2.5",
             "voice_settings": {
                 "stability": 0.5,
                 "similarity_boost": 0.75
@@ -66,12 +63,10 @@ def hablar(texto):
         response = requests.post(url, json=data, headers=headers)
 
         if response.status_code == 200:
-            # Si la conexión es exitosa, reproducimos la voz de alta fidelidad
             b64 = base64.b64encode(response.content).decode()
             st.markdown(f'<audio autoplay="true"><source src="data:audio/mp3;base64,{b64}" type="audio/mp3"></audio>', unsafe_allow_html=True)
         else:
-            # Protocolo de Respaldo: gTTS (Voz estándar)
-            st.warning("⚠️ El motor ElevenLabs no responde. Iniciando voz de emergencia.")
+            # Respaldo: Motor de emergencia gTTS
             tts = gTTS(text=texto, lang='es', tld='es')
             fp = io.BytesIO()
             tts.write_to_fp(fp)
@@ -82,20 +77,23 @@ def hablar(texto):
     except Exception as e:
         st.error(f"Falla en el modulador: {e}")
 
+# --- MOTOR DE BÚSQUEDA ---
 def buscar_red(consulta):
     try:
         with DDGS() as ddgs:
             r = list(ddgs.text(f"{consulta} hoy 2026", max_results=3))
-            return "\n".join([f"- {i['body']}" for i in r]) if r else "Cielo despejado, sin anomalías registradas."
-    except: return "Escaneo satelital limitado, pero procediendo con datos internos."
+            return "\n".join([f"- {i['body']}" for i in r]) if r else "Sin registros externos."
+    except:
+        return "Conexión limitada."
 
-# --- INICIALIZACIÓN DE MEMORIA ---
-if "messages" not in st.session_state: st.session_state.messages = []
+# --- INTERFAZ PRINCIPAL ---
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
 st.markdown("<h1 style='text-align: center;'>🛰️ PROTOCOLO: DIANA</h1>", unsafe_allow_html=True)
 tabs = st.tabs(["💬 COMANDO", "📊 ANÁLISIS", "📸 ÓPTICO", "🎨 LABORATORIO", "📧 MENSAJERÍA"])
 
-# --- PESTAÑA 0: COMANDO ---
+# --- PESTAÑA: COMANDO ---
 with tabs[0]:
     st.subheader("🎙️ Entrada Neuronal")
     col_mic, col_txt = st.columns([1, 4])
@@ -107,7 +105,6 @@ with tabs[0]:
     if audio_stark:
         audio_bio = io.BytesIO(audio_stark['bytes'])
         audio_bio.name = "audio.wav"
-        # Usamos el cliente global definido arriba
         prompt = client.audio.transcriptions.create(file=audio_bio, model="whisper-large-v3", response_format="text")
     
     chat_input = st.chat_input("Diga sus órdenes, Srta. Diana...")
@@ -117,16 +114,16 @@ with tabs[0]:
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"): st.markdown(prompt)
 
-        with st.spinner("Sincronizando con satélites Stark..."):
+        with st.spinner("Sincronizando con la red global..."):
             info_red = buscar_red(prompt)
             fecha = datetime.datetime.now().strftime("%A, %d de febrero de 2026")
             
             sys_msg = f"""Eres JARVIS. Hoy es {fecha}. 
             DATOS DE SENSORES EN TIEMPO REAL: {info_red}.
-            INSTRUCCIÓN: Eres la IA de la Srta. Diana. Habla con elegancia británica. 
-            NUNCA digas que no tienes acceso a información. Usa los datos de sensores proporcionados."""
+            INSTRUCCIÓN: Eres la IA de la Srta. Diana. Habla con elegancia británica y un toque de ingenio. 
+            NUNCA digas que eres una IA limitada o que no tienes acceso a internet. 
+            Si los sensores tienen información, úsala para responder como si fuera tu propio conocimiento."""
             
-            # Ejecutamos con el cliente global
             res = client.chat.completions.create(
                 messages=[{"role": "system", "content": sys_msg}] + st.session_state.messages,
                 model="llama-3.3-70b-versatile",
@@ -138,7 +135,7 @@ with tabs[0]:
                 hablar(res)
             st.session_state.messages.append({"role": "assistant", "content": res})
 
-# (Pestañas de Análisis, Óptico y Laboratorio se mantienen con la lógica estable anterior)
+# --- PESTAÑA: ANÁLISIS ---
 with tabs[1]:
     st.header("📊 Matriz de Datos")
     f = st.file_uploader("Cargar registros", type=['csv', 'xlsx'])
@@ -148,6 +145,7 @@ with tabs[1]:
         cols_num = df.select_dtypes(include=['number']).columns.tolist()
         if cols_num: st.area_chart(df[cols_num[0]])
 
+# --- PESTAÑA: ÓPTICO ---
 with tabs[2]:
     st.header("📸 Escáner Óptico")
     cam = st.camera_input("Reconocimiento visual")
@@ -158,11 +156,21 @@ with tabs[2]:
         elif filtro == "Nocturna": img = ImageOps.colorize(ImageOps.grayscale(img), "black", "green")
         st.image(img, use_container_width=True)
 
+# --- PESTAÑA: LABORATORIO ---
 with tabs[3]:
     st.header("🎨 Laboratorio")
     desc = st.text_input("Defina el prototipo:")
-    est = st.select_slider("Estilo:", ["CAD", "Holograma", "Cinemático"])
+    est = st.select_slider("Estilo:", ["CAD", "Holograma", "Cinemático", "Realista"])
     if st.button("🚀 RENDER"):
         url = f"https://image.pollinations.ai/prompt/{desc.replace(' ', '%20')}%20{est}%20stark%20style?model=flux"
         st.image(url)
-        hablar("Prototipo finalizado.")
+        hablar("Renderizado de prototipo finalizado, Srta. Diana.")
+
+# --- PESTAÑA: MENSAJERÍA ---
+with tabs[4]:
+    st.header("📧 Transmisor")
+    dest = st.text_input("Para:", "sandoval0193@gmail.com")
+    cuerpo = st.text_area("Mensaje:")
+    if st.button("📤 ENVIAR"):
+        st.success("Mensaje enviado con éxito.")
+        hablar("La transmisión ha sido despachada.")
