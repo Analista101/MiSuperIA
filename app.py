@@ -116,52 +116,49 @@ with tabs[2]:
         with col_v2:
             st.warning("⚠️ SATÉLITES DE VISIÓN EN MANTENIMIENTO")
             st.write("Srta. Diana, Groq ha desactivado temporalmente sus modelos de visión. Los filtros visuales internos (Térmico/Nocturno) siguen operativos.")
-# --- 4. PESTAÑA: LABORATORIO CREATIVO (MARK 55 - BASE64 BYPASS) ---
+# --- 4. PESTAÑA: LABORATORIO CREATIVO (MARK 56 - RESILIENCIA TOTAL) ---
 with tabs[3]:
-    st.subheader("🎨 Estación de Diseño Mark 55")
+    st.subheader("🎨 Estación de Diseño Mark 56")
     c1, c2 = st.columns([2, 1])
     
     with c2:
         estilo = st.selectbox("Estilo Visual:", [
             "Cinematic", "Blueprint", "Cyberpunk", "Hyper-Realistic", 
-            "Anime", "Retro-Futurism", "Steampunk", "Neon Glow"
+            "Anime", "Retro-Futurism", "Steampunk"
         ])
-        detalles = st.select_slider("Calidad:", options=["Draft", "Standard", "Masterpiece"])
-    
+        
     with c1:
-        diseno = st.text_area("Descripción:", placeholder="Ej: Casco Mark 85 en pedestal de oro...")
+        diseno = st.text_area("Descripción:", placeholder="Ej: Nueva armadura Mark 85...")
         
         if st.button("🚀 INICIAR SÍNTESIS"):
             if diseno:
-                with st.spinner("Sintetizando y decodificando imagen..."):
-                    try:
-                        import random, requests, base64
-                        seed = random.randint(0, 999999)
-                        
-                        # Construcción del prompt
-                        prompt_url = f"{diseno}, {estilo} style, high quality".replace(" ", "%20")
-                        url = f"https://image.pollinations.ai/prompt/{prompt_url}?model=flux&width=1024&height=1024&seed={seed}"
-                        
-                        # DESCARGA DIRECTA AL SERVIDOR
-                        response = requests.get(url, timeout=30)
-                        
-                        if response.status_code == 200:
-                            # CONVERSIÓN A BASE64 (El truco maestro)
-                            encoded_img = base64.b64encode(response.content).decode()
-                            mime_type = "image/jpeg"
-                            
-                            # Inyección mediante HTML para evitar bloqueos de Streamlit
-                            st.markdown(f"""
-                                <div style="border: 2px solid #00f2ff; border-radius: 15px; padding: 10px; background-color: #000; text-align: center;">
-                                    <img src="data:{mime_type};base64,{encoded_img}" style="width: 100%; border-radius: 10px;" />
-                                    <p style="color: #00f2ff; margin-top: 10px; font-family: monospace;">PROTOCOL {estilo} COMPLETED</p>
-                                </div>
-                            """, unsafe_allow_html=True)
-                            
-                            hablar(f"Protocolo finalizado. El renderizado del {diseno} ha sido inyectado con éxito, Srta. Diana.")
-                        else:
-                            st.error(f"Falla de enlace (Código {response.status_code}). Intente en 10 segundos.")
-                    except Exception as e:
-                        st.error(f"Falla en el sintetizador: {e}")
+                with st.spinner("Sintetizando..."):
+                    import random
+                    seed = random.randint(0, 999999)
+                    # Limpiamos el texto para la URL
+                    prompt_clean = diseno.replace(" ", "+")
+                    style_clean = estilo.replace(" ", "+")
+                    
+                    # Usamos una URL de respaldo que suele evadir el error 530
+                    url = f"https://pollinations.ai/p/{prompt_clean}+{style_clean}?width=1024&height=1024&seed={seed}&nofeed=true"
+                    
+                    # Intentamos la carga visual
+                    st.markdown(f"""
+                        <div style="border: 2px solid #00f2ff; border-radius: 15px; padding: 10px; background-color: #000; text-align: center;">
+                            <img src="{url}" style="width: 100%; border-radius: 10px;" onerror="this.onerror=null; this.src='https://via.placeholder.com/1024x1024.png?text=ERROR+DE+ENLACE+REINTENTANDO...';">
+                            <p style="color: #00f2ff; margin-top: 10px;">PROTOCOL {estilo} ACTIVE</p>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # BOTÓN DE RESPALDO: Si la imagen falla en el cuadro, este enlace SIEMPRE funciona
+                    st.markdown(f'''
+                        <a href="{url}" target="_blank" style="text-decoration: none;">
+                            <div style="background-color: #00f2ff; color: black; padding: 10px; border-radius: 5px; text-align: center; font-weight: bold; margin-top: 10px;">
+                                🛰️ ABRIR PROTOTIPO EN PANTALLA COMPLETA
+                            </div>
+                        </a>
+                    ''', unsafe_allow_html=True)
+                    
+                    hablar(f"He generado el renderizado, Srta. Diana. Si el cortafuegos bloquea la vista previa, use el botón de pantalla completa.")
             else:
-                st.warning("Srta. Diana, indique los parámetros del prototipo.")
+                st.warning("Srta. Diana, proporcione los datos del diseño.")
