@@ -81,20 +81,14 @@ with tabs[0]:
             hablar(res)
         st.session_state.mensajes.append({"role": "assistant", "content": res})
 
-# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (CUADRO DE TEXTO PARA PEGAR) ---
+# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (VERSIÓN BLINDADA v67.1) ---
 with tabs[1]:
     st.subheader("📊 Centro de Inteligencia Mark 67")
     st.write("Pegue su imagen directamente en el cuadro de abajo (Ctrl+V):")
 
-    # Inyección de JavaScript para capturar el pegado (Paste Event)
-    # Este componente crea un área "editable" que captura la imagen del portapapeles
-    from streamlit_extras.colored_header import colored_header
     import streamlit.components.v1 as components
 
-    # 1. El receptor de datos (oculto para procesar lo que envíe el JS)
-    img_data = st.text_input("Token de datos (oculto)", key="hidden_data", label_visibility="collapsed")
-
-    # 2. El Cuadro de Texto Real para Pegar (HTML + JS)
+    # Cuadro de Texto Real para Pegar (HTML + JS) - Sin dependencias externas
     components.html(
         """
         <div id="paste_area" contenteditable="true" style="
@@ -106,9 +100,10 @@ with tabs[1]:
             display: flex; 
             align-items: center; 
             justify-content: center;
-            font-family: monospace;
-            cursor: text;">
-            CLIC AQUÍ Y PEGUE (CTRL+V)
+            font-family: 'Courier New', monospace;
+            cursor: text;
+            outline: none;">
+            CLIC AQUÍ Y PEGUE LA IMAGEN (CTRL+V)
         </div>
 
         <script>
@@ -121,13 +116,13 @@ with tabs[1]:
                     const blob = item.getAsFile();
                     const reader = new FileReader();
                     reader.onload = (event) => {
-                        // Enviamos la imagen de vuelta a Streamlit (vía el componente)
                         window.parent.postMessage({
                             type: 'streamlit:setComponentValue',
                             value: event.target.result
                         }, '*');
                     };
                     reader.readAsDataURL(blob);
+                    pasteArea.innerHTML = "IMAGEN RECIBIDA - PROCESANDO...";
                 }
             }
         });
@@ -136,18 +131,14 @@ with tabs[1]:
         height=180,
     )
 
-    # 3. Procesamiento de la imagen pegada
-    # Nota: Usamos un file_uploader de respaldo automático porque Streamlit 
-    # nativamente permite pegar si haces clic en él.
     st.markdown("---")
-    st.write("Respaldo táctico (si el cuadro superior falla en su navegador):")
-    captura = st.file_uploader("Cuadro de entrada rápida", type=['png', 'jpg', 'jpeg'], key="backup_paste")
+    st.caption("Respaldo táctico: Si prefiere el método estándar, use el receptor de abajo.")
+    captura = st.file_uploader("Entrada rápida de archivos", type=['png', 'jpg', 'jpeg'], key="backup_paste")
 
     if captura:
+        from PIL import Image
         img = Image.open(captura)
         st.image(img, caption="Evidencia detectada", use_container_width=True)
-        if st.button("🧠 ANALIZAR CAPTURA"):
-            hablar("He recibido la imagen, Srta. Diana. Iniciando análisis de superficie.")
 
 # --- 3. PESTAÑA: ÓPTICO (CONSOLA DE DIAGNÓSTICO) ---
 with tabs[2]:
