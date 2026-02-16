@@ -129,48 +129,37 @@ with tabs[1]:
             except Exception as e:
                 st.error(f"Error en protocolos de lectura: {e}")
 
-# --- PESTAÑA 2: LABORATORIO (CORRECCIÓN DE IMAGEN ROTA) ---
+# --- PESTAÑA 2: LABORATORIO (SÍNTESIS POR FLUJO DE DATOS v139) ---
 with tabs[2]:
-    st.subheader("🎨 Estación de Diseño Mark 68 (Con Respaldo)")
-    idea = st.text_input("Describa el prototipo a sintetizar:", key="lab_idea_138")
-    estilo = st.selectbox("Acabado Visual:", 
-                          ["Cinematic Marvel", "Blueprint Técnico", "Cyberpunk Neón", "Industrial Stark", "Digital Art"], key="lab_estilo_138")
+    st.subheader("🎨 Estación de Diseño Mark 69")
+    st.info("Sistema de renderizado interno activado para evitar bloqueos de red.")
     
-    if st.button("🚀 INICIAR SÍNTESIS", key="lab_button_138"):
+    idea = st.text_input("Describa el prototipo a sintetizar:", key="lab_139")
+    estilo = st.selectbox("Acabado:", ["Cinematic Marvel", "Blueprint Técnico", "Cyberpunk", "Industrial"], key="style_139")
+    
+    if st.button("🚀 INICIAR SÍNTESIS"):
         if idea:
-            with st.spinner("JARVIS preparando la matriz de renderizado..."):
+            with st.spinner("JARVIS descargando y procesando matriz de diseño..."):
                 try:
-                    prompt_render = f"{idea} {estilo}".replace(" ", "%20")
+                    # Codificamos el prompt para la terminal
+                    prompt_final = f"{idea} {estilo}".replace(" ", "%20")
+                    # Usamos el motor más estable con parámetros de semilla aleatoria
+                    url = f"https://image.pollinations.ai/prompt/{prompt_final}?nologo=true&seed={st.session_state.get('seed', 42)}"
                     
-                    # --- INTENTO 1: Pollinations.ai (Con validación) ---
-                    url_principal = f"https://pollinations.ai/p/{prompt_render}?width=1024&height=1024&seed=123&model=flux"
+                    # DESCARGA INTERNA: El servidor descarga la imagen, no su navegador
+                    response = requests.get(url, timeout=20)
                     
-                    # Intentamos descargar la imagen para verificarla
-                    response = requests.get(url_principal, stream=True, timeout=10) # Añadimos timeout
-                    response.raise_for_status() # Lanza excepción si hay error HTTP
-                    
-                    # Verificamos que sea una imagen válida
-                    img_data = response.content
-                    try:
-                        img = Image.open(io.BytesIO(img_data))
-                        st.image(img, caption=f"Prototipo: {idea} | Estilo: {estilo}", use_container_width=True)
-                        st.success("Renderizado principal completado.")
-                    except Image.UnidentifiedImageError:
-                        st.warning("⚠️ JARVIS: El servidor principal entregó una imagen corrupta. Intentando con respaldo...")
-                        # Si la imagen está corrupta, intentamos con el respaldo
-
-                        # --- INTENTO 2: Generador de respaldo (más genérico) ---
-                        url_respaldo = f"https://image.pollinations.ai/prompt/{prompt_render}?nologo=true"
-                        st.image(url_respaldo, caption=f"Prototipo (Respaldo): {idea} | Estilo: {estilo}", use_container_width=True)
-                        st.info("Renderizado de respaldo utilizado.")
-                    
-                except requests.exceptions.RequestException as req_err:
-                    st.error(f"🚨 Falla de red en renderizado: {req_err}. Intentando con respaldo...")
-                    # Si hay un error de red, intentamos con el respaldo
-                    url_respaldo = f"https://image.pollinations.ai/prompt/{prompt_render}?nologo=true"
-                    st.image(url_respaldo, caption=f"Prototipo (Respaldo): {idea} | Estilo: {estilo}", use_container_width=True)
-                    st.info("Renderizado de respaldo utilizado.")
+                    if response.status_code == 200:
+                        # Convertimos los bytes de la imagen para visualización directa
+                        img_bytes = io.BytesIO(response.content)
+                        img_final = Image.open(img_bytes)
+                        
+                        st.image(img_final, caption=f"Prototipo: {idea}", use_container_width=True)
+                        st.success("Diseño materializado exitosamente.")
+                    else:
+                        st.error(f"Error de enlace con el satélite: Código {response.status_code}")
+                        
                 except Exception as e:
-                    st.error(f"Falla crítica en estación de diseño: {e}")
+                    st.error(f"Falla crítica en el ensamblaje: {e}")
         else:
-            st.warning("Srta. Diana, necesito una descripción del prototipo para iniciar la síntesis.")
+            st.warning("Srta. Diana, proporcione los parámetros del diseño.")
