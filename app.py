@@ -123,7 +123,8 @@ with tabs[2]:
                         # --- MANIOBRA DE BYPASS (MÉTODO 3) ---
                         api_key = st.secrets["GOOGLE_API_KEY"]
                         # Forzamos la URL a la versión estable 'v1' para evitar el error 404 de la beta
-                        url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={api_key}"
+                     # --- MANIOBRA DE EMERGENCIA: CAMBIO DE FRECUENCIA A MODELO LEGACY ---
+url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent?key={api_key}"
                         
                         # Convertimos la imagen a bytes y luego a Base64
                         buf = io.BytesIO()
@@ -158,7 +159,7 @@ with tabs[2]:
                         st.error(f"Falla crítica en el enlace manual: {e}")
             else:
                 st.error("⚠️ No se detecta la llave de acceso en los sistemas.")
-                
+
 # --- PESTAÑA 3: LABORATORIO CREATIVO ---
 with tabs[3]:
     st.subheader("🎨 Estación de Diseño Mark 61")
