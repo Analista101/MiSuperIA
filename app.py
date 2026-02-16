@@ -44,31 +44,57 @@ except Exception as e:
 # --- 3. INTERFAZ TÁCTICA ---
 tabs = st.tabs(["💬 COMANDO GLOBAL", "📊 ANÁLISIS DOCS/IMG", "🎨 LABORATORIO"])
 
-# --- PESTAÑA 0: COMANDO GLOBAL CON ENLACES (v156) ---
+# --- PESTAÑA 0: COMANDO GLOBAL (RESTAURADO + ENLACES) ---
 with tabs[0]:
-    st.subheader("🎙️ Centro de Control e Inteligencia con Fuentes")
-    # ... (botones de mic y paster se mantienen igual que en la v155) ...
+    st.subheader("🎙️ Centro de Control e Inteligencia Global")
     
+    # MODULOS FISICOS RESTAURADOS
+    col_a, col_b, col_c = st.columns([1, 2, 1])
+    with col_a: 
+        mic_recorder(start_prompt="🎙️", stop_prompt="🛰️", key="mic_v157")
+    with col_b: 
+        pasted_img = paste_button(label="📋 PEGAR CAPTURA (CTRL+V)", key="paster_v157")
+    with col_c: 
+        if st.button("🗑️ LIMPIAR SISTEMA"): st.rerun()
+
     chat_input = st.chat_input("Órdenes, Srta. Diana...")
     
+    # LÓGICA DE PROCESAMIENTO
     if chat_input:
         with st.chat_message("assistant"):
-            with st.spinner("JARVIS: Navegando por la red y verificando fuentes..."):
-                # Instrucción específica para que JARVIS siempre proporcione links
+            with st.spinner("JARVIS: Consultando redes y verificando fuentes..."):
+                
+                # Instrucción blindada de personalidad y links
                 INSTRUCCION_RED = (
-                    f"{PERSONALIDAD} IMPORTANTE: Siempre que busques información en la red, "
-                    "proporciona una lista de 'FUENTES CONSULTADAS' con links directos (URL) "
-                    "al final de tu respuesta para que la Srta. Diana pueda acceder a ellos."
+                    f"{PERSONALIDAD} IMPORTANTE: Eres un asistente con acceso a la red. "
+                    "Para cualquier consulta sobre noticias o eventos, debes incluir "
+                    "links directos y clicables a tus fuentes al final de la respuesta."
                 )
-                
-                # Ejecución de la consulta
-                res = client.chat.completions.create(
-                    model=modelo_texto,
-                    messages=[{"role": "system", "content": INSTRUCCION_RED},
-                              {"role": "user", "content": chat_input}]
-                )
+
+                if pasted_img.image_data is not None:
+                    # Análisis Visual + Texto + Red
+                    img = pasted_img.image_data
+                    buffered = io.BytesIO()
+                    img.save(buffered, format="PNG")
+                    img_b64 = base64.b64encode(buffered.getvalue()).decode()
+                    
+                    res = client.chat.completions.create(
+                        model=modelo_vision,
+                        messages=[{"role": "system", "content": INSTRUCCION_RED},
+                                  {"role": "user", "content": [
+                                      {"type": "text", "text": chat_input},
+                                      {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{img_b64}"}}
+                                  ]}]
+                    )
+                else:
+                    # Búsqueda en Red + Texto
+                    res = client.chat.completions.create(
+                        model=modelo_texto,
+                        messages=[{"role": "system", "content": INSTRUCCION_RED},
+                                  {"role": "user", "content": chat_input}]
+                    )
                 st.write(res.choices[0].message.content)
-                
+
 # --- PESTAÑA 1: ANÁLISIS (ARCHIVOS PESADOS + IMÁGENES) ---
 with tabs[1]:
     st.subheader("📊 Escáner de Evidencia y Documentación")
