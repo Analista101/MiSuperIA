@@ -114,25 +114,42 @@ with tabs[1]:
                     st.success(res.choices[0].message.content)
             except Exception as e: st.error(f"Falla en el escaneo: {e}")
 
-# --- PESTAÑA 2: LABORATORIO (SÍNTESIS CON LLAVE HF) ---
+# --- PESTAÑA 2: LABORATORIO (NUEVA RUTA v154) ---
 with tabs[2]:
-    st.subheader("🎨 Estación de Diseño Mark 83")
-    idea = st.text_input("Defina el prototipo:")
-    estilo = st.selectbox("Estética:", ["Cinematic Marvel", "Technical Blueprint", "Cyberpunk", "Industrial Stark"])
+    st.subheader("🎨 Estación de Diseño Mark 84")
+    st.write("Conexión establecida con el Router de Hugging Face.")
     
-    if st.button("🚀 MATERIALIZAR", key="btn_final"):
+    idea = st.text_input("Defina el prototipo:", key="lab_154")
+    estilo = st.selectbox("Estética:", ["Cinematic Marvel", "Technical Blueprint", "Cyberpunk", "Industrial Stark"], key="style_154")
+    
+    if st.button("🚀 MATERIALIZAR", key="btn_v154"):
         if idea:
-            with st.spinner("Sintetizando a través de Hugging Face..."):
+            with st.spinner("JARVIS: Recalibrando sensores a través del Router..."):
                 try:
-                    API_URL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0"
-                    headers = {"Authorization": f"Bearer {HF_TOKEN}"}
-                    payload = {"inputs": f"{idea}, {estilo}, highly detailed, 8k", "options": {"wait_for_model": True}}
+                    # NUEVA URL DEL ROUTER REQUERIDA POR EL ERROR 410
+                    # Se añade la ruta de inferencia específica
+                    API_URL = "https://router.huggingface.co/hf-inference/models/stabilityai/stable-diffusion-xl-base-1.0"
                     
+                    headers = {
+                        "Authorization": f"Bearer {HF_TOKEN}",
+                        "Content-Type": "application/json"
+                    }
+                    
+                    payload = {
+                        "inputs": f"{idea}, {estilo}, highly detailed, 8k",
+                        "options": {"wait_for_model": True}
+                    }
+                    
+                    # El servidor de JARVIS hace el puente de datos
                     response = requests.post(API_URL, headers=headers, json=payload, timeout=60)
+                    
                     if response.status_code == 200:
+                        # Procesamos los bytes directamente para evitar bloqueos
                         img_bytes = io.BytesIO(response.content)
                         st.image(Image.open(img_bytes), caption=f"Prototipo: {idea}", use_container_width=True)
-                        st.success("Diseño materializado exitosamente.")
+                        st.success("Sintonía lograda con el nuevo Router.")
                     else:
-                        st.error(f"Error {response.status_code}: {response.text}")
-                except Exception as e: st.error(f"Falla de síntesis: {e}")
+                        st.error(f"Falla de protocolo {response.status_code}: {response.text}")
+                        
+                except Exception as e:
+                    st.error(f"Error en la matriz de renderizado: {e}")
