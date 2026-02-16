@@ -129,37 +129,36 @@ with tabs[1]:
             except Exception as e:
                 st.error(f"Error en protocolos de lectura: {e}")
 
-# --- PESTAÑA 2: LABORATORIO (SÍNTESIS POR FLUJO DE DATOS v139) ---
+# --- PESTAÑA 2: LABORATORIO (BYPASS DE PROTOCOLO v140) ---
 with tabs[2]:
-    st.subheader("🎨 Estación de Diseño Mark 69")
-    st.info("Sistema de renderizado interno activado para evitar bloqueos de red.")
+    st.subheader("🎨 Estación de Diseño Mark 70")
     
-    idea = st.text_input("Describa el prototipo a sintetizar:", key="lab_139")
-    estilo = st.selectbox("Acabado:", ["Cinematic Marvel", "Blueprint Técnico", "Cyberpunk", "Industrial"], key="style_139")
+    idea = st.text_input("Describa el prototipo a sintetizar:", key="lab_140")
+    estilo = st.selectbox("Acabado:", ["Cinematic Marvel", "Blueprint Técnico", "Cyberpunk", "Industrial"], key="style_140")
     
     if st.button("🚀 INICIAR SÍNTESIS"):
         if idea:
-            with st.spinner("JARVIS descargando y procesando matriz de diseño..."):
+            with st.spinner("JARVIS falsificando credenciales de acceso al satélite..."):
                 try:
-                    # Codificamos el prompt para la terminal
                     prompt_final = f"{idea} {estilo}".replace(" ", "%20")
-                    # Usamos el motor más estable con parámetros de semilla aleatoria
-                    url = f"https://image.pollinations.ai/prompt/{prompt_final}?nologo=true&seed={st.session_state.get('seed', 42)}"
+                    url = f"https://image.pollinations.ai/prompt/{prompt_final}?nologo=true"
                     
-                    # DESCARGA INTERNA: El servidor descarga la imagen, no su navegador
-                    response = requests.get(url, timeout=20)
+                    # --- EL DISFRAZ (HEADERS) ---
+                    # Esto hace que el servidor crea que somos un navegador Chrome real
+                    headers = {
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+                    }
+                    
+                    # Solicitud con el disfraz puesto
+                    response = requests.get(url, headers=headers, timeout=30)
                     
                     if response.status_code == 200:
-                        # Convertimos los bytes de la imagen para visualización directa
                         img_bytes = io.BytesIO(response.content)
                         img_final = Image.open(img_bytes)
-                        
                         st.image(img_final, caption=f"Prototipo: {idea}", use_container_width=True)
-                        st.success("Diseño materializado exitosamente.")
+                        st.success("Diseño materializado. Bloqueo 530 evadido con éxito.")
                     else:
-                        st.error(f"Error de enlace con el satélite: Código {response.status_code}")
+                        st.error(f"Falla de enlace: Código {response.status_code}. El servidor sigue rechazando la conexión.")
                         
                 except Exception as e:
-                    st.error(f"Falla crítica en el ensamblaje: {e}")
-        else:
-            st.warning("Srta. Diana, proporcione los parámetros del diseño.")
+                    st.error(f"Error en la matriz de infiltración: {e}")
