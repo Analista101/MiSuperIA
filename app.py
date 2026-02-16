@@ -8,6 +8,8 @@ from PIL import Image
 from streamlit_paste_button import paste_image_button as paste_button
 from streamlit_mic_recorder import mic_recorder
 import io, base64
+import torch
+from diffusers import StableDiffusionPipeline
 
 # --- 1. ESTÉTICA DE LA TORRE STARK (REACTOR ARC) ---
 st.set_page_config(page_title="JARVIS v137", layout="wide")
@@ -129,32 +131,30 @@ with tabs[1]:
             except Exception as e:
                 st.error(f"Error en protocolos de lectura: {e}")
 
-# --- PESTAÑA 2: LABORATORIO (MOTOR DE RESPALDO ESTABLE v141) ---
+# --- PESTAÑA 2: LABORATORIO (SÍNTESIS INTERNA v142) ---
 with tabs[2]:
-    st.subheader("🎨 Estación de Diseño Mark 71")
-    st.write("Conexión establecida con el Satélite de Respaldo (Stable Diffusion).")
+    st.subheader("🎨 Estación de Diseño Mark 72 (Generación Local)")
+    st.info("Iniciando motores de síntesis internos. No se requiere conexión con satélites externos.")
     
-    idea = st.text_input("Describa el prototipo a sintetizar:", key="lab_141")
-    estilo = st.selectbox("Acabado:", ["Cinematic Marvel", "Blueprint Técnico", "Cyberpunk", "Industrial"], key="style_141")
+    idea = st.text_input("Describa el prototipo:", key="lab_local")
     
-    if st.button("🚀 INICIAR SÍNTESIS"):
+    if st.button("🚀 INICIAR SÍNTESIS LOCAL"):
         if idea:
-            with st.spinner("JARVIS estableciendo enlace de datos secundario..."):
+            with st.spinner("JARVIS calentando núcleos de GPU para la síntesis..."):
                 try:
-                    # Limpiamos el texto para la URL
-                    prompt_final = f"{idea} {estilo}".replace(" ", "%20")
+                    # Cargamos el modelo base de Stable Diffusion
+                    model_id = "runwayml/stable-diffusion-v1-5"
                     
-                    # CAMBIO DE ESTRATEGIA: Usamos un motor de respaldo diferente (Stable Diffusion XL)
-                    # Este enlace es mucho más amigable con Streamlit y rara vez da 530
-                    url_sd = f"https://image.pollinations.ai/prompt/{prompt_final}?width=1024&height=1024&nologo=true&model=search"
+                    # Protocolo de carga optimizada para CPU (Streamlit Cloud suele usar CPU)
+                    pipe = StableDiffusionPipeline.from_pretrained(model_id, torch_dtype=torch.float32)
                     
-                    # Mostramos directamente. Si el 530 era por la IP del servidor de descarga,
-                    # dejar que el navegador del cliente (el suyo) cargue la imagen suele funcionar.
-                    st.image(url_sd, caption=f"Prototipo: {idea}", use_container_width=True)
+                    # Generación de la imagen
+                    image = pipe(idea).images[0]
                     
-                    st.success("Diseño materializado vía Satélite Secundario.")
+                    # Visualización inmediata
+                    st.image(image, caption=f"Prototipo materializado localmente: {idea}", use_container_width=True)
+                    st.success("Síntesis completada sin interferencias externas.")
                     
                 except Exception as e:
-                    st.error(f"Falla en el enlace secundario: {e}")
-        else:
-            st.warning("Srta. Diana, proporcione los parámetros del diseño.")
+                    st.error(f"Falla en los núcleos de energía: {e}")
+                    st.info("Srta. Diana, si el servidor es muy limitado, le sugiero usar una imagen de referencia.")

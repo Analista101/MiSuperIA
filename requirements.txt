@@ -8,3 +8,6 @@ requests
 streamlit-mic-recorder
 openpyxl
 streamlit-paste-button
+diffusers
+torch
+accelerate
