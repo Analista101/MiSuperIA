@@ -1,60 +1,85 @@
 import streamlit as st
 from groq import Groq
 from PIL import Image
+from streamlit_paste_button import paste_button # El nuevo sensor táctico
+from streamlit_mic_recorder import mic_recorder
 import io, base64
 
 # --- 1. ESTÉTICA DE LA TORRE STARK ---
-st.set_page_config(page_title="JARVIS v129", layout="wide")
+st.set_page_config(page_title="JARVIS v130", layout="wide")
 st.markdown("""
     <style>
     .stApp { background-color: #010409; color: #00f2ff; }
     .arc-reactor {
-        width: 50px; height: 50px; border-radius: 50%; margin: 10px auto;
+        width: 55px; height: 55px; border-radius: 50%; margin: 10px auto;
         background: radial-gradient(circle, #fff 0%, #00f2ff 40%, transparent 70%);
-        box-shadow: 0 0 20px #00f2ff; border: 1px solid #00f2ff;
+        box-shadow: 0 0 20px #00f2ff; border: 2px solid #00f2ff;
         animation: pulse 2s infinite;
     }
     @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
-    /* Estilo para que la zona de pegado se vea integrada */
-    .stFileUploader { border: 1px dashed #00f2ff; border-radius: 10px; padding: 10px; }
     </style>
     <div class="arc-reactor"></div>
     """, unsafe_allow_html=True)
 
-# --- 2. NÚCLEO DE INTELIGENCIA ---
+# --- 2. NÚCLEO INDEPENDIENTE ---
 if "GROQ_API_KEY" in st.secrets:
     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
     modelo_vision = "llama-3.2-11b-vision-preview"
+    modelo_texto = "llama-3.3-70b-versatile"
 else:
+    st.error("🚨 SRTA. DIANA: ACCESO DENEGADO. REVISE SECRETS.")
     st.stop()
 
-# --- 3. INTERFAZ DE COMANDO HÍBRIDA ---
-st.title("🛰️ TERMINAL DE COMANDO DIANA")
+# --- 3. INTERFAZ CENTRALIZADA ---
+st.title("🛰️ TERMINAL DE COMANDO HÍBRIDA")
 
-# Zona de Pegado (Aquí es donde debe hacer Ctrl+V)
-st.write("📋 **ZONA DE PEGADO:** Haga clic abajo y pulse **Ctrl+V** para subir pantallazos.")
-captura = st.file_uploader("", type=['png', 'jpg', 'jpeg'], label_visibility="collapsed")
+tabs = st.tabs(["💬 COMANDO Y CAPTURAS", "📊 ANÁLISIS DOCS", "🎨 LABORATORIO"])
 
-# Barra de Chat
-instruccion = st.chat_input("¿Qué desea que analice de esta captura, Srta. Diana?")
-
-if captura:
-    st.image(captura, width=350, caption="Captura detectada en el portapapeles")
+with tabs[0]:
+    st.subheader("📋 Sensor de Portapapeles e IA")
     
-    if instruccion:
-        with st.chat_message("assistant"):
-            try:
-                encoded_img = base64.b64encode(captura.getvalue()).decode('utf-8')
-                res = client.chat.completions.create(
-                    model=modelo_vision,
-                    messages=[{
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": f"Actúa como JARVIS. {instruccion}"},
-                            {"type": "image_url", "image_url": {"url": f"data:{captura.type};base64,{encoded_img}"}}
-                        ]
-                    }]
-                )
-                st.write(res.choices[0].message.content)
-            except Exception as e:
-                st.error(f"Falla en el sensor óptico: {e}")
+    col_a, col_b = st.columns([1, 4])
+    with col_a:
+        mic_recorder(start_prompt="🎙️", stop_prompt="🛰️", key="mic_130")
+    
+    # --- LA SOLUCIÓN DEFINITIVA ---
+    # Este botón detectará automáticamente si tiene una imagen copiada
+    pasted_image = paste_button(label="📋 PEGAR CAPTURA (CTRL+V)")
+
+    chat_msg = st.chat_input("Instrucciones para la imagen o consulta general...")
+
+    if pasted_image.image_data is not None:
+        img = pasted_image.image_data
+        st.image(img, caption="Imagen pegada desde el portapapeles", width=400)
+        
+        if chat_msg:
+            with st.spinner("JARVIS analizando captura..."):
+                try:
+                    # Convertir el objeto de imagen a base64
+                    buffered = io.BytesIO()
+                    img.save(buffered, format="PNG")
+                    img_str = base64.b64encode(buffered.getvalue()).decode()
+                    
+                    res = client.chat.completions.create(
+                        model=modelo_vision,
+                        messages=[{
+                            "role": "user",
+                            "content": [
+                                {"type": "text", "text": f"JARVIS, atiende a la Srta. Diana: {chat_msg}"},
+                                {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{img_str}"}}
+                            ]
+                        }]
+                    )
+                    st.write(res.choices[0].message.content)
+                except Exception as e:
+                    st.error(f"Falla en sensor: {e}")
+    
+    elif chat_msg:
+        # Lógica de texto puro si no hay imagen
+        res = client.chat.completions.create(
+            model=modelo_texto,
+            messages=[{"role": "user", "content": chat_msg}]
+        )
+        st.write(res.choices[0].message.content)
+
+# Pestañas de Análisis y Laboratorio (Código previo se mantiene integrado)

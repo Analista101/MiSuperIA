@@ -7,3 +7,4 @@ Pillow
 requests
 streamlit-mic-recorder
 openpyxl
+streamlit-paste-button
