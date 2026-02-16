@@ -129,19 +129,48 @@ with tabs[1]:
             except Exception as e:
                 st.error(f"Error en protocolos de lectura: {e}")
 
-# --- PESTAÑA 2: LABORATORIO (RENDERIZADO ESTABILIZADO v136) ---
+# --- PESTAÑA 2: LABORATORIO (CORRECCIÓN DE IMAGEN ROTA) ---
 with tabs[2]:
-    st.subheader("🎨 Estación de Diseño Mark 67")
-    idea = st.text_input("¿Qué prototipo desea sintetizar hoy?")
-    estilo = st.selectbox("Acabado Visual:", ["Cinematic Marvel", "Blueprint Técnico", "Cyberpunk Neón", "Industrial Stark"])
+    st.subheader("🎨 Estación de Diseño Mark 68 (Con Respaldo)")
+    idea = st.text_input("Describa el prototipo a sintetizar:", key="lab_idea_138")
+    estilo = st.selectbox("Acabado Visual:", 
+                          ["Cinematic Marvel", "Blueprint Técnico", "Cyberpunk Neón", "Industrial Stark", "Digital Art"], key="lab_estilo_138")
     
-    if st.button("🚀 INICIAR SÍNTESIS"):
+    if st.button("🚀 INICIAR SÍNTESIS", key="lab_button_138"):
         if idea:
-            with st.spinner("Sintetizando imagen de alta resolución..."):
+            with st.spinner("JARVIS preparando la matriz de renderizado..."):
                 try:
                     prompt_render = f"{idea} {estilo}".replace(" ", "%20")
-                    url_estabilizada = f"https://pollinations.ai/p/{prompt_render}?width=1024&height=1024&seed=123&model=flux"
-                    st.image(url_estabilizada, caption=f"Prototipo: {idea}", use_container_width=True)
-                    st.success("Renderizado completado.")
+                    
+                    # --- INTENTO 1: Pollinations.ai (Con validación) ---
+                    url_principal = f"https://pollinations.ai/p/{prompt_render}?width=1024&height=1024&seed=123&model=flux"
+                    
+                    # Intentamos descargar la imagen para verificarla
+                    response = requests.get(url_principal, stream=True, timeout=10) # Añadimos timeout
+                    response.raise_for_status() # Lanza excepción si hay error HTTP
+                    
+                    # Verificamos que sea una imagen válida
+                    img_data = response.content
+                    try:
+                        img = Image.open(io.BytesIO(img_data))
+                        st.image(img, caption=f"Prototipo: {idea} | Estilo: {estilo}", use_container_width=True)
+                        st.success("Renderizado principal completado.")
+                    except Image.UnidentifiedImageError:
+                        st.warning("⚠️ JARVIS: El servidor principal entregó una imagen corrupta. Intentando con respaldo...")
+                        # Si la imagen está corrupta, intentamos con el respaldo
+
+                        # --- INTENTO 2: Generador de respaldo (más genérico) ---
+                        url_respaldo = f"https://image.pollinations.ai/prompt/{prompt_render}?nologo=true"
+                        st.image(url_respaldo, caption=f"Prototipo (Respaldo): {idea} | Estilo: {estilo}", use_container_width=True)
+                        st.info("Renderizado de respaldo utilizado.")
+                    
+                except requests.exceptions.RequestException as req_err:
+                    st.error(f"🚨 Falla de red en renderizado: {req_err}. Intentando con respaldo...")
+                    # Si hay un error de red, intentamos con el respaldo
+                    url_respaldo = f"https://image.pollinations.ai/prompt/{prompt_render}?nologo=true"
+                    st.image(url_respaldo, caption=f"Prototipo (Respaldo): {idea} | Estilo: {estilo}", use_container_width=True)
+                    st.info("Renderizado de respaldo utilizado.")
                 except Exception as e:
-                    st.error(f"Falla en estación de diseño: {e}")
+                    st.error(f"Falla crítica en estación de diseño: {e}")
+        else:
+            st.warning("Srta. Diana, necesito una descripción del prototipo para iniciar la síntesis.")
