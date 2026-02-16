@@ -92,28 +92,35 @@ with tabs[1]:
                 st.info(resp.text)
                 hablar("Análisis completado.")
 
-# --- PESTAÑA 2: ÓPTICO (EL PUNTO DEL ERROR) ---
+# --- PESTAÑA 2: ÓPTICO (MODO DIAGNÓSTICO) ---
 with tabs[2]:
-    st.subheader("📸 Sensores Ópticos")
-    cam = st.camera_input("Escáner Activo", key="cam_final")
+    st.subheader("📸 Sensores Ópticos y Diagnóstico de Red")
+    cam = st.camera_input("Captura de Campo", key="cam_diag")
+    
     if cam:
-        img_cam = Image.open(cam)
-        # Filtros rápidos
-        f_modo = st.selectbox("Espectro:", ["Normal", "Térmico", "Nocturno"])
-        if f_modo == "Térmico": img_cam = ImageOps.colorize(ImageOps.grayscale(img_cam), "blue", "red")
-        elif f_modo == "Nocturno": img_cam = ImageOps.colorize(ImageOps.grayscale(img_cam), "black", "green")
-        st.image(img_cam, width=400)
+        st.image(cam, width=400, caption="Captura recibida en el buffer")
         
-        if st.button("🔍 ANÁLISIS TÁCTICO"):
+        if st.button("🔍 INICIAR PRUEBA DE ENLACE"):
             if model_chat:
-                with st.spinner("Conectando con satélite..."):
+                with st.spinner("Intentando comunicación con el núcleo..."):
                     try:
-                        # Forzamos la estructura de lista para evitar el NotFound
-                        res_c = model_chat.generate_content(["Describe esta captura como JARVIS.", img_cam])
-                        st.success(res_c.text)
-                        hablar("Diagnóstico óptico listo.")
+                        # PRUEBA 1: Intentamos enviar la imagen
+                        img_cam = Image.open(cam)
+                        res = model_chat.generate_content(["Describe esta imagen brevemente.", img_cam])
+                        st.success(f"✅ ENLACE ÓPTICO ACTIVO: {res.text}")
+                        hablar("Sensores ópticos en línea, Srta. Diana.")
+                    
                     except Exception as e:
-                        st.error("Error de enlace. Por favor, verifique su nueva API Key.")
+                        st.warning("⚠️ El sensor óptico ha fallado. Intentando respaldo de texto puro...")
+                        try:
+                            # PRUEBA 2: Si la imagen falla, probamos solo texto
+                            res_texto = model_chat.generate_content("JARVIS, responde 'Sistemas de texto operativos' si puedes leerme.")
+                            st.info(f"📡 RESPALDO EXITOSO: {res_texto.text}")
+                            st.write("Diagnóstico: Su API Key funciona para texto, pero Google bloquea la visión en esta zona o proyecto.")
+                            hablar("El núcleo responde, pero los sensores de visión están bloqueados por el protocolo regional.")
+                        except Exception as e2:
+                            st.error(f"🚨 FALLA TOTAL DE ENLACE: {e2}")
+                            st.write("Diagnóstico: La API Key es inválida o no tiene permisos de Generative AI.")
 
 # --- PESTAÑA 3: LABORATORIO CREATIVO ---
 with tabs[3]:
