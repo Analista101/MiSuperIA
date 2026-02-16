@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from PIL import Image, ImageOps
-from groq import Groq
+import google.generativeai as genai  # MIGRADO: Adios Groq
 from duckduckgo_search import DDGS
 import edge_tts
 import asyncio
@@ -28,6 +28,13 @@ st.markdown("""
     <div class="arc-reactor"></div>
     """, unsafe_allow_html=True)
 
+# --- CONFIGURACIÓN DE NÚCLEO GEMINI ---
+if "GOOGLE_API_KEY" in st.secrets:
+    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+    model_chat = genai.GenerativeModel('gemini-1.5-flash')
+else:
+    st.error("⚠️ CRÍTICO: Falta la GOOGLE_API_KEY en los secretos.")
+
 # --- MOTOR VOCAL (BRITÁNICO) ---
 async def generar_voz(texto):
     comunicador = edge_tts.Communicate(texto, "en-GB-RyanNeural", rate="+0%", pitch="-5Hz")
@@ -49,151 +56,87 @@ if "mensajes" not in st.session_state: st.session_state.mensajes = []
 st.markdown("<h1 style='text-align: center; color: #00f2ff;'>🛰️ JARVIS: SISTEMA INTEGRADO DIANA</h1>", unsafe_allow_html=True)
 tabs = st.tabs(["💬 COMANDO", "📊 ANÁLISIS UNIVERSAL", "📸 ÓPTICO", "🎨 LABORATORIO CREATIVO"])
 
-# --- 1. PESTAÑA: COMANDO (RECONECTADA) ---
+# --- 1. PESTAÑA: COMANDO (MIGRADA A GEMINI) ---
 with tabs[0]:
-    col_mic, col_txt = st.columns([1, 5])
-    prompt_final = None
-    with col_mic:
-        # Micrófono de emergencia siempre activo
-        audio_stark = mic_recorder(start_prompt="🎙️", stop_prompt="🛰️", key="mic_v50")
-    with col_txt:
-        chat_input = st.chat_input("Diga sus órdenes, Srta. Diana...")
+    chat_input = st.chat_input("Diga sus órdenes, Srta. Diana...")
     
-    if audio_stark:
-        with st.spinner("Descifrando frecuencia vocal..."):
-            audio_bio = io.BytesIO(audio_stark['bytes'])
-            audio_bio.name = "audio.wav"
-            client_w = Groq(api_key=st.secrets["GROQ_API_KEY"])
-            prompt_final = client_w.audio.transcriptions.create(file=audio_bio, model="whisper-large-v3", response_format="text")
-    elif chat_input:
-        prompt_final = chat_input
+    # Historial de Chat
+    for msj in st.session_state.mensajes:
+        with st.chat_message(msj["role"]): st.markdown(msj["content"])
 
-    if prompt_final:
-        st.session_state.mensajes.append({"role": "user", "content": prompt_final})
-        with st.chat_message("user"): st.markdown(prompt_final)
-        client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-        res = client.chat.completions.create(
-            messages=[{"role": "system", "content": "Eres JARVIS, elegante británico. Llama a la usuaria Srta. Diana."}] + st.session_state.mensajes,
-            model="llama-3.3-70b-versatile"
-        ).choices[0].message.content
-        with st.chat_message("assistant"):
-            st.markdown(res)
-            hablar(res)
-        st.session_state.mensajes.append({"role": "assistant", "content": res})
+    if chat_input:
+        st.session_state.mensajes.append({"role": "user", "content": chat_input})
+        with st.chat_message("user"): st.markdown(chat_input)
+        
+        try:
+            # Contexto de JARVIS para Gemini
+            contexto = "Eres JARVIS, el asistente de inteligencia artificial de Tony Stark. Eres elegante, británico, servicial y llamas a la usuaria 'Srta. Diana'."
+            response = model_chat.generate_content(f"{contexto} \n Usuario: {chat_input}")
+            res = response.text
+            
+            with st.chat_message("assistant"):
+                st.markdown(res)
+                hablar(res)
+            st.session_state.mensajes.append({"role": "assistant", "content": res})
+        except Exception as e:
+            st.error(f"Falla en el enlace neural: {e}")
 
-# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (MARK 97 - ADIÓS A GROQ) ---
+# --- 2. PESTAÑA: ANÁLISIS UNIVERSAL (MARK 98 - TOTAL GEMINI) ---
 with tabs[1]:
-    st.subheader("📊 Terminal de Inteligencia Mark 97 (Protocolo Gemini)")
-    
-    import google.generativeai as genai
-    from PIL import Image
+    st.subheader("📊 Terminal de Inteligencia Mark 98")
     try:
         from docx import Document
     except: pass
 
-    # 1. ENLACE CON LOS SERVIDORES DE GOOGLE
-    if "GOOGLE_API_KEY" in st.secrets:
-        genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-        # Usamos Gemini 1.5 Flash: es rápido, gratuito y estable
-        model_gemini = genai.GenerativeModel('gemini-1.5-flash')
-    else:
-        st.error("⚠️ Falta la GOOGLE_API_KEY en los secretos de la armadura.")
-
-    # 2. CARGADOR DE ARCHIVOS
-    archivo = st.file_uploader("📁 Inyectar Imagen o Documento:", type=["png", "jpg", "jpeg", "docx"], key="up97")
+    archivo = st.file_uploader("📁 Inyectar Imagen o Documento:", type=["png", "jpg", "jpeg", "docx"], key="up98")
 
     if archivo:
         if archivo.name.endswith('.docx'):
             doc = Document(archivo)
             content = "\n".join([p.text for p in doc.paragraphs])
-            st.session_state.tipo = "TEXTO"
-            st.session_state.datos = content
-            st.success("✔️ Documento Word analizado por los sensores.")
+            st.session_state.datos_stark = content
+            st.session_state.tipo_stark = "TEXTO"
+            st.success("✔️ Documento Word analizado.")
         else:
             img = Image.open(archivo)
-            st.session_state.tipo = "IMAGEN"
-            st.session_state.datos = img
+            st.session_state.datos_stark = img
+            st.session_state.tipo_stark = "IMAGEN"
             st.image(img, caption="Señal visual confirmada", width=350)
 
-    # 3. BOTÓN DE EJECUCIÓN (Ya no depende de Groq)
     st.write("---")
     if st.button("🔍 EJECUTAR ANÁLISIS DE JARVIS", type="primary", use_container_width=True):
-        if 'datos' in st.session_state:
-            with st.spinner("JARVIS procesando datos mediante el enlace Gemini..."):
+        if 'datos_stark' in st.session_state:
+            with st.spinner("JARVIS procesando datos..."):
                 try:
-                    prompt = "Actúa como JARVIS. Si es imagen de planta, di nombre común, científico y cuidados. Si es documento, resúmelo."
-                    
-                    # Gemini acepta la imagen o el texto directamente sin conversiones raras
-                    response = model_gemini.generate_content([prompt, st.session_state.datos])
-                    
+                    prompt_analisis = "Actúa como JARVIS. Identifica esta imagen o analiza este texto. Si es una planta, di nombre común, científico y cuidados. Sé extenso y elegante."
+                    # Gemini maneja ambos tipos de datos
+                    response = model_chat.generate_content([prompt_analisis, st.session_state.datos_stark])
                     st.markdown("### 📝 Informe Stark")
                     st.info(response.text)
-                    hablar("Análisis finalizado con éxito, Srta. Diana.")
+                    hablar("Análisis finalizado, Srta. Diana.")
                 except Exception as e:
-                    st.error(f"Falla de comunicación con Google: {e}")
+                    st.error(f"Falla en el escaneo: {e}")
         else:
-            st.warning("⚠️ Cargue un archivo primero.")
+            st.warning("⚠️ Sin datos en los sensores.")
 
-# --- 3. PESTAÑA: ÓPTICO (CONSOLA DE DIAGNÓSTICO) ---
+# --- 3. PESTAÑA: ÓPTICO (FILTROS) ---
 with tabs[2]:
     st.subheader("📸 Sensores Visuales")
     cam = st.camera_input("Activar Escáner")
     if cam:
-        img = Image.open(cam)
-        col_v1, col_v2 = st.columns(2)
-        with col_v1:
-            f_modo = st.selectbox("Filtro de Espectro:", ["Normal", "Grises", "Térmico", "Nocturno"])
-            if f_modo == "Grises": img = ImageOps.grayscale(img)
-            elif f_modo == "Térmico": img = ImageOps.colorize(ImageOps.grayscale(img), "blue", "red")
-            elif f_modo == "Nocturno": img = ImageOps.colorize(ImageOps.grayscale(img), "black", "green")
-            st.image(img, use_container_width=True)
-        with col_v2:
-            st.warning("⚠️ SATÉLITES DE VISIÓN EN MANTENIMIENTO")
-            st.write("Srta. Diana, Groq ha desactivado temporalmente sus modelos de visión. Los filtros visuales internos (Térmico/Nocturno) siguen operativos.")
+        img_cam = Image.open(cam)
+        f_modo = st.selectbox("Filtro de Espectro:", ["Normal", "Grises", "Térmico", "Nocturno"])
+        if f_modo == "Grises": img_cam = ImageOps.grayscale(img_cam)
+        elif f_modo == "Térmico": img_cam = ImageOps.colorize(ImageOps.grayscale(img_cam), "blue", "red")
+        elif f_modo == "Nocturno": img_cam = ImageOps.colorize(ImageOps.grayscale(img_cam), "black", "green")
+        st.image(img_cam, use_container_width=True)
 
-# --- 4. PESTAÑA: LABORATORIO CREATIVO (MARK 61 - INFALIBLE) ---
+# --- 4. PESTAÑA: LABORATORIO CREATIVO (MARK 61) ---
 with tabs[3]:
     st.subheader("🎨 Estación de Diseño Mark 61")
-    
-    c1, c2 = st.columns([2, 1])
-    with c2:
-        st.markdown("### 🛠️ Ajustes de Red")
-        estilo = st.selectbox("Estilo Visual:", [
-            "Cinematic", "Blueprint", "Cyberpunk", "Anime", "Realistic"
-        ])
-        st.caption("Nota: El renderizado se realiza mediante un puente directo de navegador para evitar el Error 1033.")
-    
-    with c1:
-        diseno = st.text_area("Descripción del prototipo:", placeholder="Ej: Nueva armadura Mark 85...")
-        
-        if st.button("🚀 INICIAR SÍNTESIS"):
-            if diseno:
-                # 1. Generamos los parámetros de forma local
-                import random
-                seed = random.randint(1, 1000000)
-                prompt_limpio = diseno.replace(" ", "%20")
-                style_limpio = estilo.replace(" ", "%20")
-                
-                # 2. Construimos la URL Maestra
-                # Usamos el motor de Pollinations pero con una estructura que Cloudflare no bloquea en el cliente
-                url_final = f"https://image.pollinations.ai/prompt/{prompt_limpio}%20{style_limpio}?width=1024&height=1024&nologo=true&seed={seed}"
-                
-                # 3. SOLUCIÓN INFALIBLE: Inyección de Iframe y enlace directo
-                # Esto obliga al navegador del usuario a cargar la imagen, saltándose el bloqueo del servidor
-                st.markdown(f"""
-                    <div style="border: 3px solid #00f2ff; border-radius: 15px; padding: 15px; background-color: #000; text-align: center; box-shadow: 0 0 25px rgba(0, 242, 255, 0.3);">
-                        <p style="color: #00f2ff; font-family: 'Courier New', monospace; font-weight: bold;">[ PROTOCOLO DE RENDERIZADO DIRECTO ACTIVADO ]</p>
-                        <img src="{url_final}" style="width: 100%; border-radius: 10px; margin-bottom: 15px;" alt="Sintetizando imagen...">
-                        <hr style="border: 0.5px solid #333;">
-                        <p style="color: #ffffff; font-size: 14px; margin-bottom: 10px;">Si la seguridad del navegador bloquea la vista previa:</p>
-                        <a href="{url_final}" target="_blank" style="text-decoration: none;">
-                            <div style="background: linear-gradient(90deg, #00f2ff, #0066ff); color: white; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer;">
-                                🛰️ ABRIR IMAGEN EN SATÉLITE EXTERNO
-                            </div>
-                        </a>
-                    </div>
-                """, unsafe_allow_html=True)
-                
-                hablar("Srta. Diana, he establecido el puente directo. La imagen debería materializarse en su pantalla ahora mismo.")
-            else:
-                st.warning("Srta. Diana, el sistema requiere una descripción para iniciar.")
+    diseno = st.text_area("Descripción del prototipo:")
+    if st.button("🚀 INICIAR SÍNTESIS"):
+        if diseno:
+            url_final = f"https://image.pollinations.ai/prompt/{diseno.replace(' ', '%20')}?width=1024&height=1024&nologo=true"
+            st.image(url_final, caption="Sintetizando imagen...")
+            hablar("Prototipo renderizado, Srta. Diana.")
