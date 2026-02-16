@@ -9,21 +9,75 @@ from streamlit_paste_button import paste_image_button as paste_button
 from streamlit_mic_recorder import mic_recorder
 import io, base64, random
 
-# --- 1. ESTÉTICA DE LA TORRE STARK (MARK 155) ---
-st.set_page_config(page_title="JARVIS v155", layout="wide")
+# --- 1. ESTÉTICA AVANZADA STARK HUD (MARK 158) ---
+st.set_page_config(page_title="JARVIS v158 - Sistema Táctico", layout="wide")
+
 st.markdown("""
     <style>
-    .stApp { background-color: #010409; color: #00f2ff; }
-    .arc-reactor {
-        width: 60px; height: 60px; border-radius: 50%; margin: 10px auto;
-        background: radial-gradient(circle, #fff 0%, #00f2ff 40%, transparent 70%);
-        box-shadow: 0 0 25px #00f2ff; border: 2px solid #00f2ff;
-        animation: pulse 2s infinite;
+    /* Fondo Espacial con Gradiente */
+    .stApp {
+        background: radial-gradient(circle at center, #0a192f 0%, #010409 100%);
+        color: #00f2ff;
+        font-family: 'Courier New', Courier, monospace;
     }
-    @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
-    .stButton>button { border: 1px solid #00f2ff; background: rgba(0, 242, 255, 0.1); color: #00f2ff; width: 100%; }
+    
+    /* Reactor Arc Animado con Aura */
+    .arc-reactor {
+        width: 80px; height: 80px; border-radius: 50%; margin: 20px auto;
+        background: radial-gradient(circle, #fff 0%, #00f2ff 30%, transparent 70%);
+        box-shadow: 0 0 30px #00f2ff, inset 0 0 20px #00f2ff;
+        border: 4px double #00f2ff;
+        animation: pulse 2s infinite ease-in-out;
+    }
+    
+    /* Barras de Energía Superiores */
+    .energy-bar {
+        height: 4px; background: linear-gradient(90deg, #00f2ff, transparent);
+        margin-bottom: 20px; border-radius: 2px;
+        animation: slide 3s infinite linear;
+    }
+    
+    /* Tarjetas de Cristal (Glassmorphism) */
+    div[data-testid="stVerticalBlock"] > div:has(div.stButton) {
+        background: rgba(0, 242, 255, 0.05);
+        border: 1px solid rgba(0, 242, 255, 0.2);
+        border-radius: 15px;
+        padding: 20px;
+        backdrop-filter: blur(10px);
+    }
+
+    /* Botones Tácticos */
+    .stButton>button {
+        border: 1px solid #00f2ff !important;
+        background: rgba(0, 242, 255, 0.1) !important;
+        color: #00f2ff !important;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        transition: 0.3s;
+        box-shadow: 0 0 10px rgba(0, 242, 255, 0.2);
+    }
+    .stButton>button:hover {
+        background: rgba(0, 242, 255, 0.3) !important;
+        box-shadow: 0 0 20px #00f2ff;
+        transform: scale(1.02);
+    }
+
+    /* Input HUD */
+    .stTextInput>div>div>input {
+        background-color: rgba(0, 0, 0, 0.5) !important;
+        color: #00f2ff !important;
+        border: 1px solid #00f2ff !important;
+    }
+
+    @keyframes pulse { 0% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); opacity: 0.8; } }
+    @keyframes slide { 0% { width: 0%; } 100% { width: 100%; } }
     </style>
+    
+    <div class="energy-bar"></div>
     <div class="arc-reactor"></div>
+    <div style="text-align: center; color: #00f2ff; font-size: 10px; letter-spacing: 5px; margin-bottom: 20px;">
+        SISTEMA OPERATIVO JARVIS - ACCESO NIVEL 7
+    </div>
     """, unsafe_allow_html=True)
 
 # --- 2. NÚCLEO Y CREDENCIALES ---
