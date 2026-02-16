@@ -9,40 +9,68 @@ from streamlit_paste_button import paste_image_button as paste_button
 from streamlit_mic_recorder import mic_recorder
 import io, base64, random
 
-# --- 1. PROTOCOLO DE IDENTIDAD AGRESIVA (MARK 161) ---
-# Usaremos una URL directa de alta prioridad para el reactor
-URL_REACTOR = "https://img.icons8.com/neon/256/iron-man.png" 
-
+# --- 1. PROTOCOLO DE ESTÉTICA AVANZADA STARK (MARK 162) ---
 st.set_page_config(
-    page_title="JARVIS", 
-    page_icon=URL_REACTOR, 
+    page_title="JARVIS - STARK INDUSTRIES", 
+    page_icon="https://img.icons8.com/neon/256/iron-man.png", 
     layout="wide"
 )
 
-# Inyección de Manifiesto en caliente para Android
-st.markdown(f"""
-    <script>
-        // Forzamos el cambio de icono en el DOM
-        var link = document.querySelector("link[rel*='icon']") || document.createElement('link');
-        link.type = 'image/x-icon';
-        link.rel = 'shortcut icon';
-        link.href = '{URL_REACTOR}';
-        document.getElementsByTagName('head')[0].appendChild(link);
-    </script>
-    <head>
-        <link rel="apple-touch-icon" href="{URL_REACTOR}">
-        <link rel="icon" sizes="192x192" href="{URL_REACTOR}">
-        <meta name="mobile-web-app-capable" content="yes">
-        <meta name="application-name" content="JARVIS">
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    </head>
+st.markdown("""
     <style>
-        .stApp {{ background: radial-gradient(circle at center, #0a192f 0%, #010409 100%); color: #00f2ff; }}
-        /* Ocultar elementos de marca de Streamlit que distraen */
-        #MainMenu {{visibility: hidden;}}
-        footer {{visibility: hidden;}}
-        header {{visibility: hidden;}}
+    /* Fondo de la Terminal Stark */
+    .stApp {
+        background: radial-gradient(circle at center, #0a192f 0%, #010409 100%) !important;
+        color: #00f2ff !important;
+        font-family: 'Courier New', Courier, monospace;
+    }
+
+    /* El Reactor Arc Central */
+    .arc-reactor {
+        width: 100px; height: 100px; border-radius: 50%; margin: 20px auto;
+        background: radial-gradient(circle, #fff 0%, #00f2ff 30%, transparent 70%);
+        box-shadow: 0 0 40px #00f2ff, inset 0 0 25px #00f2ff;
+        border: 4px double #00f2ff;
+        animation: pulse 2s infinite ease-in-out;
+    }
+
+    /* Líneas HUD de Datos */
+    .hud-line {
+        height: 2px; background: linear-gradient(90deg, transparent, #00f2ff, transparent);
+        margin: 10px 0; opacity: 0.5;
+    }
+
+    /* Contenedores de Cristal para las Pestañas */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 20px; background-color: transparent;
+    }
+    .stTabs [data-baseweb="tab"] {
+        height: 50px; background-color: rgba(0, 242, 255, 0.05);
+        border-radius: 10px 10px 0px 0px; color: #00f2ff; border: 1px solid rgba(0, 242, 255, 0.2);
+    }
+    .stTabs [aria-selected="true"] {
+        background-color: rgba(0, 242, 255, 0.2) !important;
+        border: 1px solid #00f2ff !important;
+    }
+
+    /* Personalización de Inputs y Botones */
+    input { background-color: rgba(0, 0, 0, 0.7) !important; color: #00f2ff !important; border: 1px solid #00f2ff !important; }
+    .stButton>button {
+        border: 1px solid #00f2ff !important; background: rgba(0, 242, 255, 0.1) !important;
+        color: #00f2ff !important; font-weight: bold; text-transform: uppercase;
+        box-shadow: 0 0 15px rgba(0, 242, 255, 0.3);
+    }
+    .stButton>button:hover { background: rgba(0, 242, 255, 0.4) !important; box-shadow: 0 0 25px #00f2ff; }
+
+    @keyframes pulse { 0% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); opacity: 0.8; } }
     </style>
+    
+    <div class="arc-reactor"></div>
+    <div class="hud-line"></div>
+    <div style="text-align: center; color: #00f2ff; font-size: 12px; letter-spacing: 4px;">
+        SISTEMA DE INTELIGENCIA JARVIS | PROTOCOLO DE SEGURIDAD STARK
+    </div>
+    <div class="hud-line"></div>
     """, unsafe_allow_html=True)
 
 # --- 2. NÚCLEO Y CREDENCIALES ---
