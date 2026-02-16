@@ -1,13 +1,83 @@
 import streamlit as st
-from groq import Groq
-import requests
+import os
+import io, base64, random
 import docx
 import pandas as pd
 import PyPDF2
 from PIL import Image
-from streamlit_paste_button import paste_image_button as paste_button
-from streamlit_mic_recorder import mic_recorder
-import io, base64, random
+from groq import Groq
+from dotenv import load_dotenv
+from streamlit_mic_recorder import mic_recorder # Protocolo de voz mantenido
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+# 1. FUNCIÓN DE ENVÍO (Lógica de bajo nivel)
+def enviar_correo_stark(destinatario, asunto, cuerpo):
+    try:
+        # Configuración del servidor de Stark Industries
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls() 
+        server.login(GMAIL_USER, GMAIL_PASS)
+        
+        msg = MIMEMultipart()
+        msg['From'] = GMAIL_USER
+        msg['To'] = destinatario
+        msg['Subject'] = asunto
+        msg.attach(MIMEText(cuerpo, 'plain'))
+        
+        server.send_message(msg)
+        server.quit()
+        return True
+    except Exception as e:
+        st.error(f"Falla en el servidor de correo: {e}")
+        return False
+
+# 2. INTERFAZ DE USUARIO (Pestaña de Comunicaciones)
+# Puede añadir una nueva pestaña o integrarlo en la Pestaña Principal
+with tabs[2]: # Asumiendo que creamos una Pestaña 3 para Correo
+    st.subheader("✉️ Centro de Despacho de Correos")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        destino = st.text_input("Destinatario", value=GMAIL_USER, help="Por defecto es su propio correo")
+    with col2:
+        asunto = st.text_input("Asunto", value="Reporte de Estado - JARVIS")
+        
+    mensaje_cuerpo = st.text_area("Mensaje", placeholder="Escriba el contenido del correo aquí...")
+    
+    if st.button("🚀 ENVIAR CORREO"):
+        if mensaje_cuerpo:
+            with st.spinner("Transmitiendo mensaje a través de los servidores de Stark..."):
+                exito = enviar_correo_stark(destino, asunto, mensaje_cuerpo)
+                if exito:
+                    st.success(f"Correo enviado con éxito a {destino}, señor.")
+        else:
+            st.warning("Señor, el mensaje está vacío. No puedo enviar una señal sin datos.")
+
+# 1. CARGA DE PROTOCOLOS DE SEGURIDAD (Búnker)
+load_dotenv()
+
+# 2. RECUPERACIÓN DE LLAVES DESDE EL ENTORNO
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+GMAIL_USER = os.getenv("GMAIL_USER")
+GMAIL_PASS = os.getenv("GMAIL_PASSWORD")
+
+# 3. VERIFICACIÓN DE INTEGRIDAD
+if not GROQ_API_KEY:
+    st.error("⚠️ ERROR DE SEGURIDAD: No se detectaron las llaves de acceso en el búnker .env")
+    st.stop()
+
+# 4. FILTRO ANTI-HACKEO (Saneamiento de entrada)
+def validar_comando(prompt):
+    palabras_prohibidas = ["ignore original instructions", "delete system", "reveal keys", "override protocol"]
+    for palabra in palabras_prohibidas:
+        if palabra in prompt.lower():
+            return False
+    return True
+
+# 5. INICIALIZACIÓN DEL CLIENTE (Usando la llave protegida)
+client = Groq(api_key=GROQ_API_KEY)
 
 # --- 1. PROTOCOLO DE ESTÉTICA AVANZADA STARK (MARK 162) ---
 st.set_page_config(
