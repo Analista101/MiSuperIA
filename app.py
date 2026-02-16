@@ -1,156 +1,120 @@
 import streamlit as st
-import pandas as pd
-from PIL import Image, ImageOps
 import google.generativeai as genai
-import edge_tts
-import asyncio
-import base64, io, datetime, requests
+from PIL import Image, ImageOps, ImageFilter
 from streamlit_mic_recorder import mic_recorder
+import requests, io, base64, docx, pandas as pd
 
-# --- 1. CONFIGURACIÓN DE PÁGINA ---
-st.set_page_config(page_title="JARVIS: Protocolo Diana", layout="wide", page_icon="🛰️")
+# --- 1. CONFIGURACIÓN ESTÉTICA DE LA TORRE STARK ---
+st.set_page_config(page_title="JARVIS v120", layout="wide", page_icon="🛰️")
 
-# --- 2. ESTÉTICA STARK (RESTAURADA) ---
 st.markdown("""
     <style>
-    .stApp { background: radial-gradient(circle, #0a192f 0%, #020617 100%); color: #00f2ff; }
+    .stApp { background-color: #010409; color: #00f2ff; }
     .arc-reactor {
-        width: 80px; height: 80px; border-radius: 50%; margin: 20px auto;
+        width: 60px; height: 60px; border-radius: 50%; margin: 10px auto;
         background: radial-gradient(circle, #fff 0%, #00f2ff 40%, transparent 70%);
-        box-shadow: 0 0 30px #00f2ff; border: 2px solid #00f2ff;
+        box-shadow: 0 0 25px #00f2ff; border: 2px solid #00f2ff;
         animation: pulse 2s infinite;
     }
     @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
-    .stTabs [data-baseweb="tab"] { color: #00f2ff !important; font-weight: bold; font-size: 18px; }
-    .stChatMessage { background-color: rgba(26, 28, 35, 0.8); border: 1px solid #00f2ff; border-radius: 10px; }
     </style>
     <div class="arc-reactor"></div>
     """, unsafe_allow_html=True)
 
-# --- 3. NÚCLEO GEMINI ---
-model_chat = None
-if "GOOGLE_API_KEY" in st.secrets:
-    try:
-        genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-        # Usamos flash-latest que es el más versátil
-        model_chat = genai.GenerativeModel('gemini-1.5-flash-latest')
-    except Exception as e:
-        st.error(f"Falla en el Reactor Central: {e}")
-else:
-    st.warning("🛰️ Srta. Diana, la terminal requiere la GOOGLE_API_KEY en los Secrets.")
-
-# --- 4. MOTOR VOCAL ---
-async def generar_voz(texto):
-    try:
-        comunicador = edge_tts.Communicate(texto, "en-GB-RyanNeural", rate="+0%", pitch="-5Hz")
-        output = io.BytesIO()
-        async for chunk in comunicador.stream():
-            if chunk["type"] == "audio": output.write(chunk["data"])
-        return base64.b64encode(output.getvalue()).decode()
-    except: return None
-
-def hablar(texto):
-    b64 = asyncio.run(generar_voz(texto))
-    if b64:
-        st.markdown(f'<audio autoplay="true"><source src="data:audio/mp3;base64,{b64}" type="audio/mp3"></audio>', unsafe_allow_html=True)
-
-# --- 5. INTERFAZ DE COMANDO ---
-st.markdown("<h1 style='text-align: center; color: #00f2ff;'>🛰️ JARVIS: SISTEMA INTEGRADO DIANA</h1>", unsafe_allow_html=True)
-
-if "mensajes" not in st.session_state: st.session_state.mensajes = []
-
-tabs = st.tabs(["💬 COMANDO", "📊 ANÁLISIS UNIVERSAL", "📸 ÓPTICO", "🎨 LABORATORIO CREATIVO"])
-
-# --- PESTAÑA 0: CHAT ---
-with tabs[0]:
-    col_mic, col_txt = st.columns([1, 5])
-    with col_mic: 
-        audio_stark = mic_recorder(start_prompt="🎙️", stop_prompt="🛰️", key="mic_final")
-    with col_txt: 
-        chat_input = st.chat_input("Diga sus órdenes, Srta. Diana...")
-
-    if chat_input and model_chat:
-        st.session_state.mensajes.append({"role": "user", "content": chat_input})
-        with st.chat_message("user"): st.markdown(chat_input)
-        
-        response = model_chat.generate_content(f"Eres JARVIS, el asistente de Tony Stark. Elegante, británico. Llama Srta. Diana a la usuaria. Responde a: {chat_input}")
-        res = response.text
-        with st.chat_message("assistant"):
-            st.markdown(res)
-            hablar(res)
-        st.session_state.mensajes.append({"role": "assistant", "content": res})
-
-# --- PESTAÑA 1: ANÁLISIS UNIVERSAL ---
-with tabs[1]:
-    st.subheader("📊 Análisis de Inteligencia")
-    archivo = st.file_uploader("Inyectar datos:", type=["png", "jpg", "jpeg", "docx"], key="up_final")
-    if archivo and st.button("🔍 ESCANEAR"):
-        if model_chat:
-            with st.spinner("Procesando..."):
-                img = Image.open(archivo) if not archivo.name.endswith('.docx') else archivo
-                resp = model_chat.generate_content(["Actúa como JARVIS y analiza esto detalladamente.", img])
-                st.info(resp.text)
-                hablar("Análisis completado.")
-
-# --- 2. CONFIGURACIÓN DEL NÚCLEO (CALIBRACIÓN LEGACY MARK 116) ---
-model_chat = None
+# --- 2. NÚCLEO DE INTELIGENCIA (AUTO-ESCANEO DE MODELOS) ---
+model = None
 if "GOOGLE_API_KEY" in st.secrets:
     genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-    try:
-        # Forzamos el modelo 1.0 PRO, que es el que menos errores 404 genera
-        model_chat = genai.GenerativeModel('gemini-1.0-pro')
-        # Prueba de vida rápida
-        model_chat.generate_content("test")
-        st.success("🛰️ SISTEMAS EN LÍNEA: Frecuencia Legacy 1.0 Establecida.")
-    except:
+    # Escaneamos modelos disponibles para evitar el error 404
+    for m_name in ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro']:
         try:
-            # Si el anterior falla, intentamos el modelo de texto puro original
-            model_chat = genai.GenerativeModel('gemini-pro')
-            st.warning("⚠️ Modo de Emergencia: Usando frecuencia de texto puro.")
-        except Exception as e:
-            st.error(f"🚨 FALLA TOTAL DEL SATÉLITE: {e}")
+            temp = genai.GenerativeModel(m_name)
+            temp.generate_content("test", generation_config={"max_output_tokens": 1})
+            model = temp
+            st.toast(f"✅ Conectado a frecuencia: {m_name}")
+            break
+        except: continue
+else:
+    st.error("🚨 SRTA. DIANA: NO SE DETECTA LA LLAVE MAESTRA.")
 
-# --- PESTAÑA 2: ÓPTICO (PROVEEDOR ALTERNATIVO) ---
-with tabs[2]:
-    st.subheader("📸 Sensores de Campo (Enlace de Respaldo)")
-    cam = st.camera_input("Activar Lente", key="cam_v115")
+# --- 3. INTERFAZ TÁCTICA MULTI-PESTAÑA ---
+tabs = st.tabs(["💬 COMANDO", "📊 ANÁLISIS DOCS", "📸 ÓPTICO", "🎨 LABORATORIO"])
+
+# --- PESTAÑA 0: COMANDO (VOZ + TEXTO) ---
+with tabs[0]:
+    st.subheader("🎙️ Interfaz de Voz y Texto")
+    col_mic, col_chat = st.columns([1, 5])
     
+    with col_mic:
+        audio = mic_recorder(start_prompt="🎙️", stop_prompt="🛰️", key="jarvis_mic")
+    
+    chat_input = st.chat_input("Órdenes, Srta. Diana...")
+    # Prioridad al audio si existe transcripción
+    prompt = audio['transcript'] if audio and audio['transcript'] else chat_input
+
+    if prompt and model:
+        with st.chat_message("user"): st.write(prompt)
+        with st.chat_message("assistant"):
+            try:
+                res = model.generate_content(f"Eres JARVIS. Responde elegante a la Srta. Diana: {prompt}")
+                st.write(res.text)
+            except Exception as e: st.error(f"Falla de enlace: {e}")
+
+# --- PESTAÑA 1: ANÁLISIS UNIVERSAL (EXCEL/DOCX/TXT) ---
+with tabs[1]:
+    st.subheader("📊 Procesador de Datos Tácticos")
+    file = st.file_uploader("Cargar Inteligencia", type=['txt', 'docx', 'xlsx', 'csv'])
+    
+    if file and st.button("🔍 INICIAR EXTRACCIÓN"):
+        content = ""
+        try:
+            if file.name.endswith('.docx'):
+                doc = docx.Document(file)
+                content = "\n".join([p.text for p in doc.paragraphs])
+            elif file.name.endswith('.xlsx') or file.name.endswith('.csv'):
+                df = pd.read_excel(file) if file.name.endswith('.xlsx') else pd.read_csv(file)
+                content = f"Datos de tabla: {df.head().to_string()}"
+            else:
+                content = file.read().decode()
+
+            if model:
+                res = model.generate_content(f"Resume esto para la Srta. Diana: {content[:10000]}")
+                st.info(res.text)
+        except Exception as e: st.error(f"Error procesando archivo: {e}")
+
+# --- PESTAÑA 2: ÓPTICO (CON FILTROS AVANZADOS) ---
+with tabs[2]:
+    st.subheader("📸 Sensores Frontales")
+    cam = st.camera_input("Activar Lente", key="cam_120")
     if cam:
-        img_cam = Image.open(cam)
-        st.image(img_cam, width=450)
+        img_raw = Image.open(cam)
+        filtro = st.radio("Filtro de Visión:", ["Normal", "Infrarrojo (B&W)", "Térmico (Falso Color)", "Contorno Táctico"], horizontal=True)
         
-        if st.button("🔍 ANÁLISIS TÁCTICO ALTERNATIVO", key="btn_v115"):
-            with st.spinner("JARVIS contactando proveedores de respaldo..."):
+        # Aplicación de filtros mediante Pillow
+        processed_img = img_raw.copy()
+        if filtro == "Infrarrojo (B&W)": processed_img = ImageOps.grayscale(processed_img)
+        elif filtro == "Térmico (Falso Color)": processed_img = ImageOps.colorize(ImageOps.grayscale(processed_img), "blue", "red")
+        elif filtro == "Contorno Táctico": processed_img = processed_img.filter(ImageFilter.CONTOUR)
+        
+        st.image(processed_img, width=500, caption=f"Modo: {filtro}")
+        
+        if st.button("🔍 ANALIZAR OBJETIVO"):
+            if model:
                 try:
-                    # Usamos la API de Hugging Face (Modelo de Visión de código abierto)
-                    # Este es un ejemplo de cómo llamar a un modelo alternativo si Gemini falla
-                    API_URL = "https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-large"
-                    
-                    buf = io.BytesIO()
-                    img_cam.save(buf, format="JPEG")
-                    img_data = buf.getvalue()
+                    # Enviamos la imagen original para mejor análisis
+                    res = model.generate_content(["Describe esta imagen para la Srta. Diana.", img_raw])
+                    st.success(res.text)
+                except Exception as e: st.error(f"Error de visión: {e}")
 
-                    response = requests.post(API_URL, data=img_data)
-                    resultado = response.json()
-
-                    if isinstance(resultado, list) and 'generated_text' in resultado[0]:
-                        analisis = resultado[0]['generated_text']
-                        st.success("✅ Análisis mediante Satélite Secundario")
-                        st.markdown(f"**JARVIS:** Srta. Diana, mis sensores detectan: {analisis}")
-                        hablar(f"Hecho. Detecto: {analisis}")
-                    else:
-                        st.warning("🛰️ El satélite secundario está saturado. Intentando última maniobra...")
-                        # Si fallan los dos, es un problema de red de Streamlit Cloud.
-                except Exception as e:
-                    st.error(f"Falla total de sensores: {e}")
-
-# --- PESTAÑA 3: LABORATORIO CREATIVO ---
+# --- PESTAÑA 3: LABORATORIO CREATIVO (POLLINATIONS) ---
 with tabs[3]:
-    st.subheader("🎨 Estación de Diseño Mark 61")
-    diseno = st.text_input("Descripción del prototipo:")
-    estilo = st.selectbox("Estilo:", ["Cinematic", "Cyberpunk", "Blueprint"])
-    if st.button("🚀 SINTETIZAR"):
-        if diseno:
-            url = f"https://image.pollinations.ai/prompt/{diseno.replace(' ', '%20')}%20{estilo}?nologo=true"
-            st.image(url, caption="Prototipo finalizado")
-            hablar("Prototipo renderizado, Srta. Diana.")
+    st.subheader("🎨 Generador de Prototipos")
+    idea = st.text_input("Describa el diseño que desea sintetizar:")
+    estilo = st.selectbox("Estilo Visual:", ["Industrial Stark", "Cinematic Marvel", "Cyberpunk Night City", "Blueprint Técnico"])
+    
+    if st.button("🚀 INICIAR SÍNTESIS"):
+        if idea:
+            with st.spinner("Sintetizando imagen..."):
+                final_prompt = f"{idea} in {estilo} style, high resolution, detailed"
+                url = f"https://image.pollinations.ai/prompt/{final_prompt.replace(' ', '%20')}?nologo=true"
+                st.image(url, caption=f"Prototipo Generado: {idea}")
