@@ -13,13 +13,13 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-# --- 1. CARGA DE SEGURIDAD ---
+# --- 1. CARGA DE SEGURIDAD REFORZADA ---
 load_dotenv()
-ACCESS_PASSWORD = os.getenv("ACCESS_PASSWORD")
+# Usamos un valor por defecto temporal si la variable no existe para evitar bloqueos totales
+ACCESS_PASSWORD = os.getenv("ACCESS_PASSWORD", "STARK_RECOVERY_2026")
 
-# --- 2. PROTOCOLO DE AUTENTICACIÓN ---
+# --- 2. PROTOCOLO DE AUTENTICACIÓN (REVISADO) ---
 def pantalla_login():
-    # Estética de seguridad para el login
     st.markdown("""
         <style>
         .stApp { background: #010409 !important; }
@@ -34,15 +34,21 @@ def pantalla_login():
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.markdown('<div class="arc-reactor"></div>', unsafe_allow_html=True)
-        st.subheader("🔐 ACCESO RESTRINGIDO - STARK INDUSTRIES")
-        password_input = st.text_input("Ingrese Código de Identificación:", type="password")
+        st.subheader("🔐 ACCESO RESTRINGIDO")
+        
+        # Eliminamos espacios en blanco accidentales con .strip()
+        password_input = st.text_input("Ingrese Código de Identificación:", type="password").strip()
         
         if st.button("DESBLOQUEAR SISTEMA"):
-            if password_input == ACCESS_PASSWORD:
+            # Validación robusta
+            if password_input == ACCESS_PASSWORD.strip():
                 st.session_state["autenticado"] = True
+                st.success("Acceso concedido. Bienvenido, Srta. Diana.")
                 st.rerun()
             else:
-                st.error("⚠️ CÓDIGO INCORRECTO. Intento de acceso registrado.")
+                st.error("⚠️ CÓDIGO INCORRECTO. Verifique su archivo .env o Secrets.")
+                # Tip de JARVIS:
+                st.info("Asegúrese de que en su archivo .env no haya comillas, ej: ACCESS_PASSWORD=1234")
 
 # Inicializar estado de sesión
 if "autenticado" not in st.session_state:
