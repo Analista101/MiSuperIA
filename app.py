@@ -113,41 +113,40 @@ with tabs[1]:
                     st.success(res.choices[0].message.content)
             except Exception as e: st.error(f"Falla en el escáner: {e}")
 
-# --- PESTAÑA 2: LABORATORIO (PUENTE DE MEMORIA v149) ---
+# --- PESTAÑA 2: LABORATORIO (SATÉLITE HUGGING FACE v150) ---
 with tabs[2]:
-    st.subheader("🎨 Estación de Diseño Mark 79")
+    st.subheader("🎨 Estación de Diseño Mark 80")
+    st.write("Generando a través de la Red Neuronal Hugging Face (Independiente).")
     
-    # Usamos un contenedor para refrescar la interfaz
-    with st.container():
-        idea = st.text_input("Descripción del diseño:", key="lab_149_input")
-        estilo = st.selectbox("Filtro:", ["Cinematic Marvel", "Blueprint Técnico", "Cyberpunk", "Industrial"], key="style_149_sel")
-        
-        # Botón con clave única para asegurar que Streamlit registre el clic
-        if st.button("🚀 MATERIALIZAR", key="btn_materialize_149"):
-            if idea:
-                with st.spinner("JARVIS: Generando matriz de píxeles..."):
-                    try:
-                        # 1. Generamos semilla para variabilidad
-                        seed = random.randint(1, 1000000)
-                        prompt_final = f"{idea} {estilo}".replace(" ", "%20")
-                        url = f"https://image.pollinations.ai/prompt/{prompt_final}?nologo=true&seed={seed}"
+    idea = st.text_input("Describa el prototipo:", key="input_hf")
+    estilo = st.selectbox("Acabado:", ["Cinematic", "Technical Drawing", "Cyberpunk", "Realistic"], key="style_hf")
+    
+    if st.button("🚀 MATERIALIZAR DISEÑO", key="btn_hf"):
+        if idea:
+            with st.spinner("JARVIS: Estableciendo túnel con Hugging Face..."):
+                try:
+                    # Usamos un modelo de alto rendimiento: Stable Diffusion XL
+                    # Esta URL es una API de inferencia, no una imagen directa
+                    API_URL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0"
+                    
+                    # El prompt se enriquece con el estilo
+                    payload = {"inputs": f"{idea}, {estilo}, high quality, 8k resolution"}
+                    
+                    # JARVIS realiza la petición técnica
+                    response = requests.post(API_URL, json=payload, timeout=40)
+                    
+                    if response.status_code == 200:
+                        # Recibimos los bytes de la imagen directamente
+                        image_bytes = response.content
+                        img_final = Image.open(io.BytesIO(image_bytes))
                         
-                        # 2. Descarga interna desde el servidor
-                        headers = {"User-Agent": "Mozilla/5.0"}
-                        response = requests.get(url, headers=headers, timeout=30)
+                        # Renderizado nativo de Streamlit
+                        st.image(img_final, caption=f"Prototipo: {idea}", use_container_width=True)
+                        st.success("Sintonía lograda. Imagen generada localmente en el servidor.")
+                    elif response.status_code == 503:
+                        st.warning("⚠️ El modelo se está cargando en el satélite. Reintente en 20 segundos.")
+                    else:
+                        st.error(f"Error de protocolo {response.status_code}: {response.text}")
                         
-                        if response.status_code == 200:
-                            # 3. CREACIÓN DE OBJETO DE MEMORIA (No Base64, no HTML)
-                            img_data = io.BytesIO(response.content)
-                            img_final = Image.open(img_data)
-                            
-                            # 4. Renderizado nativo (Más compatible)
-                            st.image(img_final, caption=f"Diseño: {idea}", use_container_width=True)
-                            st.success("Sintonía establecida con éxito.")
-                        else:
-                            st.error(f"Falla de enlace: Código {response.status_code}")
-                            
-                    except Exception as e:
-                        st.error(f"Error en el núcleo de renderizado: {e}")
-            else:
-                st.warning("Srta. Diana, necesito una descripción para iniciar la secuencia.")
+                except Exception as e:
+                    st.error(f"Falla en el enlace de Hugging Face: {e}")
