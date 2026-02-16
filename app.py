@@ -95,42 +95,12 @@ tabs = st.tabs(["💬 COMANDO GLOBAL", "📊 ANÁLISIS DOCS/IMG", "🎨 LABORATO
 with tabs[0]:
     st.subheader("🗨️ Interfaz de Comando Central")
     
-    # Añadimos un receptor discreto que permite pegar imágenes (Ctrl+V)
-    # En Streamlit, el file_uploader es el único que acepta el 'paste' del navegador
-    input_visual = st.file_uploader("Subir o pegar imagen (Ctrl+V)", type=['png', 'jpg', 'jpeg'], key="main_vision", label_visibility="collapsed")
-    
-    # El chat_input sigue para sus comandos de voz/texto
-    prompt = st.chat_input("Escriba su comando o pegue una imagen arriba...")
+    # Hemos removido el receptor de imágenes para limpiar la interfaz
+    prompt = st.chat_input("Escriba su comando, señor...")
 
-    if prompt or input_visual:
-        # Si hay una imagen, activamos el protocolo de visión
-        if input_visual:
-            with st.spinner("Analizando estímulo visual, señor..."):
-                try:
-                    img_file = Image.open(input_visual).convert("RGB")
-                    buffered = io.BytesIO()
-                    img_file.save(buffered, format="JPEG", quality=90)
-                    img_b64 = base64.b64encode(buffered.getvalue()).decode()
-                    
-                    # Usamos el nuevo modelo de visión que rescatamos
-                    res = client.chat.completions.create(
-                        model="llama-3.2-90b-vision-instant",
-                        messages=[
-                            {"role": "system", "content": PERSONALIDAD},
-                            {"role": "user", "content": [
-                                {"type": "text", "text": prompt if prompt else "Analice lo que aparece en pantalla, JARVIS."},
-                                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"}}
-                            ]}
-                        ]
-                    )
-                    respuesta = res.choices[0].message.content
-                    st.chat_message("jarvis", avatar="🚀").write(respuesta)
-                except Exception as e:
-                    st.error(f"Error en el sensor visual: {e}")
-        
-        # Si es solo texto
-        elif prompt:
-            with st.spinner("Consultando base de datos..."):
+    if prompt:
+        with st.spinner("Consultando base de datos de Stark Industries..."):
+            try:
                 res = client.chat.completions.create(
                     model=modelo_texto,
                     messages=[
@@ -138,7 +108,10 @@ with tabs[0]:
                         {"role": "user", "content": prompt}
                     ]
                 )
+                # Mostramos la respuesta con el protocolo habitual
                 st.chat_message("jarvis", avatar="🚀").write(res.choices[0].message.content)
+            except Exception as e:
+                st.error(f"Error en el enlace de comunicación: {e}")
 
 # --- PESTAÑA 1: ANÁLISIS (ARCHIVOS PESADOS + IMÁGENES) ---
 with tabs[1]:
