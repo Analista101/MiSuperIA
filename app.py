@@ -1,7 +1,7 @@
 import streamlit as st
 from groq import Groq
 from PIL import Image
-from streamlit_paste_button import paste_button # El nuevo sensor táctico
+from streamlit_paste_button import paste_image_button as paste_button
 from streamlit_mic_recorder import mic_recorder
 import io, base64
 
