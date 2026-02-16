@@ -1,16 +1,20 @@
 import streamlit as st
-import google.generativeai as genai
+from groq import Groq
+import requests
+import docx
+import pandas as pd
 from PIL import Image, ImageOps, ImageFilter
 from streamlit_mic_recorder import mic_recorder
-import requests, io, base64, docx, pandas as pd
 
-# --- 1. ESTÉTICA AVANZADA (EL REGRESO DEL REACTOR) ---
-st.set_page_config(page_title="JARVIS v122", layout="wide", page_icon="🛰️")
+# --- 1. ESTÉTICA DE LA TORRE STARK (AUDITADA) ---
+st.set_page_config(page_title="JARVIS v125", layout="wide")
 
+# CSS para mantener el look neón y el reactor
 st.markdown("""
     <style>
     .stApp { background-color: #010409; color: #00f2ff; }
     .stTabs [data-baseweb="tab"] { color: #00f2ff !important; font-size: 16px; }
+    .stButton>button { border: 1px solid #00f2ff; background-color: transparent; color: #00f2ff; width: 100%; }
     .arc-reactor {
         width: 60px; height: 60px; border-radius: 50%; margin: 10px auto;
         background: radial-gradient(circle, #fff 0%, #00f2ff 40%, transparent 70%);
@@ -22,93 +26,71 @@ st.markdown("""
     <div class="arc-reactor"></div>
     """, unsafe_allow_html=True)
 
-# --- 2. NÚCLEO DE INTELIGENCIA (AJUSTE DE FRECUENCIA ESTABLE) ---
-if "GOOGLE_API_KEY" in st.secrets:
-    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-    try:
-        # Forzamos el uso de la versión estable 'v1' y el nombre sin sufijos beta
-        model = genai.GenerativeModel(
-            model_name='gemini-1.5-flash',
-            # Esta configuración es la clave para evitar el 404 de v1beta
-        )
-        # Prueba de pulso rápida
-        model.generate_content("test")
-    except:
-        # Si Flash falla, saltamos al modelo Pro que es el tanque de reserva
-        model = genai.GenerativeModel('gemini-pro') 
+# --- 2. CONEXIÓN A LA RED INDEPENDIENTE (GROQ) ---
+if "GROQ_API_KEY" in st.secrets:
+    client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+    # Usamos Llama-3.3-70b: un modelo masivo y extremadamente inteligente
+    modelo_ia = "llama-3.3-70b-versatile"
 else:
-    st.error("🚨 LLAVE NO DETECTADA")
+    st.error("🚨 SRTA. DIANA: ACCESO DENEGADO. FALTA GROQ_API_KEY EN SECRETS.")
     st.stop()
 
 # --- 3. INTERFAZ TÁCTICA ---
-st.title("🛰️ SISTEMA INTEGRADO DIANA v122")
+st.title("🛰️ JARVIS: SISTEMA AUTÓNOMO v125")
 tabs = st.tabs(["💬 COMANDO", "📊 ANÁLISIS DOCS", "📸 ÓPTICO", "🎨 LABORATORIO"])
 
-# --- TAB 0: COMANDO (CHAT + VOZ) ---
+# --- PESTAÑA 0: COMANDO (VOZ + TEXTO) ---
 with tabs[0]:
-    st.subheader("🎙️ Centro de Comunicaciones")
     col_mic, col_chat = st.columns([1, 5])
     with col_mic:
-        audio = mic_recorder(start_prompt="🎙️", stop_prompt="🛰️", key="mic_122")
+        audio = mic_recorder(start_prompt="🎙️", stop_prompt="🛰️", key="mic_125")
     
-    # Usamos text_input para mayor fiabilidad si el chat_input falla
-    prompt_input = st.text_input("Órdenes para JARVIS (Presione Enter):", key="txt_122")
-    
-    # Procesar audio o texto
+    prompt_input = st.chat_input("Órdenes para JARVIS...")
     final_prompt = audio['transcript'] if audio and audio['transcript'] else prompt_input
 
     if final_prompt:
-        with st.spinner("JARVIS procesando..."):
+        with st.chat_message("user"): st.write(final_prompt)
+        with st.chat_message("assistant"):
             try:
-                res = model.generate_content(f"Eres JARVIS. Responde a la Srta. Diana: {final_prompt}")
-                st.info(f"**JARVIS:** {res.text}")
-            except Exception as e:
-                st.error(f"Falla de enlace: {e}")
+                completion = client.chat.completions.create(
+                    model=modelo_ia,
+                    messages=[
+                        {"role": "system", "content": "Eres JARVIS, el asistente elegante de la Srta. Diana. Responde con la precisión de Stark Industries."},
+                        {"role": "user", "content": final_prompt}
+                    ]
+                )
+                st.write(completion.choices[0].message.content)
+            except Exception as e: st.error(f"Falla de enlace: {e}")
 
-# --- TAB 1: ANÁLISIS DE DOCUMENTOS ---
+# --- PESTAÑA 1: ANÁLISIS DE DOCS (EXCEL/WORD) ---
 with tabs[1]:
-    st.subheader("📊 Lector de Inteligencia")
-    file = st.file_uploader("Cargar archivo táctico", type=['txt', 'docx', 'xlsx', 'csv'])
-    if file and st.button("🔍 EXTRAER DATOS"):
+    st.subheader("📊 Lector de Inteligencia Multiformato")
+    file = st.file_uploader("Cargar archivo táctico", type=['txt', 'docx', 'xlsx'])
+    if file and st.button("🔍 INICIAR ANÁLISIS"):
         try:
             if file.name.endswith('.docx'):
                 doc = docx.Document(file)
-                contenido = "\n".join([p.text for p in doc.paragraphs])
+                text = "\n".join([p.text for p in doc.paragraphs])
             elif file.name.endswith('.xlsx'):
                 df = pd.read_excel(file)
-                contenido = df.to_string()
+                text = f"Resumen de datos: {df.head().to_string()}"
             else:
-                contenido = file.read().decode()
+                text = file.read().decode()
             
-            res = model.generate_content(f"Analiza este informe para la Srta. Diana: {contenido[:8000]}")
-            st.success(res.text)
-        except Exception as e: st.error(f"Error: {e}")
+            with st.spinner("JARVIS procesando datos..."):
+                res = client.chat.completions.create(
+                    model=modelo_ia,
+                    messages=[{"role": "user", "content": f"Resume y analiza esto para la Srta. Diana: {text[:7000]}"}]
+                )
+                st.success(res.choices[0].message.content)
+        except Exception as e: st.error(f"Error en el lector: {e}")
 
-# --- TAB 2: ÓPTICO (CON FILTROS) ---
-with tabs[2]:
-    st.subheader("📸 Sensores Frontales")
-    cam = st.camera_input("Escanear", key="cam_122")
-    if cam:
-        img_raw = Image.open(cam)
-        filtro = st.radio("Modo:", ["Normal", "Infrarrojo", "Térmico", "Táctico"], horizontal=True)
-        
-        proc_img = img_raw.copy()
-        if filtro == "Infrarrojo": proc_img = ImageOps.grayscale(proc_img)
-        elif filtro == "Térmico": proc_img = ImageOps.colorize(ImageOps.grayscale(proc_img), "blue", "red")
-        elif filtro == "Táctico": proc_img = proc_img.filter(ImageFilter.CONTOUR)
-        
-        st.image(proc_img, width=500)
-        if st.button("🔍 ANALIZAR OBJETIVO"):
-            try:
-                res_v = model.generate_content(["Actúa como JARVIS. Analiza esta imagen técnica.", img_raw])
-                st.info(res_v.text)
-            except Exception as e: st.error(f"Error de visión: {e}")
-
-# --- TAB 3: LABORATORIO (GENERADOR) ---
+# --- PESTAÑA 3: LABORATORIO (GENERADOR DE IMÁGENES) ---
 with tabs[3]:
-    st.subheader("🎨 Estación de Diseño")
-    idea = st.text_input("¿Qué prototipo desea visualizar?")
-    if st.button("🚀 SINTETIZAR"):
+    st.subheader("🎨 Estación de Diseño Mark 61")
+    idea = st.text_input("¿Qué prototipo desea visualizar, Srta. Diana?")
+    if st.button("🚀 INICIAR SÍNTESIS"):
         if idea:
-            url = f"https://image.pollinations.ai/prompt/{idea.replace(' ', '%20')}?nologo=true"
-            st.image(url, caption=f"Renderizado: {idea}")
+            with st.spinner("Sintetizando..."):
+                url = f"https://image.pollinations.ai/prompt/{idea.replace(' ', '%20')}?nologo=true"
+                st.image(url, caption=f"Renderizado: {idea}")
