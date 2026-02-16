@@ -103,62 +103,46 @@ if "GOOGLE_API_KEY" in st.secrets:
 else:
     st.error("🚨 SRTA. DIANA: NO HAY LLAVE MAESTRA EN SECRETS.")
 
-# --- PESTAÑA 2: ÓPTICO (RESTABLECIDO CON BYPASS DIRECTO) ---
-with tabs[2]:
-    st.subheader("📸 Sensores de Campo y Reconocimiento Táctico")
-    
-    # 1. Entrada de la cámara
-    cam = st.camera_input("Activar Lente Óptico", key="cam_v112")
-    
-    if cam:
-        # Previsualización Stark
-        img_cam = Image.open(cam)
-        st.image(img_cam, width=450, caption="Captura de los sensores frontales")
-        
-        # 2. El botón de análisis que usted solicitó
-        if st.button("🔍 INICIAR ANÁLISIS TÁCTICO", key="btn_v112"):
+# 2. El botón de análisis táctico
+        if st.button("🔍 INICIAR ANÁLISIS TÁCTICO", key="btn_v113"):
             if "GOOGLE_API_KEY" in st.secrets:
-                with st.spinner("JARVIS estableciendo conexión segura (Bypass Mode)..."):
+                with st.spinner("JARVIS estableciendo conexión segura..."):
                     try:
-                        # --- MANIOBRA DE BYPASS (MÉTODO 3) ---
                         api_key = st.secrets["GOOGLE_API_KEY"]
-                        # Forzamos la URL a la versión estable 'v1' para evitar el error 404 de la beta
-                     # --- MANIOBRA DE EMERGENCIA: CAMBIO DE FRECUENCIA A MODELO LEGACY ---
-url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent?key={api_key}"
                         
-                        # Convertimos la imagen a bytes y luego a Base64
+                        # Probamos con la ruta de modelo más robusta
+                        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+                        
+                        # Conversión de imagen a Base64
                         buf = io.BytesIO()
                         img_cam.save(buf, format="JPEG")
                         img_b64 = base64.b64encode(buf.getvalue()).decode('utf-8')
 
-                        # Construimos el paquete de datos manualmente
                         payload = {
                             "contents": [{
                                 "parts": [
-                                    {"text": "Actúa como JARVIS. Analiza esta imagen de forma técnica y elegante para la Srta. Diana."},
+                                    {"text": "Eres JARVIS. Describe esta imagen para la Srta. Diana."},
                                     {"inline_data": {"mime_type": "image/jpeg", "data": img_b64}}
                                 ]
                             }]
                         }
                         
-                        # Enviamos la señal
                         response = requests.post(url, json=payload)
                         resultado = response.json()
 
-                        # Extraemos la respuesta de la red
                         if 'candidates' in resultado:
                             texto_analisis = resultado['candidates'][0]['content']['parts'][0]['text']
                             st.success("✅ Diagnóstico Completado")
-                            st.markdown(f"**JARVIS informa:** {texto_analisis}")
+                            st.markdown(f"**JARVIS:** {texto_analisis}")
                             hablar(texto_analisis)
                         else:
-                            st.error("🛰️ Error en la respuesta del satélite.")
-                            st.json(resultado) # Para que veamos qué dice el servidor exactamente
+                            st.error("🛰️ El satélite no reconoce el modelo (Error 404).")
+                            st.write("Detalle del servidor:", resultado.get('error', {}).get('message', 'Error desconocido'))
                             
                     except Exception as e:
-                        st.error(f"Falla crítica en el enlace manual: {e}")
+                        st.error(f"Falla crítica en los circuitos: {e}")
             else:
-                st.error("⚠️ No se detecta la llave de acceso en los sistemas.")
+                st.error("⚠️ No hay llave de acceso en los sistemas.")
 
 # --- PESTAÑA 3: LABORATORIO CREATIVO ---
 with tabs[3]:
