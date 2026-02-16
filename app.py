@@ -13,6 +13,50 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
+# --- 1. CARGA DE SEGURIDAD ---
+load_dotenv()
+ACCESS_PASSWORD = os.getenv("ACCESS_PASSWORD")
+
+# --- 2. PROTOCOLO DE AUTENTICACIÓN ---
+def pantalla_login():
+    # Estética de seguridad para el login
+    st.markdown("""
+        <style>
+        .stApp { background: #010409 !important; }
+        .login-box { 
+            text-align: center; padding: 50px; 
+            border: 2px solid #00f2ff; border-radius: 15px;
+            box-shadow: 0 0 20px #00f2ff;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.markdown('<div class="arc-reactor"></div>', unsafe_allow_html=True)
+        st.subheader("🔐 ACCESO RESTRINGIDO - STARK INDUSTRIES")
+        password_input = st.text_input("Ingrese Código de Identificación:", type="password")
+        
+        if st.button("DESBLOQUEAR SISTEMA"):
+            if password_input == ACCESS_PASSWORD:
+                st.session_state["autenticado"] = True
+                st.rerun()
+            else:
+                st.error("⚠️ CÓDIGO INCORRECTO. Intento de acceso registrado.")
+
+# Inicializar estado de sesión
+if "autenticado" not in st.session_state:
+    st.session_state["autenticado"] = False
+
+# --- 3. LÓGICA DE CONTROL DE ACCESO ---
+if not st.session_state["autenticado"]:
+    pantalla_login()
+    st.stop() # Detiene la ejecución del resto de JARVIS hasta que se autentique
+
+# --- EL RESTO DE SU CÓDIGO DE JARVIS VA AQUÍ ABAJO ---
+# st.set_page_config(...)
+# tabs = st.tabs(...)
+
 # --- 1. CONFIGURACIÓN DE PÁGINA (ESTRICTAMENTE PRIMERO) ---
 st.set_page_config(
     page_title="JARVIS - STARK INDUSTRIES", 
