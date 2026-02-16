@@ -103,37 +103,62 @@ if "GOOGLE_API_KEY" in st.secrets:
 else:
     st.error("🚨 SRTA. DIANA: NO HAY LLAVE MAESTRA EN SECRETS.")
 
-# --- PESTAÑA 2: ÓPTICO (PROCESADO BLINDADO) ---
+# --- PESTAÑA 2: ÓPTICO (RESTABLECIDO CON BYPASS DIRECTO) ---
 with tabs[2]:
-    st.subheader("📸 Sensores de Campo")
-    cam = st.camera_input("Activar Lente", key="cam_v111")
+    st.subheader("📸 Sensores de Campo y Reconocimiento Táctico")
+    
+    # 1. Entrada de la cámara
+    cam = st.camera_input("Activar Lente Óptico", key="cam_v112")
     
     if cam:
+        # Previsualización Stark
         img_cam = Image.open(cam)
-        if st.button("🔍 ANALIZAR AHORA", key="btn_v111"):
-            with st.spinner("JARVIS forzando enlace..."):
-                try:
-                    # MANIOBRA MAESTRA: Si el modelo guardado falla, 
-                    # lo regeneramos justo antes de enviar la imagen.
-                    # Esto evita que el 404 de 'flash-latest' nos detenga.
-                    analista = genai.GenerativeModel('gemini-1.5-flash')
-                    
-                    response = analista.generate_content([
-                        "Eres JARVIS. Describe esta imagen de forma técnica para la Srta. Diana.", 
-                        img_cam
-                    ])
-                    st.info(response.text)
-                    hablar("Análisis completado, Srta. Diana.")
-                except Exception as e:
-                    # ÚLTIMO RECURSO: Usar el modelo Pro si Flash sigue dando 404
+        st.image(img_cam, width=450, caption="Captura de los sensores frontales")
+        
+        # 2. El botón de análisis que usted solicitó
+        if st.button("🔍 INICIAR ANÁLISIS TÁCTICO", key="btn_v112"):
+            if "GOOGLE_API_KEY" in st.secrets:
+                with st.spinner("JARVIS estableciendo conexión segura (Bypass Mode)..."):
                     try:
-                        analista_pro = genai.GenerativeModel('gemini-1.5-pro')
-                        response = analista_pro.generate_content(["Describe esta imagen.", img_cam])
-                        st.info(response.text)
-                        hablar("Análisis de respaldo completado.")
-                    except:
-                        st.error(f"Error persistente en los servidores de Google: {e}")
-                        st.write("Srta. Diana, Google está rechazando la conexión multimodal. Probablemente sea una restricción de su API Key para procesar imágenes.")
+                        # --- MANIOBRA DE BYPASS (MÉTODO 3) ---
+                        api_key = st.secrets["GOOGLE_API_KEY"]
+                        # Forzamos la URL a la versión estable 'v1' para evitar el error 404 de la beta
+                        url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={api_key}"
+                        
+                        # Convertimos la imagen a bytes y luego a Base64
+                        buf = io.BytesIO()
+                        img_cam.save(buf, format="JPEG")
+                        img_b64 = base64.b64encode(buf.getvalue()).decode('utf-8')
+
+                        # Construimos el paquete de datos manualmente
+                        payload = {
+                            "contents": [{
+                                "parts": [
+                                    {"text": "Actúa como JARVIS. Analiza esta imagen de forma técnica y elegante para la Srta. Diana."},
+                                    {"inline_data": {"mime_type": "image/jpeg", "data": img_b64}}
+                                ]
+                            }]
+                        }
+                        
+                        # Enviamos la señal
+                        response = requests.post(url, json=payload)
+                        resultado = response.json()
+
+                        # Extraemos la respuesta de la red
+                        if 'candidates' in resultado:
+                            texto_analisis = resultado['candidates'][0]['content']['parts'][0]['text']
+                            st.success("✅ Diagnóstico Completado")
+                            st.markdown(f"**JARVIS informa:** {texto_analisis}")
+                            hablar(texto_analisis)
+                        else:
+                            st.error("🛰️ Error en la respuesta del satélite.")
+                            st.json(resultado) # Para que veamos qué dice el servidor exactamente
+                            
+                    except Exception as e:
+                        st.error(f"Falla crítica en el enlace manual: {e}")
+            else:
+                st.error("⚠️ No se detecta la llave de acceso en los sistemas.")
+                
 # --- PESTAÑA 3: LABORATORIO CREATIVO ---
 with tabs[3]:
     st.subheader("🎨 Estación de Diseño Mark 61")
