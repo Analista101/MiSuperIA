@@ -6,7 +6,7 @@ from streamlit_mic_recorder import mic_recorder
 import io, base64
 
 # --- 1. ESTÉTICA DE LA TORRE STARK ---
-st.set_page_config(page_title="JARVIS v130", layout="wide")
+st.set_page_config(page_title="JARVIS v133", layout="wide")
 st.markdown("""
     <style>
     .stApp { background-color: #010409; color: #00f2ff; }
@@ -38,24 +38,28 @@ tabs = st.tabs(["💬 COMANDO Y CAPTURAS", "📊 ANÁLISIS DOCS", "🎨 LABORATO
 with tabs[0]:
     st.subheader("📋 Sensor de Portapapeles e IA")
     
-    col_a, col_b = st.columns([1, 4])
+    col_a, col_b, col_c = st.columns([1, 2, 2])
     with col_a:
-        mic_recorder(start_prompt="🎙️", stop_prompt="🛰️", key="mic_130")
+        mic_recorder(start_prompt="🎙️", stop_prompt="🛰️", key="mic_133")
     
-    # --- LA SOLUCIÓN DEFINITIVA ---
-    # Este botón detectará automáticamente si tiene una imagen copiada
-    pasted_image = paste_button(label="📋 PEGAR CAPTURA (CTRL+V)")
+    with col_b:
+        # Botón de pegado
+        pasted_image = paste_button(label="📋 PEGAR CAPTURA (CTRL+V)", key="paster")
+
+    with col_c:
+        # BOTÓN DE LIMPIEZA
+        if st.button("🗑️ LIMPIAR SISTEMA"):
+            st.rerun() # Reinicia la interfaz para limpiar el buffer de imagen
 
     chat_msg = st.chat_input("Instrucciones para la imagen o consulta general...")
 
     if pasted_image.image_data is not None:
         img = pasted_image.image_data
-        st.image(img, caption="Imagen pegada desde el portapapeles", width=400)
+        st.image(img, caption="Imagen en memoria de JARVIS", width=400)
         
         if chat_msg:
-            with st.spinner("JARVIS analizando captura..."):
+            with st.chat_message("assistant"):
                 try:
-                    # Convertir el objeto de imagen a base64
                     buffered = io.BytesIO()
                     img.save(buffered, format="PNG")
                     img_str = base64.b64encode(buffered.getvalue()).decode()
@@ -75,11 +79,10 @@ with tabs[0]:
                     st.error(f"Falla en sensor: {e}")
     
     elif chat_msg:
-        # Lógica de texto puro si no hay imagen
-        res = client.chat.completions.create(
-            model=modelo_texto,
-            messages=[{"role": "user", "content": chat_msg}]
-        )
-        st.write(res.choices[0].message.content)
-
-# Pestañas de Análisis y Laboratorio (Código previo se mantiene integrado)
+        with st.chat_message("assistant"):
+            res = client.chat.completions.create(
+                model=modelo_texto,
+                messages=[{"role": "system", "content": "Eres JARVIS. Responde elegante a la Srta. Diana."},
+                          {"role": "user", "content": chat_msg}]
+            )
+            st.write(res.choices[0].message.content)
