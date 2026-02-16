@@ -10,7 +10,11 @@ from streamlit_mic_recorder import mic_recorder
 import io, base64, random
 
 # --- 1. ESTÉTICA AVANZADA STARK HUD (MARK 158) ---
-st.set_page_config(page_title="JARVIS v158 - Sistema Táctico", layout="wide")
+st.set_page_config(
+    page_title="JARVIS", 
+    page_icon="https://cdn-icons-png.flaticon.com/512/6295/6295417.png", # Icono del Reactor
+    layout="wide"
+)
 
 st.markdown("""
     <style>
