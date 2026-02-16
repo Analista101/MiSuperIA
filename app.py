@@ -9,38 +9,40 @@ from streamlit_paste_button import paste_image_button as paste_button
 from streamlit_mic_recorder import mic_recorder
 import io, base64, random
 
-# --- 1. IDENTIDAD BINARIA Y ESTÉTICA (MARK 160) ---
-# Este es el código de imagen del Reactor Arc integrado
-ICON_BASE64 = "https://cdn-icons-png.flaticon.com/512/6295/6295417.png" 
+# --- 1. PROTOCOLO DE IDENTIDAD AGRESIVA (MARK 161) ---
+# Usaremos una URL directa de alta prioridad para el reactor
+URL_REACTOR = "https://img.icons8.com/neon/256/iron-man.png" 
 
 st.set_page_config(
     page_title="JARVIS", 
-    page_icon=ICON_BASE64, 
+    page_icon=URL_REACTOR, 
     layout="wide"
 )
 
-# Inyectamos el icono directamente en el encabezado del navegador
+# Inyección de Manifiesto en caliente para Android
 st.markdown(f"""
-    <link rel="shortcut icon" href="{ICON_BASE64}">
-    <link rel="apple-touch-icon" href="{ICON_BASE64}">
-    <link rel="icon" type="image/png" href="{ICON_BASE64}">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="theme-color" content="#010409">
+    <script>
+        // Forzamos el cambio de icono en el DOM
+        var link = document.querySelector("link[rel*='icon']") || document.createElement('link');
+        link.type = 'image/x-icon';
+        link.rel = 'shortcut icon';
+        link.href = '{URL_REACTOR}';
+        document.getElementsByTagName('head')[0].appendChild(link);
+    </script>
+    <head>
+        <link rel="apple-touch-icon" href="{URL_REACTOR}">
+        <link rel="icon" sizes="192x192" href="{URL_REACTOR}">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="application-name" content="JARVIS">
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    </head>
     <style>
-        .stApp {{
-            background: radial-gradient(circle at center, #0a192f 0%, #010409 100%);
-            color: #00f2ff;
-        }}
-        .arc-reactor {{
-            width: 80px; height: 80px; border-radius: 50%; margin: 20px auto;
-            background: radial-gradient(circle, #fff 0%, #00f2ff 30%, transparent 70%);
-            box-shadow: 0 0 30px #00f2ff;
-            border: 4px double #00f2ff;
-            animation: pulse 2s infinite;
-        }}
-        @keyframes pulse {{ 0% {{ transform: scale(1); }} 50% {{ transform: scale(1.1); }} 100% {{ transform: scale(1); }} }}
+        .stApp {{ background: radial-gradient(circle at center, #0a192f 0%, #010409 100%); color: #00f2ff; }}
+        /* Ocultar elementos de marca de Streamlit que distraen */
+        #MainMenu {{visibility: hidden;}}
+        footer {{visibility: hidden;}}
+        header {{visibility: hidden;}}
     </style>
-    <div class="arc-reactor"></div>
     """, unsafe_allow_html=True)
 
 # --- 2. NÚCLEO Y CREDENCIALES ---
