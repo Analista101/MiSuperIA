@@ -147,25 +147,36 @@ with tabs[1]:
     st.subheader("📊 Escáner de Evidencia y Documentación")
     file = st.file_uploader("Cargar reporte técnico o imagen", type=['pdf','docx','xlsx','png','jpg','jpeg'])
     
+    # Actualización del identificador del modelo para evitar el Error 400
+    modelo_vision_actualizado = "llama-3.2-11b-vision-instant"
+
     if file and st.button("🔍 INICIAR ANÁLISIS"):
-        with st.spinner("Escaneando..."):
+        with st.spinner("Escaneando sistemas..."):
             try:
                 if file.type.startswith('image/'):
                     img_file = Image.open(file)
-                    st.image(img_file, width=400)
+                    st.image(img_file, width=400, caption="Evidencia visual cargada")
+                    
+                    # Procesamiento de imagen a Base64
                     buffered = io.BytesIO()
                     img_file.save(buffered, format="PNG")
                     img_b64 = base64.b64encode(buffered.getvalue()).decode()
+                    
+                    # Llamada a la API con el nuevo modelo operativo
                     res = client.chat.completions.create(
-                        model=modelo_vision,
-                        messages=[{"role": "system", "content": PERSONALIDAD},
-                                  {"role": "user", "content": [
-                                      {"type": "text", "text": "Analiza esta imagen detalladamente."},
-                                      {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{img_b64}"}}
-                                  ]}]
+                        model=modelo_vision_actualizado,
+                        messages=[
+                            {"role": "system", "content": PERSONALIDAD},
+                            {"role": "user", "content": [
+                                {"type": "text", "text": "Señor, he procesado la imagen. Aquí tiene el análisis detallado:"},
+                                {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{img_b64}"}}
+                            ]}
+                        ]
                     )
                     st.success(res.choices[0].message.content)
+                
                 else:
+                    # Lógica para documentos (PDF, DOCX, XLSX)
                     text = ""
                     if file.name.endswith('.pdf'):
                         reader = PyPDF2.PdfReader(file)
@@ -177,13 +188,19 @@ with tabs[1]:
                         df = pd.read_excel(file)
                         text = df.head(50).to_string()
                     
+                    # Análisis de texto con el modelo de lenguaje estándar
                     res = client.chat.completions.create(
                         model=modelo_texto,
-                        messages=[{"role": "system", "content": PERSONALIDAD},
-                                  {"role": "user", "content": f"Resume este archivo pesado: {text[:12000]}"}]
+                        messages=[
+                            {"role": "system", "content": PERSONALIDAD},
+                            {"role": "user", "content": f"He extraído la información del documento. Procedo con el resumen ejecutivo: {text[:12000]}"}
+                        ]
                     )
                     st.success(res.choices[0].message.content)
-            except Exception as e: st.error(f"Falla de lectura: {e}")
+                    
+            except Exception as e: 
+                st.error(f"Falla en los sensores de lectura: {e}")
+                st.info("Sugerencia: Verifique que el modelo 'llama-3.2-11b-vision-instant' esté disponible en su consola de Groq.")
 
 # --- PESTAÑA 2: LABORATORIO (ROUTER HF + TOKEN) ---
 with tabs[2]:
