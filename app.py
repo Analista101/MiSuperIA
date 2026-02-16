@@ -73,16 +73,42 @@ with tabs[0]:
         st.chat_message("assistant").write(res)
         hablar(res)
 
-# PESTAÑA 1: ANÁLISIS UNIVERSAL
-with tabs[1]:
-    archivo = st.file_uploader("Subir archivo:", type=["png", "jpg", "jpeg", "docx"], key="file_v105")
-    if archivo and st.button("🔍 ANALIZAR"):
-        if model_chat:
-            with st.spinner("Escaneando..."):
-                img = Image.open(archivo)
-                res = model_chat.generate_content(["Analiza detalladamente como JARVIS.", img])
-                st.info(res.text)
-                hablar("Análisis completado.")
+# --- PROTOCOLO DE EMERGENCIA: SOLICITUD DIRECTA (BYPASS) ---
+if st.button("🔍 ANÁLISIS TÁCTICO", key="btn_bypass"):
+    if "GOOGLE_API_KEY" in st.secrets:
+        with st.spinner("JARVIS forzando enlace satelital..."):
+            try:
+                # 1. Convertimos la imagen a Base64 para enviarla manualmente
+                buffered = io.BytesIO()
+                img_cam.save(buffered, format="JPEG")
+                img_b64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
+
+                # 2. Construimos la petición manual (Sin usar la librería google-generativeai)
+                api_key = st.secrets["GOOGLE_API_KEY"]
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+                
+                payload = {
+                    "contents": [{
+                        "parts": [
+                            {"text": "Actúa como JARVIS. Describe esta imagen de forma elegante."},
+                            {"inline_data": {"mime_type": "image/jpeg", "data": img_b64}}
+                        ]
+                    }]
+                }
+                
+                response = requests.post(url, json=payload)
+                result = response.json()
+                
+                # 3. Extraemos la respuesta
+                texto_res = result['candidates'][0]['content']['parts'][0]['text']
+                st.success(texto_res)
+                hablar("Enlace forzado con éxito. Análisis en pantalla.")
+                
+            except Exception as e:
+                st.error("🛰️ Srta. Diana, incluso el bypass ha fallado.")
+                st.write(f"Detalle técnico del servidor: {result if 'result' in locals() else e}")
+    else:
+        st.error("Falta llave de acceso.")
 
 # PESTAÑA 2: ÓPTICO
 with tabs[2]:
