@@ -92,34 +92,41 @@ with tabs[1]:
                 st.info(resp.text)
                 hablar("Análisis completado.")
 
-# --- 2. CONFIGURACIÓN DEL NÚCLEO (CALIBRACIÓN MAESTRA MARK 109) ---
-model_chat = None
-
-if "GOOGLE_API_KEY" in st.secrets:
-    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+# --- PESTAÑA 2: ÓPTICO (RESTABLECIDO) ---
+with tabs[2]:
+    st.subheader("📸 Sensores de Campo y Reconocimiento Táctico")
     
-    # Lista de frecuencias (modelos) por orden de estabilidad
-    frecuencias = [
-        'gemini-1.5-flash', 
-        'gemini-pro', 
-        'models/gemini-1.5-flash', 
-        'models/gemini-pro'
-    ]
+    # 1. Entrada de la cámara
+    cam = st.camera_input("Activar Lente Óptico", key="cam_v110")
     
-    for freq in frecuencias:
-        try:
-            model_chat = genai.GenerativeModel(freq)
-            # Prueba de pulso rápida
-            model_chat.generate_content("test")
-            st.success(f"🛰️ CONEXIÓN ESTABLECIDA: Frecuencia {freq} activa.")
-            break # Si funciona, salimos del bucle
-        except:
-            continue # Si falla, probamos la siguiente
-
-    if not model_chat:
-        st.error("🚨 FALLA CRÍTICA: Ningún modelo de Google responde a esta API Key.")
-else:
-    st.warning("🛰️ Srta. Diana, inserte la clave en los Secrets.")
+    if cam:
+        # Mostramos la captura inmediatamente
+        img_cam = Image.open(cam)
+        
+        col_view, col_diag = st.columns([1, 1])
+        
+        with col_view:
+            st.markdown("### 🛰️ Previsualización")
+            st.image(img_cam, use_container_width=True, caption="Captura en tiempo real")
+            
+        with col_diag:
+            st.markdown("### 🧠 Análisis de JARVIS")
+            if st.button("🔍 INICIAR ANÁLISIS TÁCTICO", key="btn_diag_110"):
+                if model_chat:
+                    with st.spinner("JARVIS procesando datos visuales..."):
+                        try:
+                            # Enviamos la imagen con un prompt optimizado para cualquier modelo
+                            prompt = "Actúa como JARVIS. Analiza esta imagen de forma técnica y elegante para la Srta. Diana."
+                            res_c = model_chat.generate_content([prompt, img_cam])
+                            
+                            st.success("✅ Diagnóstico Completado")
+                            st.write(res_c.text)
+                            hablar("Diagnóstico de campo finalizado, Srta. Diana.")
+                        except Exception as e:
+                            st.error(f"Falla en el procesado: {e}")
+                            st.info("Sugerencia: Intente refrescar la terminal.")
+                else:
+                    st.error("⚠️ El núcleo de IA no está conectado. Verifique la Pestaña de Comando.")
 
 # --- PESTAÑA 3: LABORATORIO CREATIVO ---
 with tabs[3]:
