@@ -112,38 +112,40 @@ with tabs[1]:
                     st.success(res.choices[0].message.content)
             except Exception as e: st.error(f"Falla de lectura: {e}")
 
-# --- PESTAÑA 2: LABORATORIO (SISTEMA DE RENDERIZADO UNIVERSAL v145) ---
+# --- PESTAÑA 2: LABORATORIO (INYECCIÓN BASE64 v146) ---
 with tabs[2]:
-    st.subheader("🎨 Estación de Diseño Mark 75")
-    st.info("Utilizando el motor de síntesis de alta disponibilidad.")
+    st.subheader("🎨 Estación de Diseño Mark 76")
+    st.info("Protocolo de Inyección Directa activado (Bypass de Bloqueo de Red).")
     
-    idea = st.text_input("Describa el prototipo a sintetizar:", key="lab_145", placeholder="Ej: Armadura estilo Valkiria...")
+    idea = st.text_input("Describa el prototipo:", key="lab_146")
     estilo = st.selectbox("Filtro Visual:", 
-                          ["Cinematic Marvel", "Blueprint Técnico", "Cyberpunk Neón", "Industrial Stark", "Hyper-Realistic"], 
-                          key="style_145")
+                          ["Cinematic Marvel", "Blueprint Técnico", "Cyberpunk Neón", "Industrial Stark"], 
+                          key="style_146")
     
     if st.button("🚀 INICIAR SÍNTESIS"):
         if idea:
-            with st.spinner("JARVIS canalizando energía al motor de renderizado..."):
+            with st.spinner("JARVIS inyectando datos de imagen en la terminal..."):
                 try:
-                    # Limpiamos y preparamos el prompt
-                    prompt_limpio = idea.replace(" ", "%20")
-                    estilo_limpio = estilo.replace(" ", "%20")
+                    # 1. Preparamos el túnel
+                    prompt_final = f"{idea} {estilo}".replace(" ", "%20")
+                    url = f"https://image.pollinations.ai/prompt/{prompt_final}?nologo=true"
                     
-                    # Generamos una semilla aleatoria para evitar que la imagen se repita
-                    import random
-                    seed = random.randint(1, 999999)
+                    # 2. JARVIS descarga la imagen en el servidor (donde no hay bloqueo de imagen)
+                    headers = {"User-Agent": "Mozilla/5.0"}
+                    response = requests.get(url, headers=headers, timeout=30)
                     
-                    # Usamos una URL de renderizado directo que es inmune al RuntimeError de librerías
-                    url_final = f"https://image.pollinations.ai/prompt/{prompt_limpio}%20{estilo_limpio}?width=1024&height=1024&seed={seed}&nologo=true"
-                    
-                    # Mostramos la imagen usando el protocolo de visualización directa
-                    st.image(url_final, caption=f"Prototipo: {idea} | Estilo: {estilo}", use_container_width=True)
-                    
-                    # Botón opcional para descargar
-                    st.success("Diseño materializado. La imagen se ha cargado a través del puente de alta disponibilidad.")
-                    
+                    if response.status_code == 200:
+                        # 3. TRANSFORMACIÓN: Convertimos la imagen en código Base64
+                        img_base64 = base64.b64encode(response.content).decode()
+                        
+                        # 4. INYECCIÓN: Se muestra como datos puros, no como un link
+                        st.markdown(
+                            f'<img src="data:image/png;base64,{img_base64}" style="width:100%; border-radius:10px; border: 2px solid #00f2ff; box-shadow: 0 0 15px #00f2ff;">',
+                            unsafe_allow_html=True
+                        )
+                        st.success("Diseño materializado mediante inyección de datos.")
+                    else:
+                        st.error(f"Falla de enlace: Código {response.status_code}")
+                        
                 except Exception as e:
-                    st.error(f"Falla en la cámara de síntesis: {e}")
-        else:
-            st.warning("Srta. Diana, el reactor necesita una idea para iniciar la secuencia.")
+                    st.error(f"Error en la matriz de inyección: {e}")
