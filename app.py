@@ -91,56 +91,54 @@ except Exception as e:
 # --- 3. INTERFAZ TÁCTICA ---
 tabs = st.tabs(["💬 COMANDO GLOBAL", "📊 ANÁLISIS DOCS/IMG", "🎨 LABORATORIO"])
 
-# --- PESTAÑA 0: COMANDO GLOBAL (RESTAURADO + ENLACES) ---
+# --- PESTAÑA PRINCIPAL: CHAT DINÁMICO ---
 with tabs[0]:
-    st.subheader("🎙️ Centro de Control e Inteligencia Global")
+    st.subheader("🗨️ Interfaz de Comando Central")
     
-    # MODULOS FISICOS RESTAURADOS
-    col_a, col_b, col_c = st.columns([1, 2, 1])
-    with col_a: 
-        mic_recorder(start_prompt="🎙️", stop_prompt="🛰️", key="mic_v157")
-    with col_b: 
-        pasted_img = paste_button(label="📋 PEGAR CAPTURA (CTRL+V)", key="paster_v157")
-    with col_c: 
-        if st.button("🗑️ LIMPIAR SISTEMA"): st.rerun()
-
-    chat_input = st.chat_input("Órdenes, Srta. Diana...")
+    # Añadimos un receptor discreto que permite pegar imágenes (Ctrl+V)
+    # En Streamlit, el file_uploader es el único que acepta el 'paste' del navegador
+    input_visual = st.file_uploader("Subir o pegar imagen (Ctrl+V)", type=['png', 'jpg', 'jpeg'], key="main_vision", label_visibility="collapsed")
     
-    # LÓGICA DE PROCESAMIENTO
-    if chat_input:
-        with st.chat_message("assistant"):
-            with st.spinner("JARVIS: Consultando redes y verificando fuentes..."):
-                
-                # Instrucción blindada de personalidad y links
-                INSTRUCCION_RED = (
-                    f"{PERSONALIDAD} IMPORTANTE: Eres un asistente con acceso a la red. "
-                    "Para cualquier consulta sobre noticias o eventos, debes incluir "
-                    "links directos y clicables a tus fuentes al final de la respuesta."
-                )
+    # El chat_input sigue para sus comandos de voz/texto
+    prompt = st.chat_input("Escriba su comando o pegue una imagen arriba...")
 
-                if pasted_img.image_data is not None:
-                    # Análisis Visual + Texto + Red
-                    img = pasted_img.image_data
+    if prompt or input_visual:
+        # Si hay una imagen, activamos el protocolo de visión
+        if input_visual:
+            with st.spinner("Analizando estímulo visual, señor..."):
+                try:
+                    img_file = Image.open(input_visual).convert("RGB")
                     buffered = io.BytesIO()
-                    img.save(buffered, format="PNG")
+                    img_file.save(buffered, format="JPEG", quality=90)
                     img_b64 = base64.b64encode(buffered.getvalue()).decode()
                     
+                    # Usamos el nuevo modelo de visión que rescatamos
                     res = client.chat.completions.create(
-                        model=modelo_vision,
-                        messages=[{"role": "system", "content": INSTRUCCION_RED},
-                                  {"role": "user", "content": [
-                                      {"type": "text", "text": chat_input},
-                                      {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{img_b64}"}}
-                                  ]}]
+                        model="llama-3.2-90b-vision-instant",
+                        messages=[
+                            {"role": "system", "content": PERSONALIDAD},
+                            {"role": "user", "content": [
+                                {"type": "text", "text": prompt if prompt else "Analice lo que aparece en pantalla, JARVIS."},
+                                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"}}
+                            ]}
+                        ]
                     )
-                else:
-                    # Búsqueda en Red + Texto
-                    res = client.chat.completions.create(
-                        model=modelo_texto,
-                        messages=[{"role": "system", "content": INSTRUCCION_RED},
-                                  {"role": "user", "content": chat_input}]
-                    )
-                st.write(res.choices[0].message.content)
+                    respuesta = res.choices[0].message.content
+                    st.chat_message("jarvis", avatar="🚀").write(respuesta)
+                except Exception as e:
+                    st.error(f"Error en el sensor visual: {e}")
+        
+        # Si es solo texto
+        elif prompt:
+            with st.spinner("Consultando base de datos..."):
+                res = client.chat.completions.create(
+                    model=modelo_texto,
+                    messages=[
+                        {"role": "system", "content": PERSONALIDAD},
+                        {"role": "user", "content": prompt}
+                    ]
+                )
+                st.chat_message("jarvis", avatar="🚀").write(res.choices[0].message.content)
 
 # --- PESTAÑA 1: ANÁLISIS (ARCHIVOS PESADOS + IMÁGENES) ---
 with tabs[1]:
@@ -203,6 +201,8 @@ with tabs[1]:
             except Exception as e: 
                 st.error(f"Falla de lectura en los sistemas: {e}")
                 st.info("Sugerencia: Si el error persiste, reinicie el kernel de la aplicación para purgar la caché de modelos.")
+
+
 # --- PESTAÑA 2: LABORATORIO (ROUTER HF + TOKEN) ---
 with tabs[2]:
     st.subheader("🎨 Estación de Diseño Mark 85")
