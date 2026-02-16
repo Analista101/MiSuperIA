@@ -147,36 +147,38 @@ with tabs[1]:
     st.subheader("📊 Escáner de Evidencia y Documentación")
     file = st.file_uploader("Cargar reporte técnico o imagen", type=['pdf','docx','xlsx','png','jpg','jpeg'])
     
-    # PROTOCOLO DE EMERGENCIA: Cambio a arquitectura Llava
-    # Este modelo es el último bastión de visión estable en Groq tras la baja de Llama 3.2
-    modelo_vision_emergencia = "llava-v1.5-7b-4096-preview"
+    # Identificador actualizado según la última directiva de Groq (2026)
+    modelo_vision_operativo = "llama-3.2-90b-vision-instant"
 
     if file and st.button("🔍 INICIAR ANÁLISIS"):
-        with st.spinner("Activando protocolos de visión alternativa..."):
+        with st.spinner("Escaneando con sensores de alta resolución..."):
             try:
+                # --- LÓGICA PARA IMÁGENES ---
                 if file.type.startswith('image/'):
-                    img_file = Image.open(file)
-                    st.image(img_file, width=400, caption="Imagen en análisis")
+                    # Conversión a RGB para evitar fallas con canales Alpha/Transparencias
+                    img_file = Image.open(file).convert("RGB")
+                    st.image(img_file, width=400, caption="Evidencia visual procesada")
                     
+                    # Preparación de datos binarios optimizada (JPEG)
                     buffered = io.BytesIO()
-                    img_file.save(buffered, format="PNG")
+                    img_file.save(buffered, format="JPEG", quality=90)
                     img_b64 = base64.b64encode(buffered.getvalue()).decode()
                     
+                    # Llamada al modelo Vision Instant
                     res = client.chat.completions.create(
-                        model=modelo_vision_emergencia,
+                        model=modelo_vision_operativo,
                         messages=[
                             {"role": "system", "content": PERSONALIDAD},
                             {"role": "user", "content": [
-                                {"type": "text", "text": "Analiza esta imagen y dime qué ves, JARVIS."},
-                                {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{img_b64}"}}
+                                {"type": "text", "text": "Señor, he procesado la imagen. Aquí tiene el análisis detallado:"},
+                                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"}}
                             ]}
-                        ],
-                        max_tokens=1024 # Limitamos para asegurar estabilidad
+                        ]
                     )
                     st.success(res.choices[0].message.content)
                 
+                # --- LÓGICA PARA DOCUMENTOS (FORMATOS ADICIONALES) ---
                 else:
-                    # Lógica de documentos (permanece sin cambios)
                     text = ""
                     if file.name.endswith('.pdf'):
                         reader = PyPDF2.PdfReader(file)
@@ -188,19 +190,19 @@ with tabs[1]:
                         df = pd.read_excel(file)
                         text = df.head(50).to_string()
                     
+                    # Análisis de texto con el modelo de lenguaje estándar
                     res = client.chat.completions.create(
                         model=modelo_texto,
                         messages=[
                             {"role": "system", "content": PERSONALIDAD},
-                            {"role": "user", "content": f"Resume este contenido técnico: {text[:12000]}"}
+                            {"role": "user", "content": f"Procedo con el resumen ejecutivo de este archivo pesado, señor: {text[:12000]}"}
                         ]
                     )
                     st.success(res.choices[0].message.content)
                     
             except Exception as e: 
-                st.error(f"Falla crítica de enlace: {e}")
-                st.info("Señor, si Llava también falla, es posible que Groq haya desactivado temporalmente TODA la inferencia visual para mantenimiento de servidores.")
-
+                st.error(f"Falla de lectura en los sistemas: {e}")
+                st.info("Sugerencia: Si el error persiste, reinicie el kernel de la aplicación para purgar la caché de modelos.")
 # --- PESTAÑA 2: LABORATORIO (ROUTER HF + TOKEN) ---
 with tabs[2]:
     st.subheader("🎨 Estación de Diseño Mark 85")
