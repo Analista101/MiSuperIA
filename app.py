@@ -92,42 +92,48 @@ with tabs[1]:
                 st.info(resp.text)
                 hablar("Análisis completado.")
 
-# --- PESTAÑA 2: ÓPTICO (RESTABLECIDO) ---
+# --- 2. CONFIGURACIÓN DEL NÚCLEO (CALIBRACIÓN FORZADA MARK 111) ---
+if "GOOGLE_API_KEY" in st.secrets:
+    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+    # Forzamos el nombre base que NO debería dar error 404
+    try:
+        model_chat = genai.GenerativeModel('gemini-1.5-flash')
+    except:
+        model_chat = genai.GenerativeModel('gemini-1.5-pro')
+else:
+    st.error("🚨 SRTA. DIANA: NO HAY LLAVE MAESTRA EN SECRETS.")
+
+# --- PESTAÑA 2: ÓPTICO (PROCESADO BLINDADO) ---
 with tabs[2]:
-    st.subheader("📸 Sensores de Campo y Reconocimiento Táctico")
-    
-    # 1. Entrada de la cámara
-    cam = st.camera_input("Activar Lente Óptico", key="cam_v110")
+    st.subheader("📸 Sensores de Campo")
+    cam = st.camera_input("Activar Lente", key="cam_v111")
     
     if cam:
-        # Mostramos la captura inmediatamente
         img_cam = Image.open(cam)
-        
-        col_view, col_diag = st.columns([1, 1])
-        
-        with col_view:
-            st.markdown("### 🛰️ Previsualización")
-            st.image(img_cam, use_container_width=True, caption="Captura en tiempo real")
-            
-        with col_diag:
-            st.markdown("### 🧠 Análisis de JARVIS")
-            if st.button("🔍 INICIAR ANÁLISIS TÁCTICO", key="btn_diag_110"):
-                if model_chat:
-                    with st.spinner("JARVIS procesando datos visuales..."):
-                        try:
-                            # Enviamos la imagen con un prompt optimizado para cualquier modelo
-                            prompt = "Actúa como JARVIS. Analiza esta imagen de forma técnica y elegante para la Srta. Diana."
-                            res_c = model_chat.generate_content([prompt, img_cam])
-                            
-                            st.success("✅ Diagnóstico Completado")
-                            st.write(res_c.text)
-                            hablar("Diagnóstico de campo finalizado, Srta. Diana.")
-                        except Exception as e:
-                            st.error(f"Falla en el procesado: {e}")
-                            st.info("Sugerencia: Intente refrescar la terminal.")
-                else:
-                    st.error("⚠️ El núcleo de IA no está conectado. Verifique la Pestaña de Comando.")
-
+        if st.button("🔍 ANALIZAR AHORA", key="btn_v111"):
+            with st.spinner("JARVIS forzando enlace..."):
+                try:
+                    # MANIOBRA MAESTRA: Si el modelo guardado falla, 
+                    # lo regeneramos justo antes de enviar la imagen.
+                    # Esto evita que el 404 de 'flash-latest' nos detenga.
+                    analista = genai.GenerativeModel('gemini-1.5-flash')
+                    
+                    response = analista.generate_content([
+                        "Eres JARVIS. Describe esta imagen de forma técnica para la Srta. Diana.", 
+                        img_cam
+                    ])
+                    st.info(response.text)
+                    hablar("Análisis completado, Srta. Diana.")
+                except Exception as e:
+                    # ÚLTIMO RECURSO: Usar el modelo Pro si Flash sigue dando 404
+                    try:
+                        analista_pro = genai.GenerativeModel('gemini-1.5-pro')
+                        response = analista_pro.generate_content(["Describe esta imagen.", img_cam])
+                        st.info(response.text)
+                        hablar("Análisis de respaldo completado.")
+                    except:
+                        st.error(f"Error persistente en los servidores de Google: {e}")
+                        st.write("Srta. Diana, Google está rechazando la conexión multimodal. Probablemente sea una restricción de su API Key para procesar imágenes.")
 # --- PESTAÑA 3: LABORATORIO CREATIVO ---
 with tabs[3]:
     st.subheader("🎨 Estación de Diseño Mark 61")
