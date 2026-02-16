@@ -3,18 +3,15 @@ from groq import Groq
 import requests
 import docx
 import pandas as pd
-from PIL import Image, ImageOps, ImageFilter
-from streamlit_mic_recorder import mic_recorder
+import PyPDF2 # Añadido para soporte PDF
+from PIL import Image
+import io, base64
 
-# --- 1. ESTÉTICA DE LA TORRE STARK (AUDITADA) ---
-st.set_page_config(page_title="JARVIS v125", layout="wide")
-
-# CSS para mantener el look neón y el reactor
+# --- 1. ESTÉTICA STARK INDUSTRIES ---
+st.set_page_config(page_title="JARVIS v126", layout="wide")
 st.markdown("""
     <style>
     .stApp { background-color: #010409; color: #00f2ff; }
-    .stTabs [data-baseweb="tab"] { color: #00f2ff !important; font-size: 16px; }
-    .stButton>button { border: 1px solid #00f2ff; background-color: transparent; color: #00f2ff; width: 100%; }
     .arc-reactor {
         width: 60px; height: 60px; border-radius: 50%; margin: 10px auto;
         background: radial-gradient(circle, #fff 0%, #00f2ff 40%, transparent 70%);
@@ -26,71 +23,91 @@ st.markdown("""
     <div class="arc-reactor"></div>
     """, unsafe_allow_html=True)
 
-# --- 2. CONEXIÓN A LA RED INDEPENDIENTE (GROQ) ---
+# --- 2. NÚCLEO DE INTELIGENCIA (GROQ + VISION) ---
 if "GROQ_API_KEY" in st.secrets:
     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-    # Usamos Llama-3.3-70b: un modelo masivo y extremadamente inteligente
-    modelo_ia = "llama-3.3-70b-versatile"
+    modelo_texto = "llama-3.3-70b-versatile"
+    modelo_vision = "llama-3.2-11b-vision-preview" # Especialista en imágenes
 else:
-    st.error("🚨 SRTA. DIANA: ACCESO DENEGADO. FALTA GROQ_API_KEY EN SECRETS.")
+    st.error("🚨 SRTA. DIANA: ACCESO DENEGADO. FALTA GROQ_API_KEY.")
     st.stop()
 
-# --- 3. INTERFAZ TÁCTICA ---
-st.title("🛰️ JARVIS: SISTEMA AUTÓNOMO v125")
-tabs = st.tabs(["💬 COMANDO", "📊 ANÁLISIS DOCS", "📸 ÓPTICO", "🎨 LABORATORIO"])
+# --- 3. INTERFAZ TÁCTICA CENTRALIZADA ---
+tabs = st.tabs(["💬 COMANDO", "📊 ANÁLISIS UNIVERSAL", "🎨 LABORATORIO"])
 
-# --- PESTAÑA 0: COMANDO (VOZ + TEXTO) ---
+# --- TAB 0: COMANDO ---
 with tabs[0]:
-    col_mic, col_chat = st.columns([1, 5])
-    with col_mic:
-        audio = mic_recorder(start_prompt="🎙️", stop_prompt="🛰️", key="mic_125")
-    
-    prompt_input = st.chat_input("Órdenes para JARVIS...")
-    final_prompt = audio['transcript'] if audio and audio['transcript'] else prompt_input
-
-    if final_prompt:
-        with st.chat_message("user"): st.write(final_prompt)
+    prompt = st.chat_input("Órdenes para JARVIS...")
+    if prompt:
+        with st.chat_message("user"): st.write(prompt)
         with st.chat_message("assistant"):
             try:
-                completion = client.chat.completions.create(
-                    model=modelo_ia,
-                    messages=[
-                        {"role": "system", "content": "Eres JARVIS, el asistente elegante de la Srta. Diana. Responde con la precisión de Stark Industries."},
-                        {"role": "user", "content": final_prompt}
-                    ]
-                )
-                st.write(completion.choices[0].message.content)
-            except Exception as e: st.error(f"Falla de enlace: {e}")
-
-# --- PESTAÑA 1: ANÁLISIS DE DOCS (EXCEL/WORD) ---
-with tabs[1]:
-    st.subheader("📊 Lector de Inteligencia Multiformato")
-    file = st.file_uploader("Cargar archivo táctico", type=['txt', 'docx', 'xlsx'])
-    if file and st.button("🔍 INICIAR ANÁLISIS"):
-        try:
-            if file.name.endswith('.docx'):
-                doc = docx.Document(file)
-                text = "\n".join([p.text for p in doc.paragraphs])
-            elif file.name.endswith('.xlsx'):
-                df = pd.read_excel(file)
-                text = f"Resumen de datos: {df.head().to_string()}"
-            else:
-                text = file.read().decode()
-            
-            with st.spinner("JARVIS procesando datos..."):
                 res = client.chat.completions.create(
-                    model=modelo_ia,
-                    messages=[{"role": "user", "content": f"Resume y analiza esto para la Srta. Diana: {text[:7000]}"}]
+                    model=modelo_texto,
+                    messages=[{"role": "system", "content": "Eres JARVIS. Responde elegante a la Srta. Diana."},
+                              {"role": "user", "content": prompt}]
                 )
-                st.success(res.choices[0].message.content)
-        except Exception as e: st.error(f"Error en el lector: {e}")
+                st.write(res.choices[0].message.content)
+            except Exception as e: st.error(f"Falla: {e}")
 
-# --- PESTAÑA 3: LABORATORIO (GENERADOR DE IMÁGENES) ---
-with tabs[3]:
-    st.subheader("🎨 Estación de Diseño Mark 61")
-    idea = st.text_input("¿Qué prototipo desea visualizar, Srta. Diana?")
-    if st.button("🚀 INICIAR SÍNTESIS"):
+# --- TAB 1: ANÁLISIS UNIVERSAL (MULTIFORMATO) ---
+with tabs[1]:
+    st.subheader("📊 Centro de Inteligencia y Escaneo")
+    st.write("Cargue documentos (PDF, DOCX, XLSX) o imágenes (JPG, PNG) para análisis táctico.")
+    
+    archivo = st.file_uploader("Subir archivo de inteligencia", type=['txt', 'docx', 'xlsx', 'csv', 'pdf', 'png', 'jpg', 'jpeg'])
+    
+    if archivo and st.button("🔍 INICIAR ANÁLISIS INTEGRAL"):
+        with st.spinner("JARVIS procesando datos multiformato..."):
+            try:
+                # Caso A: IMÁGENES
+                if archivo.type in ["image/png", "image/jpeg", "image/jpg"]:
+                    img = Image.open(archivo)
+                    st.image(img, width=400, caption="Captura Analizada")
+                    
+                    # Convertir imagen a base64 para Groq Vision
+                    encoded_img = base64.b64encode(archivo.getvalue()).decode('utf-8')
+                    
+                    res = client.chat.completions.create(
+                        model=modelo_vision,
+                        messages=[{
+                            "role": "user",
+                            "content": [
+                                {"type": "text", "text": "Actúa como JARVIS. Analiza esta imagen con detalle técnico para la Srta. Diana."},
+                                {"type": "image_url", "image_url": {"url": f"data:{archivo.type};base64,{encoded_img}"}}
+                            ]
+                        }]
+                    )
+                    st.info(res.choices[0].message.content)
+
+                # Caso B: DOCUMENTOS
+                else:
+                    text_content = ""
+                    if archivo.name.endswith('.docx'):
+                        doc = docx.Document(archivo)
+                        text_content = "\n".join([p.text for p in doc.paragraphs])
+                    elif archivo.name.endswith('.pdf'):
+                        pdf_reader = PyPDF2.PdfReader(archivo)
+                        text_content = "\n".join([page.extract_text() for page in pdf_reader.pages])
+                    elif archivo.name.endswith('.xlsx'):
+                        df = pd.read_excel(archivo)
+                        text_content = f"Datos de tabla Excel:\n{df.head(20).to_string()}"
+                    else:
+                        text_content = archivo.read().decode()
+
+                    res = client.chat.completions.create(
+                        model=modelo_texto,
+                        messages=[{"role": "user", "content": f"Analiza este informe para la Srta. Diana: {text_content[:8000]}"}]
+                    )
+                    st.success(res.choices[0].message.content)
+
+            except Exception as e:
+                st.error(f"Error en el protocolo de escaneo: {e}")
+
+# --- TAB 2: LABORATORIO ---
+with tabs[2]:
+    st.subheader("🎨 Estación de Diseño")
+    idea = st.text_input("¿Qué diseño desea sintetizar hoy?")
+    if st.button("🚀 INICIAR"):
         if idea:
-            with st.spinner("Sintetizando..."):
-                url = f"https://image.pollinations.ai/prompt/{idea.replace(' ', '%20')}?nologo=true"
-                st.image(url, caption=f"Renderizado: {idea}")
+            st.image(f"https://image.pollinations.ai/prompt/{idea.replace(' ', '%20')}?nologo=true")
