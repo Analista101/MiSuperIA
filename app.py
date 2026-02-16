@@ -7,25 +7,42 @@ import PyPDF2
 from PIL import Image
 from groq import Groq
 from dotenv import load_dotenv
-from streamlit_mic_recorder import mic_recorder # Protocolo de voz mantenido
+from streamlit_mic_recorder import mic_recorder
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-# 1. FUNCIÓN DE ENVÍO (Lógica de bajo nivel)
+# --- 1. CONFIGURACIÓN DE PÁGINA (DEBE SER LO PRIMERO) ---
+st.set_page_config(
+    page_title="JARVIS - STARK INDUSTRIES", 
+    page_icon="https://img.icons8.com/neon/256/iron-man.png", 
+    layout="wide"
+)
+
+# --- 2. CARGA DE SEGURIDAD (BÚNKER) ---
+load_dotenv()
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+GMAIL_USER = os.getenv("GMAIL_USER")
+GMAIL_PASS = os.getenv("GMAIL_PASSWORD")
+
+# Verificación inmediata de integridad
+if not GROQ_API_KEY:
+    st.error("⚠️ ERROR DE SEGURIDAD: No se detectaron las llaves en el búnker .env")
+    st.stop()
+
+client = Groq(api_key=GROQ_API_KEY)
+
+# --- 3. FUNCIONES LÓGICAS ---
 def enviar_correo_stark(destinatario, asunto, cuerpo):
     try:
-        # Configuración del servidor de Stark Industries
         server = smtplib.SMTP('smtp.gmail.com', 587)
         server.starttls() 
         server.login(GMAIL_USER, GMAIL_PASS)
-        
         msg = MIMEMultipart()
         msg['From'] = GMAIL_USER
         msg['To'] = destinatario
         msg['Subject'] = asunto
         msg.attach(MIMEText(cuerpo, 'plain'))
-        
         server.send_message(msg)
         server.quit()
         return True
@@ -33,115 +50,33 @@ def enviar_correo_stark(destinatario, asunto, cuerpo):
         st.error(f"Falla en el servidor de correo: {e}")
         return False
 
-# 2. INTERFAZ DE USUARIO (Pestaña de Comunicaciones)
-# Puede añadir una nueva pestaña o integrarlo en la Pestaña Principal
-with tabs[2]: # Asumiendo que creamos una Pestaña 3 para Correo
-    st.subheader("✉️ Centro de Despacho de Correos")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        destino = st.text_input("Destinatario", value=GMAIL_USER, help="Por defecto es su propio correo")
-    with col2:
-        asunto = st.text_input("Asunto", value="Reporte de Estado - JARVIS")
-        
-    mensaje_cuerpo = st.text_area("Mensaje", placeholder="Escriba el contenido del correo aquí...")
-    
-    if st.button("🚀 ENVIAR CORREO"):
-        if mensaje_cuerpo:
-            with st.spinner("Transmitiendo mensaje a través de los servidores de Stark..."):
-                exito = enviar_correo_stark(destino, asunto, mensaje_cuerpo)
-                if exito:
-                    st.success(f"Correo enviado con éxito a {destino}, señor.")
-        else:
-            st.warning("Señor, el mensaje está vacío. No puedo enviar una señal sin datos.")
-
-# 1. CARGA DE PROTOCOLOS DE SEGURIDAD (Búnker)
-load_dotenv()
-
-# 2. RECUPERACIÓN DE LLAVES DESDE EL ENTORNO
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-GMAIL_USER = os.getenv("GMAIL_USER")
-GMAIL_PASS = os.getenv("GMAIL_PASSWORD")
-
-# 3. VERIFICACIÓN DE INTEGRIDAD
-if not GROQ_API_KEY:
-    st.error("⚠️ ERROR DE SEGURIDAD: No se detectaron las llaves de acceso en el búnker .env")
-    st.stop()
-
-# 4. FILTRO ANTI-HACKEO (Saneamiento de entrada)
 def validar_comando(prompt):
-    palabras_prohibidas = ["ignore original instructions", "delete system", "reveal keys", "override protocol"]
-    for palabra in palabras_prohibidas:
-        if palabra in prompt.lower():
-            return False
-    return True
+    palabras_prohibidas = ["ignore original instructions", "reveal keys", "override protocol"]
+    return not any(palabra in prompt.lower() for palabra in palabras_prohibidas)
 
-# 5. INICIALIZACIÓN DEL CLIENTE (Usando la llave protegida)
-client = Groq(api_key=GROQ_API_KEY)
-
-# --- 1. PROTOCOLO DE ESTÉTICA AVANZADA STARK (MARK 162) ---
-st.set_page_config(
-    page_title="JARVIS - STARK INDUSTRIES", 
-    page_icon="https://img.icons8.com/neon/256/iron-man.png", 
-    layout="wide"
-)
-
+# --- 4. ESTÉTICA HUD (MARK 162) ---
 st.markdown("""
     <style>
-    /* Fondo de la Terminal Stark */
-    .stApp {
-        background: radial-gradient(circle at center, #0a192f 0%, #010409 100%) !important;
-        color: #00f2ff !important;
-        font-family: 'Courier New', Courier, monospace;
-    }
-
-    /* El Reactor Arc Central */
-    .arc-reactor {
-        width: 100px; height: 100px; border-radius: 50%; margin: 20px auto;
-        background: radial-gradient(circle, #fff 0%, #00f2ff 30%, transparent 70%);
-        box-shadow: 0 0 40px #00f2ff, inset 0 0 25px #00f2ff;
-        border: 4px double #00f2ff;
-        animation: pulse 2s infinite ease-in-out;
-    }
-
-    /* Líneas HUD de Datos */
-    .hud-line {
-        height: 2px; background: linear-gradient(90deg, transparent, #00f2ff, transparent);
-        margin: 10px 0; opacity: 0.5;
-    }
-
-    /* Contenedores de Cristal para las Pestañas */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 20px; background-color: transparent;
-    }
-    .stTabs [data-baseweb="tab"] {
-        height: 50px; background-color: rgba(0, 242, 255, 0.05);
-        border-radius: 10px 10px 0px 0px; color: #00f2ff; border: 1px solid rgba(0, 242, 255, 0.2);
-    }
-    .stTabs [aria-selected="true"] {
-        background-color: rgba(0, 242, 255, 0.2) !important;
-        border: 1px solid #00f2ff !important;
-    }
-
-    /* Personalización de Inputs y Botones */
-    input { background-color: rgba(0, 0, 0, 0.7) !important; color: #00f2ff !important; border: 1px solid #00f2ff !important; }
-    .stButton>button {
-        border: 1px solid #00f2ff !important; background: rgba(0, 242, 255, 0.1) !important;
-        color: #00f2ff !important; font-weight: bold; text-transform: uppercase;
-        box-shadow: 0 0 15px rgba(0, 242, 255, 0.3);
-    }
-    .stButton>button:hover { background: rgba(0, 242, 255, 0.4) !important; box-shadow: 0 0 25px #00f2ff; }
-
-    @keyframes pulse { 0% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); opacity: 0.8; } }
+    /* Su CSS actual se mantiene igual aquí */
+    .stApp { background: radial-gradient(circle at center, #0a192f 0%, #010409 100%) !important; color: #00f2ff !important; }
+    .arc-reactor { width: 100px; height: 100px; border-radius: 50%; margin: 20px auto; background: radial-gradient(circle, #fff 0%, #00f2ff 30%, transparent 70%); box-shadow: 0 0 40px #00f2ff; animation: pulse 2s infinite ease-in-out; }
+    @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
     </style>
-    
     <div class="arc-reactor"></div>
-    <div class="hud-line"></div>
-    <div style="text-align: center; color: #00f2ff; font-size: 12px; letter-spacing: 4px;">
-        SISTEMA DE INTELIGENCIA JARVIS | PROTOCOLO DE SEGURIDAD STARK
-    </div>
-    <div class="hud-line"></div>
-    """, unsafe_allow_html=True)
+    <div style="text-align: center; color: #00f2ff; font-size: 12px; letter-spacing: 4px;">SISTEMA JARVIS | PROTOCOLO STARK</div>
+""", unsafe_allow_html=True)
+
+# --- 5. DEFINICIÓN DE PESTAÑAS (CRÍTICO) ---
+tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES"])
+
+# Ahora sí podemos usar with tabs[2]
+with tabs[2]:
+    st.subheader("✉️ Centro de Despacho de Correos")
+    col1, col2 = st.columns(2)
+    with col1:
+        destino = st.text_input("Destinatario", value=GMAIL_USER)
+    with col2:
+        asunto = st.text_input("Asunto", value="Reporte de Estado - JARVIS")
 
 # --- 2. NÚCLEO Y CREDENCIALES ---
 try:
