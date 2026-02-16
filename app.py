@@ -113,21 +113,41 @@ with tabs[1]:
                     st.success(res.choices[0].message.content)
             except Exception as e: st.error(f"Falla en el escáner: {e}")
 
-# --- PESTAÑA 2: LABORATORIO (BLINDADO) ---
+# --- PESTAÑA 2: LABORATORIO (PUENTE DE MEMORIA v149) ---
 with tabs[2]:
-    st.subheader("🎨 Estación de Diseño Mark 78")
-    idea = st.text_input("Descripción del diseño:", key="lab_final")
-    estilo = st.selectbox("Filtro:", ["Cinematic Marvel", "Blueprint Técnico", "Cyberpunk", "Industrial"], key="style_final")
+    st.subheader("🎨 Estación de Diseño Mark 79")
     
-    if st.button("🚀 MATERIALIZAR"):
-        if idea:
-            with st.spinner("Generando datos de imagen..."):
-                try:
-                    seed = random.randint(1, 999)
-                    url = f"https://image.pollinations.ai/prompt/{idea.replace(' ', '%20')}%20{estilo.replace(' ', '%20')}?nologo=true&seed={seed}"
-                    resp = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=25)
-                    if resp.status_code == 200:
-                        img_b64 = base64.b64encode(resp.content).decode()
-                        st.markdown(f'<img src="data:image/png;base64,{img_b64}" style="width:100%; border-radius:10px; border: 1px solid #00f2ff;">', unsafe_allow_html=True)
-                        st.success("Sintonía establecida.")
-                except Exception as e: st.error(f"Error de inyección: {e}")
+    # Usamos un contenedor para refrescar la interfaz
+    with st.container():
+        idea = st.text_input("Descripción del diseño:", key="lab_149_input")
+        estilo = st.selectbox("Filtro:", ["Cinematic Marvel", "Blueprint Técnico", "Cyberpunk", "Industrial"], key="style_149_sel")
+        
+        # Botón con clave única para asegurar que Streamlit registre el clic
+        if st.button("🚀 MATERIALIZAR", key="btn_materialize_149"):
+            if idea:
+                with st.spinner("JARVIS: Generando matriz de píxeles..."):
+                    try:
+                        # 1. Generamos semilla para variabilidad
+                        seed = random.randint(1, 1000000)
+                        prompt_final = f"{idea} {estilo}".replace(" ", "%20")
+                        url = f"https://image.pollinations.ai/prompt/{prompt_final}?nologo=true&seed={seed}"
+                        
+                        # 2. Descarga interna desde el servidor
+                        headers = {"User-Agent": "Mozilla/5.0"}
+                        response = requests.get(url, headers=headers, timeout=30)
+                        
+                        if response.status_code == 200:
+                            # 3. CREACIÓN DE OBJETO DE MEMORIA (No Base64, no HTML)
+                            img_data = io.BytesIO(response.content)
+                            img_final = Image.open(img_data)
+                            
+                            # 4. Renderizado nativo (Más compatible)
+                            st.image(img_final, caption=f"Diseño: {idea}", use_container_width=True)
+                            st.success("Sintonía establecida con éxito.")
+                        else:
+                            st.error(f"Falla de enlace: Código {response.status_code}")
+                            
+                    except Exception as e:
+                        st.error(f"Error en el núcleo de renderizado: {e}")
+            else:
+                st.warning("Srta. Diana, necesito una descripción para iniciar la secuencia.")
