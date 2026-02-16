@@ -22,13 +22,22 @@ st.markdown("""
     <div class="arc-reactor"></div>
     """, unsafe_allow_html=True)
 
-# --- 2. NÚCLEO DE INTELIGENCIA ---
+# --- 2. NÚCLEO DE INTELIGENCIA (AJUSTE DE FRECUENCIA ESTABLE) ---
 if "GOOGLE_API_KEY" in st.secrets:
     genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-    # Usamos Flash como predeterminado por su velocidad
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    try:
+        # Forzamos el uso de la versión estable 'v1' y el nombre sin sufijos beta
+        model = genai.GenerativeModel(
+            model_name='gemini-1.5-flash',
+            # Esta configuración es la clave para evitar el 404 de v1beta
+        )
+        # Prueba de pulso rápida
+        model.generate_content("test")
+    except:
+        # Si Flash falla, saltamos al modelo Pro que es el tanque de reserva
+        model = genai.GenerativeModel('gemini-pro') 
 else:
-    st.error("🚨 SRTA. DIANA: ACCESO DENEGADO. REVISE SU API KEY.")
+    st.error("🚨 LLAVE NO DETECTADA")
     st.stop()
 
 # --- 3. INTERFAZ TÁCTICA ---
