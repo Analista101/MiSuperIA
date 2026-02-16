@@ -147,36 +147,36 @@ with tabs[1]:
     st.subheader("📊 Escáner de Evidencia y Documentación")
     file = st.file_uploader("Cargar reporte técnico o imagen", type=['pdf','docx','xlsx','png','jpg','jpeg'])
     
-    # Intentaremos con el modelo de 90B que es el estándar de producción actual
-    modelo_vision_estable = "llama-3.2-90b-vision-preview"
+    # PROTOCOLO DE EMERGENCIA: Cambio a arquitectura Llava
+    # Este modelo es el último bastión de visión estable en Groq tras la baja de Llama 3.2
+    modelo_vision_emergencia = "llava-v1.5-7b-4096-preview"
 
     if file and st.button("🔍 INICIAR ANÁLISIS"):
-        with st.spinner("Accediendo a los servidores de Industrias Stark..."):
+        with st.spinner("Activando protocolos de visión alternativa..."):
             try:
                 if file.type.startswith('image/'):
                     img_file = Image.open(file)
-                    st.image(img_file, width=400, caption="Evidencia visual detectada")
+                    st.image(img_file, width=400, caption="Imagen en análisis")
                     
-                    # Preparación de datos binarios
                     buffered = io.BytesIO()
                     img_file.save(buffered, format="PNG")
                     img_b64 = base64.b64encode(buffered.getvalue()).decode()
                     
-                    # Ejecución del análisis visual
                     res = client.chat.completions.create(
-                        model=modelo_vision_estable,
+                        model=modelo_vision_emergencia,
                         messages=[
                             {"role": "system", "content": PERSONALIDAD},
                             {"role": "user", "content": [
-                                {"type": "text", "text": "Señor, he procesado la imagen. Aquí tiene mi análisis:"},
+                                {"type": "text", "text": "Analiza esta imagen y dime qué ves, JARVIS."},
                                 {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{img_b64}"}}
                             ]}
-                        ]
+                        ],
+                        max_tokens=1024 # Limitamos para asegurar estabilidad
                     )
                     st.success(res.choices[0].message.content)
                 
                 else:
-                    # Procesamiento de documentos (PDF, DOCX, XLSX)
+                    # Lógica de documentos (permanece sin cambios)
                     text = ""
                     if file.name.endswith('.pdf'):
                         reader = PyPDF2.PdfReader(file)
@@ -188,19 +188,18 @@ with tabs[1]:
                         df = pd.read_excel(file)
                         text = df.head(50).to_string()
                     
-                    # Respuesta del modelo de lenguaje
                     res = client.chat.completions.create(
                         model=modelo_texto,
                         messages=[
                             {"role": "system", "content": PERSONALIDAD},
-                            {"role": "user", "content": f"He extraído los datos del archivo. Procedo con el análisis: {text[:12000]}"}
+                            {"role": "user", "content": f"Resume este contenido técnico: {text[:12000]}"}
                         ]
                     )
                     st.success(res.choices[0].message.content)
                     
             except Exception as e: 
-                st.error(f"Falla de lectura: {e}")
-                st.info("Nota: Si el error 404 persiste, pruebe cambiando el modelo a 'llava-v1.5-7b-4096-preview' como medida de emergencia.")
+                st.error(f"Falla crítica de enlace: {e}")
+                st.info("Señor, si Llava también falla, es posible que Groq haya desactivado temporalmente TODA la inferencia visual para mantenimiento de servidores.")
 
 # --- PESTAÑA 2: LABORATORIO (ROUTER HF + TOKEN) ---
 with tabs[2]:
