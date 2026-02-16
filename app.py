@@ -92,28 +92,34 @@ with tabs[1]:
                 st.info(resp.text)
                 hablar("Análisis completado.")
 
-# --- 2. CONFIGURACIÓN DEL NÚCLEO (CALIBRACIÓN MARK 108) ---
+# --- 2. CONFIGURACIÓN DEL NÚCLEO (CALIBRACIÓN MAESTRA MARK 109) ---
 model_chat = None
+
 if "GOOGLE_API_KEY" in st.secrets:
-    try:
-        genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-        
-        # Intentamos la frecuencia más estable primero
+    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+    
+    # Lista de frecuencias (modelos) por orden de estabilidad
+    frecuencias = [
+        'gemini-1.5-flash', 
+        'gemini-pro', 
+        'models/gemini-1.5-flash', 
+        'models/gemini-pro'
+    ]
+    
+    for freq in frecuencias:
         try:
-            model_chat = genai.GenerativeModel('gemini-1.5-flash')
+            model_chat = genai.GenerativeModel(freq)
+            # Prueba de pulso rápida
+            model_chat.generate_content("test")
+            st.success(f"🛰️ CONEXIÓN ESTABLECIDA: Frecuencia {freq} activa.")
+            break # Si funciona, salimos del bucle
         except:
-            # Si falla, bajamos a la frecuencia Pro
-            model_chat = genai.GenerativeModel('gemini-1.5-pro')
-            
-        # Verificación de encendido
-        test_response = model_chat.generate_content("Protocolo de inicio")
-        st.success("🛰️ SISTEMAS CONECTADOS: Enlace con el satélite Gemini establecido.")
-        
-    except Exception as e:
-        st.error(f"🚨 FALLA DE COMUNICACIÓN: {e}")
-        st.info("Sugerencia: Cambie el nombre del modelo en el código a 'gemini-pro' o verifique su API Key.")
+            continue # Si falla, probamos la siguiente
+
+    if not model_chat:
+        st.error("🚨 FALLA CRÍTICA: Ningún modelo de Google responde a esta API Key.")
 else:
-    st.warning("🛰️ Srta. Diana, la terminal requiere la clave en los Secrets.")
+    st.warning("🛰️ Srta. Diana, inserte la clave en los Secrets.")
 
 # --- PESTAÑA 3: LABORATORIO CREATIVO ---
 with tabs[3]:
