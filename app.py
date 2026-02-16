@@ -92,35 +92,28 @@ with tabs[1]:
                 st.info(resp.text)
                 hablar("Análisis completado.")
 
-# --- PESTAÑA 2: ÓPTICO (MODO DIAGNÓSTICO) ---
-with tabs[2]:
-    st.subheader("📸 Sensores Ópticos y Diagnóstico de Red")
-    cam = st.camera_input("Captura de Campo", key="cam_diag")
-    
-    if cam:
-        st.image(cam, width=400, caption="Captura recibida en el buffer")
+# --- 2. CONFIGURACIÓN DEL NÚCLEO (CALIBRACIÓN MARK 108) ---
+model_chat = None
+if "GOOGLE_API_KEY" in st.secrets:
+    try:
+        genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
         
-        if st.button("🔍 INICIAR PRUEBA DE ENLACE"):
-            if model_chat:
-                with st.spinner("Intentando comunicación con el núcleo..."):
-                    try:
-                        # PRUEBA 1: Intentamos enviar la imagen
-                        img_cam = Image.open(cam)
-                        res = model_chat.generate_content(["Describe esta imagen brevemente.", img_cam])
-                        st.success(f"✅ ENLACE ÓPTICO ACTIVO: {res.text}")
-                        hablar("Sensores ópticos en línea, Srta. Diana.")
-                    
-                    except Exception as e:
-                        st.warning("⚠️ El sensor óptico ha fallado. Intentando respaldo de texto puro...")
-                        try:
-                            # PRUEBA 2: Si la imagen falla, probamos solo texto
-                            res_texto = model_chat.generate_content("JARVIS, responde 'Sistemas de texto operativos' si puedes leerme.")
-                            st.info(f"📡 RESPALDO EXITOSO: {res_texto.text}")
-                            st.write("Diagnóstico: Su API Key funciona para texto, pero Google bloquea la visión en esta zona o proyecto.")
-                            hablar("El núcleo responde, pero los sensores de visión están bloqueados por el protocolo regional.")
-                        except Exception as e2:
-                            st.error(f"🚨 FALLA TOTAL DE ENLACE: {e2}")
-                            st.write("Diagnóstico: La API Key es inválida o no tiene permisos de Generative AI.")
+        # Intentamos la frecuencia más estable primero
+        try:
+            model_chat = genai.GenerativeModel('gemini-1.5-flash')
+        except:
+            # Si falla, bajamos a la frecuencia Pro
+            model_chat = genai.GenerativeModel('gemini-1.5-pro')
+            
+        # Verificación de encendido
+        test_response = model_chat.generate_content("Protocolo de inicio")
+        st.success("🛰️ SISTEMAS CONECTADOS: Enlace con el satélite Gemini establecido.")
+        
+    except Exception as e:
+        st.error(f"🚨 FALLA DE COMUNICACIÓN: {e}")
+        st.info("Sugerencia: Cambie el nombre del modelo en el código a 'gemini-pro' o verifique su API Key.")
+else:
+    st.warning("🛰️ Srta. Diana, la terminal requiere la clave en los Secrets.")
 
 # --- PESTAÑA 3: LABORATORIO CREATIVO ---
 with tabs[3]:
