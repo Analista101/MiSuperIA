@@ -1,11 +1,9 @@
 streamlit
+groq
+python-docx
 pandas
+PyPDF2
 Pillow
-duckduckgo_search
-edge-tts
 requests
 streamlit-mic-recorder
 openpyxl
-streamlit-extras
-python-docx
-groq
