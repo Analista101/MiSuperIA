@@ -113,40 +113,48 @@ with tabs[1]:
                     st.success(res.choices[0].message.content)
             except Exception as e: st.error(f"Falla en el escáner: {e}")
 
-# --- PESTAÑA 2: LABORATORIO (SATÉLITE HUGGING FACE v150) ---
+# --- PESTAÑA 2: LABORATORIO (NUEVA FRECUENCIA HUGGING FACE v151) ---
 with tabs[2]:
-    st.subheader("🎨 Estación de Diseño Mark 80")
-    st.write("Generando a través de la Red Neuronal Hugging Face (Independiente).")
+    st.subheader("🎨 Estación de Diseño Mark 81")
+    st.write("Conexión establecida con el nuevo Router de Hugging Face.")
     
-    idea = st.text_input("Describa el prototipo:", key="input_hf")
-    estilo = st.selectbox("Acabado:", ["Cinematic", "Technical Drawing", "Cyberpunk", "Realistic"], key="style_hf")
+    idea = st.text_input("Describa el prototipo:", key="input_router_hf")
+    estilo = st.selectbox("Acabado:", ["Cinematic Marvel", "Technical Drawing", "Industrial Stark", "Hyper-Realistic"], key="style_router_hf")
     
-    if st.button("🚀 MATERIALIZAR DISEÑO", key="btn_hf"):
+    if st.button("🚀 MATERIALIZAR DISEÑO", key="btn_router_hf"):
         if idea:
-            with st.spinner("JARVIS: Estableciendo túnel con Hugging Face..."):
+            with st.spinner("JARVIS: Recalibrando sensores y sintetizando..."):
                 try:
-                    # Usamos un modelo de alto rendimiento: Stable Diffusion XL
-                    # Esta URL es una API de inferencia, no una imagen directa
-                    API_URL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0"
+                    # NUEVA URL DEL ROUTER (Protocolo v151)
+                    API_URL = "https://router.huggingface.co/hf-inference/models/stabilityai/stable-diffusion-xl-base-1.0"
                     
-                    # El prompt se enriquece con el estilo
-                    payload = {"inputs": f"{idea}, {estilo}, high quality, 8k resolution"}
+                    # Headers de conexión segura
+                    # Nota: Si el error persiste, necesitaremos un Token gratuito en los headers
+                    headers = {"Content-Type": "application/json"}
                     
-                    # JARVIS realiza la petición técnica
-                    response = requests.post(API_URL, json=payload, timeout=40)
+                    payload = {
+                        "inputs": f"{idea}, {estilo}, high quality, highly detailed, 8k",
+                        "parameters": {"negative_prompt": "blurry, distorted, low quality"}
+                    }
+                    
+                    # Petición a la nueva coordenada
+                    response = requests.post(API_URL, headers=headers, json=payload, timeout=60)
                     
                     if response.status_code == 200:
-                        # Recibimos los bytes de la imagen directamente
-                        image_bytes = response.content
-                        img_final = Image.open(io.BytesIO(image_bytes))
-                        
-                        # Renderizado nativo de Streamlit
+                        # Procesamiento de bytes puros
+                        img_final = Image.open(io.BytesIO(response.content))
                         st.image(img_final, caption=f"Prototipo: {idea}", use_container_width=True)
-                        st.success("Sintonía lograda. Imagen generada localmente en el servidor.")
+                        st.success("Sintonía lograda con el nuevo router.")
+                    
+                    elif response.status_code == 401:
+                        st.error("🚨 ERROR DE AUTENTICACIÓN: El satélite requiere una 'Llave de Acceso' (Token).")
+                        st.info("Srta. Diana, puedo indicarle cómo obtener su llave gratuita de Hugging Face en 1 minuto.")
+                    
                     elif response.status_code == 503:
-                        st.warning("⚠️ El modelo se está cargando en el satélite. Reintente en 20 segundos.")
+                        st.warning("⚠️ El motor está calentando motores. Reintente en unos segundos.")
+                    
                     else:
-                        st.error(f"Error de protocolo {response.status_code}: {response.text}")
+                        st.error(f"Falla de protocolo {response.status_code}: {response.text}")
                         
                 except Exception as e:
-                    st.error(f"Falla en el enlace de Hugging Face: {e}")
+                    st.error(f"Falla en la matriz de renderizado: {e}")
