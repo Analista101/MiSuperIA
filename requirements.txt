@@ -8,3 +8,4 @@ streamlit-mic-recorder
 openpyxl
 streamlit-extras
 python-docx
+google-generativeai
