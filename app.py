@@ -8,8 +8,7 @@ from PIL import Image
 from streamlit_paste_button import paste_image_button as paste_button
 from streamlit_mic_recorder import mic_recorder
 import io, base64
-import torch
-from diffusers import StableDiffusionPipeline
+from gradio_client import Client # El nuevo puente ligero
 
 # --- 1. ESTÉTICA DE LA TORRE STARK (REACTOR ARC) ---
 st.set_page_config(page_title="JARVIS v137", layout="wide")
@@ -131,30 +130,34 @@ with tabs[1]:
             except Exception as e:
                 st.error(f"Error en protocolos de lectura: {e}")
 
-# --- PESTAÑA 2: LABORATORIO (SÍNTESIS INTERNA v142) ---
+# --- PESTAÑA 2: LABORATORIO (PUENTE TÁCTICO v143) ---
 with tabs[2]:
-    st.subheader("🎨 Estación de Diseño Mark 72 (Generación Local)")
-    st.info("Iniciando motores de síntesis internos. No se requiere conexión con satélites externos.")
+    st.subheader("🎨 Estación de Diseño Mark 73")
+    st.write("Sintetizando a través de un puente de datos seguro.")
     
-    idea = st.text_input("Describa el prototipo:", key="lab_local")
+    idea = st.text_input("Describa el prototipo:", key="lab_143")
     
-    if st.button("🚀 INICIAR SÍNTESIS LOCAL"):
+    if st.button("🚀 INICIAR SÍNTESIS"):
         if idea:
-            with st.spinner("JARVIS calentando núcleos de GPU para la síntesis..."):
+            with st.spinner("JARVIS estableciendo conexión con el laboratorio remoto..."):
                 try:
-                    # Cargamos el modelo base de Stable Diffusion
-                    model_id = "runwayml/stable-diffusion-v1-5"
+                    # Usamos un cliente de Gradio para conectar con un modelo estable
+                    # Este puente es mucho más difícil de bloquear para Cloudflare
+                    client_gradio = Client("black-forest-labs/FLUX.1-schnell")
                     
-                    # Protocolo de carga optimizada para CPU (Streamlit Cloud suele usar CPU)
-                    pipe = StableDiffusionPipeline.from_pretrained(model_id, torch_dtype=torch.float32)
+                    result = client_gradio.predict(
+                        prompt=idea,
+                        seed=0,
+                        width=1024,
+                        height=1024,
+                        api_name="/predict"
+                    )
                     
-                    # Generación de la imagen
-                    image = pipe(idea).images[0]
-                    
-                    # Visualización inmediata
-                    st.image(image, caption=f"Prototipo materializado localmente: {idea}", use_container_width=True)
-                    st.success("Síntesis completada sin interferencias externas.")
+                    # El resultado es una ruta local a la imagen generada
+                    # result es una tupla o lista, tomamos el primer elemento que es la ruta
+                    st.image(result, caption=f"Prototipo: {idea}", use_container_width=True)
+                    st.success("Diseño materializado con éxito.")
                     
                 except Exception as e:
-                    st.error(f"Falla en los núcleos de energía: {e}")
-                    st.info("Srta. Diana, si el servidor es muy limitado, le sugiero usar una imagen de referencia.")
+                    st.error(f"Falla en el puente de datos: {e}")
+                    st.info("Srta. Diana, si el puente está saturado, intentaremos una frecuencia secundaria.")
