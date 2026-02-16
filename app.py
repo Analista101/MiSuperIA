@@ -103,17 +103,23 @@ if "GOOGLE_API_KEY" in st.secrets:
 else:
     st.error("🚨 SRTA. DIANA: NO HAY LLAVE MAESTRA EN SECRETS.")
 
-# 2. El botón de análisis táctico
-        if st.button("🔍 INICIAR ANÁLISIS TÁCTICO", key="btn_v113"):
+# --- PESTAÑA 2: ÓPTICO ---
+with tabs[2]:
+    st.subheader("📸 Sensores de Campo")
+    cam = st.camera_input("Activar Lente", key="cam_v114")
+    
+    if cam:
+        img_cam = Image.open(cam)
+        st.image(img_cam, width=450)
+        
+        # El botón debe estar alineado con este bloque 'if cam'
+        if st.button("🔍 INICIAR ANÁLISIS TÁCTICO", key="btn_v114"):
             if "GOOGLE_API_KEY" in st.secrets:
                 with st.spinner("JARVIS estableciendo conexión segura..."):
                     try:
                         api_key = st.secrets["GOOGLE_API_KEY"]
-                        
-                        # Probamos con la ruta de modelo más robusta
                         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
                         
-                        # Conversión de imagen a Base64
                         buf = io.BytesIO()
                         img_cam.save(buf, format="JPEG")
                         img_b64 = base64.b64encode(buf.getvalue()).decode('utf-8')
@@ -136,13 +142,12 @@ else:
                             st.markdown(f"**JARVIS:** {texto_analisis}")
                             hablar(texto_analisis)
                         else:
-                            st.error("🛰️ El satélite no reconoce el modelo (Error 404).")
-                            st.write("Detalle del servidor:", resultado.get('error', {}).get('message', 'Error desconocido'))
-                            
+                            error_msg = resultado.get('error', {}).get('message', 'Modelo no encontrado')
+                            st.error(f"🛰️ Error del satélite: {error_msg}")
                     except Exception as e:
-                        st.error(f"Falla crítica en los circuitos: {e}")
+                        st.error(f"Falla en los circuitos: {e}")
             else:
-                st.error("⚠️ No hay llave de acceso en los sistemas.")
+                st.error("⚠️ Falta la llave de acceso en los sistemas.")
 
 # --- PESTAÑA 3: LABORATORIO CREATIVO ---
 with tabs[3]:
