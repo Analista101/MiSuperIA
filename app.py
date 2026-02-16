@@ -92,62 +92,57 @@ with tabs[1]:
                 st.info(resp.text)
                 hablar("Análisis completado.")
 
-# --- 2. CONFIGURACIÓN DEL NÚCLEO (CALIBRACIÓN FORZADA MARK 111) ---
+# --- 2. CONFIGURACIÓN DEL NÚCLEO (CALIBRACIÓN LEGACY MARK 116) ---
+model_chat = None
 if "GOOGLE_API_KEY" in st.secrets:
     genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-    # Forzamos el nombre base que NO debería dar error 404
     try:
-        model_chat = genai.GenerativeModel('gemini-1.5-flash')
+        # Forzamos el modelo 1.0 PRO, que es el que menos errores 404 genera
+        model_chat = genai.GenerativeModel('gemini-1.0-pro')
+        # Prueba de vida rápida
+        model_chat.generate_content("test")
+        st.success("🛰️ SISTEMAS EN LÍNEA: Frecuencia Legacy 1.0 Establecida.")
     except:
-        model_chat = genai.GenerativeModel('gemini-1.5-pro')
-else:
-    st.error("🚨 SRTA. DIANA: NO HAY LLAVE MAESTRA EN SECRETS.")
+        try:
+            # Si el anterior falla, intentamos el modelo de texto puro original
+            model_chat = genai.GenerativeModel('gemini-pro')
+            st.warning("⚠️ Modo de Emergencia: Usando frecuencia de texto puro.")
+        except Exception as e:
+            st.error(f"🚨 FALLA TOTAL DEL SATÉLITE: {e}")
 
-# --- PESTAÑA 2: ÓPTICO ---
+# --- PESTAÑA 2: ÓPTICO (PROVEEDOR ALTERNATIVO) ---
 with tabs[2]:
-    st.subheader("📸 Sensores de Campo")
-    cam = st.camera_input("Activar Lente", key="cam_v114")
+    st.subheader("📸 Sensores de Campo (Enlace de Respaldo)")
+    cam = st.camera_input("Activar Lente", key="cam_v115")
     
     if cam:
         img_cam = Image.open(cam)
         st.image(img_cam, width=450)
         
-        # El botón debe estar alineado con este bloque 'if cam'
-        if st.button("🔍 INICIAR ANÁLISIS TÁCTICO", key="btn_v114"):
-            if "GOOGLE_API_KEY" in st.secrets:
-                with st.spinner("JARVIS estableciendo conexión segura..."):
-                    try:
-                        api_key = st.secrets["GOOGLE_API_KEY"]
-                        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
-                        
-                        buf = io.BytesIO()
-                        img_cam.save(buf, format="JPEG")
-                        img_b64 = base64.b64encode(buf.getvalue()).decode('utf-8')
+        if st.button("🔍 ANÁLISIS TÁCTICO ALTERNATIVO", key="btn_v115"):
+            with st.spinner("JARVIS contactando proveedores de respaldo..."):
+                try:
+                    # Usamos la API de Hugging Face (Modelo de Visión de código abierto)
+                    # Este es un ejemplo de cómo llamar a un modelo alternativo si Gemini falla
+                    API_URL = "https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-large"
+                    
+                    buf = io.BytesIO()
+                    img_cam.save(buf, format="JPEG")
+                    img_data = buf.getvalue()
 
-                        payload = {
-                            "contents": [{
-                                "parts": [
-                                    {"text": "Eres JARVIS. Describe esta imagen para la Srta. Diana."},
-                                    {"inline_data": {"mime_type": "image/jpeg", "data": img_b64}}
-                                ]
-                            }]
-                        }
-                        
-                        response = requests.post(url, json=payload)
-                        resultado = response.json()
+                    response = requests.post(API_URL, data=img_data)
+                    resultado = response.json()
 
-                        if 'candidates' in resultado:
-                            texto_analisis = resultado['candidates'][0]['content']['parts'][0]['text']
-                            st.success("✅ Diagnóstico Completado")
-                            st.markdown(f"**JARVIS:** {texto_analisis}")
-                            hablar(texto_analisis)
-                        else:
-                            error_msg = resultado.get('error', {}).get('message', 'Modelo no encontrado')
-                            st.error(f"🛰️ Error del satélite: {error_msg}")
-                    except Exception as e:
-                        st.error(f"Falla en los circuitos: {e}")
-            else:
-                st.error("⚠️ Falta la llave de acceso en los sistemas.")
+                    if isinstance(resultado, list) and 'generated_text' in resultado[0]:
+                        analisis = resultado[0]['generated_text']
+                        st.success("✅ Análisis mediante Satélite Secundario")
+                        st.markdown(f"**JARVIS:** Srta. Diana, mis sensores detectan: {analisis}")
+                        hablar(f"Hecho. Detecto: {analisis}")
+                    else:
+                        st.warning("🛰️ El satélite secundario está saturado. Intentando última maniobra...")
+                        # Si fallan los dos, es un problema de red de Streamlit Cloud.
+                except Exception as e:
+                    st.error(f"Falla total de sensores: {e}")
 
 # --- PESTAÑA 3: LABORATORIO CREATIVO ---
 with tabs[3]:
