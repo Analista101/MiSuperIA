@@ -3,12 +3,13 @@ from groq import Groq
 import requests
 import docx
 import pandas as pd
-import PyPDF2 # Añadido para soporte PDF
-from PIL import Image
+import PyPDF2
+from PIL import Image, ImageOps, ImageFilter
+from streamlit_mic_recorder import mic_recorder
 import io, base64
 
-# --- 1. ESTÉTICA STARK INDUSTRIES ---
-st.set_page_config(page_title="JARVIS v126", layout="wide")
+# --- 1. ESTÉTICA STARK (REACTOR ARC) ---
+st.set_page_config(page_title="JARVIS v127", layout="wide")
 st.markdown("""
     <style>
     .stApp { background-color: #010409; color: #00f2ff; }
@@ -23,65 +24,63 @@ st.markdown("""
     <div class="arc-reactor"></div>
     """, unsafe_allow_html=True)
 
-# --- 2. NÚCLEO DE INTELIGENCIA (GROQ + VISION) ---
+# --- 2. NÚCLEO DE INTELIGENCIA ---
 if "GROQ_API_KEY" in st.secrets:
     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
     modelo_texto = "llama-3.3-70b-versatile"
-    modelo_vision = "llama-3.2-11b-vision-preview" # Especialista en imágenes
+    modelo_vision = "llama-3.2-11b-vision-preview"
 else:
-    st.error("🚨 SRTA. DIANA: ACCESO DENEGADO. FALTA GROQ_API_KEY.")
+    st.error("🚨 SRTA. DIANA: ACCESO DENEGADO. REVISE GROQ_API_KEY.")
     st.stop()
 
-# --- 3. INTERFAZ TÁCTICA CENTRALIZADA ---
+# --- 3. INTERFAZ TÁCTICA ---
 tabs = st.tabs(["💬 COMANDO", "📊 ANÁLISIS UNIVERSAL", "🎨 LABORATORIO"])
 
-# --- TAB 0: COMANDO ---
+# --- TAB 0: COMANDO (MICRÓFONO REINSTALADO) ---
 with tabs[0]:
-    prompt = st.chat_input("Órdenes para JARVIS...")
-    if prompt:
-        with st.chat_message("user"): st.write(prompt)
+    st.subheader("🎙️ Interfaz de Voz y Texto")
+    col_mic, col_chat = st.columns([1, 5])
+    with col_mic:
+        # Reinstalación del sensor de audio
+        audio = mic_recorder(start_prompt="🎙️", stop_prompt="🛰️", key="mic_127")
+    
+    chat_input = st.chat_input("Órdenes para JARVIS...")
+    final_prompt = audio['transcript'] if audio and audio['transcript'] else chat_input
+
+    if final_prompt:
+        with st.chat_message("user"): st.write(final_prompt)
         with st.chat_message("assistant"):
             try:
                 res = client.chat.completions.create(
                     model=modelo_texto,
                     messages=[{"role": "system", "content": "Eres JARVIS. Responde elegante a la Srta. Diana."},
-                              {"role": "user", "content": prompt}]
+                              {"role": "user", "content": final_prompt}]
                 )
                 st.write(res.choices[0].message.content)
             except Exception as e: st.error(f"Falla: {e}")
 
-# --- TAB 1: ANÁLISIS UNIVERSAL (MULTIFORMATO) ---
+# --- TAB 1: ANÁLISIS UNIVERSAL (MULTIFORMATO + IMÁGENES) ---
 with tabs[1]:
-    st.subheader("📊 Centro de Inteligencia y Escaneo")
-    st.write("Cargue documentos (PDF, DOCX, XLSX) o imágenes (JPG, PNG) para análisis táctico.")
+    st.subheader("📊 Centro de Inteligencia")
+    archivo = st.file_uploader("Subir informe o imagen", type=['txt', 'docx', 'xlsx', 'csv', 'pdf', 'png', 'jpg', 'jpeg'])
     
-    archivo = st.file_uploader("Subir archivo de inteligencia", type=['txt', 'docx', 'xlsx', 'csv', 'pdf', 'png', 'jpg', 'jpeg'])
-    
-    if archivo and st.button("🔍 INICIAR ANÁLISIS INTEGRAL"):
-        with st.spinner("JARVIS procesando datos multiformato..."):
+    if archivo and st.button("🔍 INICIAR ESCANEO"):
+        with st.spinner("Analizando..."):
             try:
-                # Caso A: IMÁGENES
                 if archivo.type in ["image/png", "image/jpeg", "image/jpg"]:
                     img = Image.open(archivo)
-                    st.image(img, width=400, caption="Captura Analizada")
-                    
-                    # Convertir imagen a base64 para Groq Vision
+                    st.image(img, width=400)
                     encoded_img = base64.b64encode(archivo.getvalue()).decode('utf-8')
-                    
                     res = client.chat.completions.create(
                         model=modelo_vision,
-                        messages=[{
-                            "role": "user",
-                            "content": [
-                                {"type": "text", "text": "Actúa como JARVIS. Analiza esta imagen con detalle técnico para la Srta. Diana."},
-                                {"type": "image_url", "image_url": {"url": f"data:{archivo.type};base64,{encoded_img}"}}
-                            ]
-                        }]
+                        messages=[{"role": "user", "content": [
+                            {"type": "text", "text": "Analiza esta imagen técnicamente para la Srta. Diana."},
+                            {"type": "image_url", "image_url": {"url": f"data:{archivo.type};base64,{encoded_img}"}}
+                        ]}]
                     )
                     st.info(res.choices[0].message.content)
-
-                # Caso B: DOCUMENTOS
                 else:
+                    # Lógica de documentos (Excel, Word, PDF)
                     text_content = ""
                     if archivo.name.endswith('.docx'):
                         doc = docx.Document(archivo)
@@ -91,23 +90,29 @@ with tabs[1]:
                         text_content = "\n".join([page.extract_text() for page in pdf_reader.pages])
                     elif archivo.name.endswith('.xlsx'):
                         df = pd.read_excel(archivo)
-                        text_content = f"Datos de tabla Excel:\n{df.head(20).to_string()}"
+                        text_content = f"Excel Data: {df.head().to_string()}"
                     else:
                         text_content = archivo.read().decode()
 
                     res = client.chat.completions.create(
                         model=modelo_texto,
-                        messages=[{"role": "user", "content": f"Analiza este informe para la Srta. Diana: {text_content[:8000]}"}]
+                        messages=[{"role": "user", "content": f"Analiza esto: {text_content[:8000]}"}]
                     )
                     st.success(res.choices[0].message.content)
+            except Exception as e: st.error(f"Error: {e}")
 
-            except Exception as e:
-                st.error(f"Error en el protocolo de escaneo: {e}")
-
-# --- TAB 2: LABORATORIO ---
+# --- TAB 2: LABORATORIO (FILTROS REINSTALADOS) ---
 with tabs[2]:
-    st.subheader("🎨 Estación de Diseño")
-    idea = st.text_input("¿Qué diseño desea sintetizar hoy?")
-    if st.button("🚀 INICIAR"):
+    st.subheader("🎨 Estación de Diseño Mark 62")
+    idea = st.text_input("¿Qué diseño desea sintetizar?")
+    
+    # Filtros creativos para el renderizado
+    filtro_estilo = st.selectbox("Efecto de Renderizado:", 
+                                ["Original", "Cinematic Marvel", "Blueprint Técnico", "Cyberpunk Neón", "Estructura de Alambre"])
+    
+    if st.button("🚀 INICIAR SÍNTESIS"):
         if idea:
-            st.image(f"https://image.pollinations.ai/prompt/{idea.replace(' ', '%20')}?nologo=true")
+            with st.spinner("JARVIS sintetizando..."):
+                prompt_estilo = f"{idea}, {filtro_estilo} style, high quality"
+                url = f"https://image.pollinations.ai/prompt/{prompt_estilo.replace(' ', '%20')}?nologo=true"
+                st.image(url, caption=f"Prototipo: {idea} | Modo: {filtro_estilo}")
