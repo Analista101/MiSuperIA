@@ -112,27 +112,38 @@ with tabs[1]:
                     st.success(res.choices[0].message.content)
             except Exception as e: st.error(f"Falla de lectura: {e}")
 
-# --- PESTAÑA 2: LABORATORIO (CORREGIDO Y CON FILTROS) ---
+# --- PESTAÑA 2: LABORATORIO (SISTEMA DE RENDERIZADO UNIVERSAL v145) ---
 with tabs[2]:
-    st.subheader("🎨 Estación de Diseño Mark 74")
-    idea = st.text_input("Descripción del prototipo:")
-    estilo = st.selectbox("Filtro Visual:", ["Cinematic Marvel", "Blueprint Técnico", "Cyberpunk Neón", "Industrial Stark"])
+    st.subheader("🎨 Estación de Diseño Mark 75")
+    st.info("Utilizando el motor de síntesis de alta disponibilidad.")
+    
+    idea = st.text_input("Describa el prototipo a sintetizar:", key="lab_145", placeholder="Ej: Armadura estilo Valkiria...")
+    estilo = st.selectbox("Filtro Visual:", 
+                          ["Cinematic Marvel", "Blueprint Técnico", "Cyberpunk Neón", "Industrial Stark", "Hyper-Realistic"], 
+                          key="style_145")
     
     if st.button("🚀 INICIAR SÍNTESIS"):
         if idea:
-            with st.spinner("Sintetizando..."):
+            with st.spinner("JARVIS canalizando energía al motor de renderizado..."):
                 try:
-                    # Usamos un cliente estable de Gradio con el endpoint por defecto
-                    gradio_client = Client("black-forest-labs/FLUX.1-schnell")
-                    result = gradio_client.predict(
-                        prompt=f"{idea}, {estilo}",
-                        seed=0,
-                        width=1024,
-                        height=1024,
-                        num_inference_steps=4, # Optimizado para rapidez
-                        api_name="/infer" # Endpoint corregido para este modelo
-                    )
-                    st.image(result, caption=f"Diseño: {idea}", use_container_width=True)
-                    st.success("Diseño materializado.")
+                    # Limpiamos y preparamos el prompt
+                    prompt_limpio = idea.replace(" ", "%20")
+                    estilo_limpio = estilo.replace(" ", "%20")
+                    
+                    # Generamos una semilla aleatoria para evitar que la imagen se repita
+                    import random
+                    seed = random.randint(1, 999999)
+                    
+                    # Usamos una URL de renderizado directo que es inmune al RuntimeError de librerías
+                    url_final = f"https://image.pollinations.ai/prompt/{prompt_limpio}%20{estilo_limpio}?width=1024&height=1024&seed={seed}&nologo=true"
+                    
+                    # Mostramos la imagen usando el protocolo de visualización directa
+                    st.image(url_final, caption=f"Prototipo: {idea} | Estilo: {estilo}", use_container_width=True)
+                    
+                    # Botón opcional para descargar
+                    st.success("Diseño materializado. La imagen se ha cargado a través del puente de alta disponibilidad.")
+                    
                 except Exception as e:
-                    st.error(f"Falla en el puente: {e}")
+                    st.error(f"Falla en la cámara de síntesis: {e}")
+        else:
+            st.warning("Srta. Diana, el reactor necesita una idea para iniciar la secuencia.")
