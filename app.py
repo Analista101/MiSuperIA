@@ -264,25 +264,51 @@ with tabs[2]:
     if st.button("🚀 ENVIAR"):
         if enviar_correo_stark(dest, asunto, cuerpo): st.success("Mensaje enviado con éxito.")
 
-# --- PESTAÑA 3: LABORATORIO (MARK 85 CON FILTROS) ---
+# --- PESTAÑA 3: LABORATORIO (MARK 85 - PROTOCOLO CORREGIDO) ---
 with tabs[3]:
     st.subheader("🎨 Estación Mark 85")
     
     col_prom, col_filt = st.columns([2, 1])
     
     with col_prom:
-        idea = st.text_input("Prototipo a materializar:", placeholder="Ej: Nueva armadura Mark 100...")
+        idea = st.text_input("Prototipo a materializar:", placeholder="Ej: Reactor Arc de nueva generación...")
         
     with col_filt:
         estilo = st.selectbox("Filtro Visual:", ["Cinematic Marvel", "Technical Drawing", "Cyberpunk", "Industrial Stark"])
         intensidad = st.slider("Intensidad de Efecto:", 0, 100, 75)
     
     if st.button("🚀 SINTETIZAR") and idea:
-        with st.spinner("Generando prototipo..."):
-            prompt_final = f"{idea}, {estilo} style, high resolution, highly detailed, masterwork, {intensidad} percent stylistic accuracy"
-            headers = {"Authorization": f"Bearer {HF_TOKEN}"}
-            resp = requests.post("https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0", headers=headers, json={"inputs": prompt_final})
-            if resp.status_code == 200:
-                st.image(Image.open(io.BytesIO(resp.content)), caption=f"Resultado: {idea} ({estilo})", use_container_width=True)
-            else:
-                st.error("Error en la síntesis del laboratorio.")
+        with st.spinner("Sintonizando frecuencias del sintetizador..."):
+            try:
+                # 1. Preparación del Prompt
+                prompt_final = f"{idea}, {estilo} style, high resolution, highly detailed, masterwork, {intensidad} percent stylistic accuracy"
+                
+                # 2. Configuración de API
+                API_URL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0"
+                headers = {"Authorization": f"Bearer {HF_TOKEN}"}
+                
+                # 3. Petición al servidor de Stark (Hugging Face)
+                response = requests.post(API_URL, headers=headers, json={"inputs": prompt_final})
+                
+                # 4. Manejo de estados del servidor
+                if response.status_code == 200:
+                    # Éxito: Convertir bytes a imagen
+                    image_bytes = response.content
+                    image = Image.open(io.BytesIO(image_bytes))
+                    st.image(image, caption=f"Prototipo: {idea} | Estilo: {estilo}", use_container_width=True)
+                    st.success("Materialización completada con éxito, señorita.")
+                
+                elif response.status_code == 503:
+                    # El modelo se está cargando (Error común en Hugging Face)
+                    st.warning("⏳ Los motores de la Mark 85 se están precalentando. Por favor, espere 20 segundos y reintente la síntesis.")
+                
+                elif response.status_code == 401:
+                    st.error("❌ Error de Autenticación: Verifique su HF_TOKEN en los Secrets.")
+                
+                else:
+                    # Capturar otros errores (JSON de error)
+                    error_info = response.json()
+                    st.error(f"Falla en el sintetizador: {error_info.get('error', 'Error desconocido')}")
+
+            except Exception as e:
+                st.error(f"⚠️ Falla crítica en la Estación de Trabajo: {e}")
