@@ -210,7 +210,7 @@ with tabs[0]:
                 st.markdown(ans)
                 st.session_state.historial_chat.append({"role": "assistant", "content": ans})
         
-        # Respuesta por Voz y Auto-Escucha (Modo Manos Libres)
+        # Respuesta por Voz y Auto-Escucha (Corrección de llaves para f-string)
         js_speech = f"""
             <script>
             var msg = new SpeechSynthesisUtterance({repr(ans)});
@@ -222,7 +222,7 @@ with tabs[0]:
                         const micBtn = window.parent.document.querySelector('button[aria-label="🎙️"]');
                         if (micBtn) micBtn.click();
                     }}, 1000);
-                }
+                }}
             }};
             window.speechSynthesis.speak(msg);
             </script>
