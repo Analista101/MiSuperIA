@@ -253,16 +253,59 @@ with tabs[1]:
                 st.download_button("📥 DESCARGAR REPORTE PDF", pdf_file, "Reporte_Stark.pdf", "application/pdf")
             except Exception as e: st.error(f"Error: {e}")
 
-# --- TAB 2: COMUNICACIONES ---
+# --- TAB 2: COMUNICACIONES (SISTEMA DE DESPACHO CON ADJUNTOS) ---
 with tabs[2]:
-    st.subheader("✉️ Centro de Despacho")
+    st.subheader("✉️ Centro de Despacho Stark")
+    
+    # Configuración de columnas para destinatario y asunto
     c1, c2 = st.columns(2)
     dest = c1.text_input("Para:", value=GMAIL_USER)
-    asun = c2.text_input("Asunto:", value="Reporte Stark")
-    cuer = st.text_area("Mensaje:")
-    if st.button("🚀 ENVIAR CORREO"):
-        if enviar_correo_stark(dest, asun, cuer): st.success("Mensaje enviado con éxito.")
-        else: st.error("Error en el envío.")
+    asun = c2.text_input("Asunto:", value="Reporte Stark - Confidencial")
+    
+    # Campo para el cuerpo del mensaje
+    cuer = st.text_area("Cuerpo del Mensaje:", placeholder="Escriba el contenido del despacho aquí...")
+    
+    # NUEVO: Selector de archivos para adjuntar
+    archivo_adjunto = st.file_uploader("📎 Adjuntar archivo al despacho:", type=['pdf', 'docx', 'xlsx', 'png', 'jpg', 'jpeg', 'txt'], key="mailer_v195")
+    
+    if st.button("🚀 ENVIAR DESPACHO"):
+        if not dest or not cuer:
+            st.warning("Señorita, debe especificar un destinatario y un mensaje.")
+        else:
+            with st.spinner("JARVIS está encriptando y enviando el paquete de datos..."):
+                try:
+                    # Configuración del servidor SMTP
+                    server = smtplib.SMTP('smtp.gmail.com', 587)
+                    server.starttls()
+                    server.login(GMAIL_USER, GMAIL_PASS)
+                    
+                    # Creación del mensaje multipart
+                    msg = MIMEMultipart()
+                    msg['From'] = GMAIL_USER
+                    msg['To'] = dest
+                    msg['Subject'] = asun
+                    msg.attach(MIMEText(cuer, 'plain'))
+                    
+                    # Lógica para procesar el adjunto si existe
+                    if archivo_adjunto is not None:
+                        from email.mime.base import MIMEBase
+                        from email import encoders
+                        
+                        part = MIMEBase('application', 'octet-stream')
+                        part.set_payload(archivo_adjunto.read())
+                        encoders.encode_base64(part)
+                        part.add_header(
+                            'Content-Disposition',
+                            f'attachment; filename={archivo_adjunto.name}',
+                        )
+                        msg.attach(part)
+                    
+                    # Envío final
+                    server.send_message(msg)
+                    server.quit()
+                    st.success(f"Despacho enviado con éxito a {dest}.")
+                except Exception as e:
+                    st.error(f"Error en los servidores de correo: {e}")
 
 # --- TAB 3: LABORATORIO (MARK 85 - CON FILTROS) ---
 with tabs[3]:
