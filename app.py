@@ -191,17 +191,69 @@ with tabs[0]:
             except Exception as e:
                 st.error(f"Error en el enlace neuronal: {e}")
 
-# --- PESTAÑA 1: ANÁLISIS ---
+# --- PESTAÑA 1: ANÁLISIS (DOCS/IMG REFORZADO) ---
 with tabs[1]:
-    st.subheader("📊 Escáner de Evidencia")
-    file = st.file_uploader("Cargar archivo", type=['pdf','docx','xlsx','png','jpg','jpeg'])
-    if file and st.button("🔍 ANALIZAR"):
-        if file.type.startswith('image/'):
-            img = Image.open(file).convert("RGB")
-            buf = io.BytesIO(); img.save(buf, format="JPEG")
-            img_b64 = base64.b64encode(buf.getvalue()).decode()
-            res = client.chat.completions.create(model=modelo_vision, messages=[{"role":"user", "content":[{"type":"text","text":"Analice esta imagen detalladamente."},{"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{img_b64}"}}]}])
-            st.success(res.choices[0].message.content)
+    st.subheader("📊 Escáner de Evidencia Stark")
+    file = st.file_uploader("Cargar reporte, imagen o documento técnico", type=['pdf','docx','png','jpg','jpeg'])
+    
+    if file and st.button("🔍 INICIAR ANÁLISIS ESTRUCTURAL"):
+        with st.spinner("Extrayendo datos y analizando..."):
+            try:
+                contenido_extraido = ""
+                
+                # --- CASO A: IMÁGENES (Análisis Visual) ---
+                if file.type.startswith('image/'):
+                    img = Image.open(file).convert("RGB")
+                    st.image(img, caption="Imagen cargada para análisis", width=500)
+                    
+                    buf = io.BytesIO()
+                    img.save(buf, format="JPEG")
+                    img_b64 = base64.b64encode(buf.getvalue()).decode()
+                    
+                    res = client.chat.completions.create(
+                        model=modelo_vision,
+                        messages=[
+                            {"role": "system", "content": PERSONALIDAD},
+                            {"role": "user", "content": [
+                                {"type": "text", "text": "Analice detalladamente esta imagen y extraiga cualquier dato relevante."},
+                                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"}}
+                            ]}
+                        ]
+                    )
+                    contenido_extraido = res.choices[0].message.content
+
+                # --- CASO B: PDF (Extracción de Texto) ---
+                elif file.type == "application/pdf":
+                    pdf_reader = PyPDF2.PdfReader(file)
+                    for page in pdf_reader.pages:
+                        contenido_extraido += page.extract_text() + "\n"
+                    
+                # --- CASO C: WORD (Extracción de Texto) ---
+                elif file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+                    doc = docx.Document(file)
+                    for para in doc.paragraphs:
+                        contenido_extraido += para.text + "\n"
+
+                # --- PROCESAMIENTO FINAL POR JARVIS ---
+                if contenido_extraido and not file.type.startswith('image/'):
+                    # Enviamos el texto extraído a la IA para un resumen inteligente
+                    res = client.chat.completions.create(
+                        model=modelo_texto,
+                        messages=[
+                            {"role": "system", "content": PERSONALIDAD},
+                            {"role": "user", "content": f"Analiza el siguiente contenido extraído del archivo y dame un resumen ejecutivo Stark:\n\n{contenido_extraido}"}
+                        ]
+                    )
+                    st.success("Análisis de Documento Completado")
+                    st.write(res.choices[0].message.content)
+                elif file.type.startswith('image/'):
+                    st.success("Análisis Visual Completado")
+                    st.write(contenido_extraido)
+                else:
+                    st.warning("⚠️ No se pudo extraer contenido del archivo.")
+
+            except Exception as e:
+                st.error(f"Falla crítica en el escáner: {e}")
 
 # --- PESTAÑA 2: COMUNICACIONES ---
 with tabs[2]:
