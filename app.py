@@ -117,107 +117,152 @@ st.markdown("""
 # --- 6. PESTAÑAS (MÓDULOS UNIFICADOS) ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: CHAT ---
+# --- TAB 0: COMANDO CENTRAL (MARK 184 - VOZ Y ANTI-REPETICIÓN) ---
 with tabs[0]:
-    if "historial_chat" not in st.session_state: st.session_state.historial_chat = []
+    if "historial_chat" not in st.session_state: 
+        st.session_state.historial_chat = []
+    
+    # Renderizado del historial en el HUD
     for m in st.session_state.historial_chat:
-        with st.chat_message(m["role"], avatar="🚀" if m["role"]=="assistant" else "👤"): st.write(m["content"])
+        avatar = "🚀" if m["role"] == "assistant" else "👤"
+        with st.chat_message(m["role"], avatar=avatar):
+            st.write(m["content"])
 
     col_mic, col_chat = st.columns([1, 12])
-    with col_mic: audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_main")
-    with col_chat: prompt = st.chat_input("Escriba su comando...")
+    with col_mic:
+        # Grabación con clave única para evitar interferencias
+        audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v184")
+    
+    with col_chat:
+        prompt = st.chat_input("Esperando órdenes, señorita...")
 
-    texto_final = None
+    texto_a_procesar = None
+
+    # Protocolo Anti-Eco: Verificamos si es un audio nuevo
     if audio_data and 'bytes' in audio_data:
-        try:
-            trans = client.audio.transcriptions.create(file=("a.wav", audio_data['bytes']), model="whisper-large-v3", language="es")
-            texto_final = trans.text
-        except: st.error("Error de audio.")
-    elif prompt: texto_final = prompt
+        audio_hash = hash(audio_data['bytes'])
+        if "last_audio_hash" not in st.session_state or st.session_state.last_audio_hash != audio_hash:
+            try:
+                with st.spinner("Descifrando mensaje de voz..."):
+                    trans = client.audio.transcriptions.create(
+                        file=("voice.wav", audio_data['bytes']), 
+                        model="whisper-large-v3", 
+                        language="es"
+                    )
+                    texto_a_procesar = trans.text
+                    st.session_state.last_audio_hash = audio_hash
+            except Exception as e:
+                st.error(f"Falla en enlace de voz: {e}")
+    elif prompt:
+        texto_a_procesar = prompt
 
-    if texto_final:
-        st.session_state.historial_chat.append({"role": "user", "content": texto_final})
-        with st.spinner("Procesando..."):
+    if texto_a_procesar:
+        st.session_state.historial_chat.append({"role": "user", "content": texto_a_procesar})
+        
+        with st.spinner("Sintonizando respuesta..."):
             ctx = [{"role": "system", "content": PERSONALIDAD}] + st.session_state.historial_chat[-6:]
             res = client.chat.completions.create(model=modelo_texto, messages=ctx)
             ans = res.choices[0].message.content
+            
             st.session_state.historial_chat.append({"role": "assistant", "content": ans})
+            
+            # --- PROTOCOLO DE VOZ JARVIS (SÍNTESIS NATIVA) ---
+            js_speech = f"""
+                <script>
+                var msg = new SpeechSynthesisUtterance({repr(ans)});
+                var voices = window.speechSynthesis.getVoices();
+                
+                // Buscamos una voz masculina sofisticada
+                var seleccionada = voices.find(v => v.name.includes('Male') || v.name.includes('Jorge') || v.name.includes('Google español'));
+                if(seleccionada) msg.voice = seleccionada;
+
+                msg.lang = 'es-ES';
+                msg.pitch = 0.85; // Tono grave
+                msg.rate = 0.95;  // Velocidad calmada
+                window.speechSynthesis.speak(msg);
+                </script>
+            """
+            st.components.v1.html(js_speech, height=0)
+            
+            # Guardamos en memoria permanente si el sistema está conectado
+            guardar_memoria_permanente(texto_a_procesar, ans)
+            
             st.rerun()
 
-# --- TAB 1: ANÁLISIS (SISTEMA DE INTELIGENCIA AVANZADA MARK 182) ---
+# --- TAB 1: ANÁLISIS (SISTEMA DE RAZONAMIENTO PROFUNDO MARK 185) ---
 with tabs[1]:
-    st.subheader("📊 Centro de Inteligencia y Diagnóstico Profundo")
-    file = st.file_uploader("Cargar evidencia para análisis exhaustivo", type=['pdf','docx','xlsx','png','jpg','jpeg'], key="scanner_v182")
+    st.subheader("📊 Centro de Inteligencia con Pensamiento Crítico")
+    file = st.file_uploader("Cargar evidencia para análisis con Qwen-3 Reasoning", type=['pdf','docx','xlsx','png','jpg','jpeg'], key="scanner_v185")
     
-    if file and st.button("🔍 EJECUTAR PROTOCOLO DE ANÁLISIS"):
-        with st.spinner("Realizando escaneo de capas profundas..."):
+    if file and st.button("🔍 INICIAR PROTOCOLO DE RAZONAMIENTO"):
+        with st.spinner("JARVIS está reflexionando sobre los datos..."):
             try:
                 res_content = ""
-                title = ""
-                
-                # Prompt Reforzado para Análisis Completo
-                PROMPT_AVANZADO = (
-                    "Actúa como JARVIS. Realiza un análisis exhaustivo y profesional para la Srta. Diana Stark. "
-                    "El reporte debe incluir: 1. RESUMEN EJECUTIVO, 2. DETALLES TÉCNICOS/MÉTRICAS, "
-                    "3. IDENTIFICACIÓN DE ANOMALÍAS O RIESGOS, 4. CONCLUSIÓN Y SIGUIENTES PASOS SUGERIDOS. "
-                    "Usa un tono sofisticado y estructurado."
+                thinking_process = ""
+                title = "REPORTE DE INTELIGENCIA ESTRATÉGICA"
+
+                # Prompt optimizado para modelos de razonamiento (Zero-Shot)
+                PROMPT_REASONING = (
+                    "Analiza este documento de manera exhaustiva para la Srta. Diana Stark. "
+                    "Divide tu respuesta en: 1. Resumen de Alto Nivel, 2. Hallazgos Críticos, "
+                    "3. Análisis de Riesgos y 4. Recomendaciones de Ingeniería/Negocio. "
+                    "Sé extremadamente preciso y lógico."
                 )
 
-                if file.type.startswith('image/'):
+                # 1. Procesamiento de Texto (PDF/DOCX/EXCEL) usando Qwen-3 Reasoning
+                if file.type in ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"]:
+                    
+                    if file.type == "application/pdf":
+                        pdf = PyPDF2.PdfReader(file); txt = "".join([p.extract_text() for p in pdf.pages])
+                    elif file.type == "application/xlsx":
+                        df = pd.read_excel(file); txt = df.to_string()
+                    else:
+                        doc = docx.Document(file); txt = "\n".join([p.text for p in doc.paragraphs])
+
+                    # LLAMADA AL MODELO DE RAZONAMIENTO
+                    response = client.chat.completions.create(
+                        model="qwen/qwen3-32b", # El nuevo núcleo de razonamiento
+                        messages=[{"role": "user", "content": f"{PROMPT_REASONING}\n\nContenido:\n{txt[:8000]}"}],
+                        reasoning_format="raw" # Esto nos permite extraer el bloque <think>
+                    )
+                    
+                    full_res = response.choices[0].message.content
+                    
+                    # Separar el pensamiento de la respuesta
+                    if "<think>" in full_res and "</think>" in full_res:
+                        thinking_process = full_res.split("<think>")[1].split("</think>")[0]
+                        res_content = full_res.split("</think>")[1]
+                    else:
+                        res_content = full_res
+
+                # 2. Procesamiento de Imágenes (Mantenemos Llama-4 Scout por su visión superior)
+                elif file.type.startswith('image/'):
                     img = Image.open(file).convert("RGB")
                     st.image(img, width=500)
                     buf = io.BytesIO(); img.save(buf, format="JPEG"); b64 = base64.b64encode(buf.getvalue()).decode()
                     
                     res = client.chat.completions.create(
                         model="meta-llama/llama-4-scout-17b-16e-instruct",
-                        messages=[{
-                            "role": "user", 
-                            "content": [
-                                {"type": "text", "text": PROMPT_AVANZADO}, 
-                                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
-                            ]
-                        }]
+                        messages=[{"role": "user", "content": [{"type": "text", "text": PROMPT_REASONING}, {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}]}]
                     )
                     res_content = res.choices[0].message.content
-                    title = "REPORTE DE INTELIGENCIA VISUAL"
 
-                elif file.type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
-                    df = pd.read_excel(file)
-                    st.write("📈 Dataset Detectado:", df)
-                    # Análisis estadístico básico para ayudar a la IA
-                    stats = df.describe().to_string()
-                    res = client.chat.completions.create(
-                        model=modelo_texto, 
-                        messages=[{"role":"user", "content": f"{PROMPT_AVANZADO}\n\nDatos del archivo:\n{df.to_string()}\n\nEstadísticas descriptivas:\n{stats}"}]
-                    )
-                    res_content = res.choices[0].message.content
-                    title = "AUDITORÍA DE DATOS ESTRUCTURADOS"
-
-                elif file.type in ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]:
-                    txt = ""
-                    if file.type == "application/pdf":
-                        pdf = PyPDF2.PdfReader(file); txt = "".join([p.extract_text() for p in pdf.pages])
-                    else:
-                        doc = docx.Document(file); txt = "\n".join([p.text for p in doc.paragraphs])
-                    
-                    res = client.chat.completions.create(
-                        model=modelo_texto, 
-                        messages=[{"role":"user", "content": f"{PROMPT_AVANZADO}\n\nContenido del documento:\n{txt}"}]
-                    )
-                    res_content = res.choices[0].message.content
-                    title = "ANÁLISIS DE DOCUMENTACIÓN TÉCNICA"
+                # UI de Resultados
+                if thinking_process:
+                    with st.expander("🧠 VER PROCESO DE RAZONAMIENTO DE JARVIS"):
+                        st.info(thinking_process)
 
                 if res_content:
                     st.markdown("---")
-                    st.markdown(f"### {title}")
-                    st.write(res_content)
+                    st.markdown(res_content)
                     
-                    # Generación de Reporte PDF con el contenido expandido
+                    # Generar PDF
                     pdf_file = generar_pdf_reporte(title, res_content)
-                    st.download_button("📥 DESCARGAR REPORTE COMPLETO PDF", pdf_file, f"Stark_Intelligence_{fecha_actual}.pdf", "application/pdf")
-            except Exception as e:
-                st.error(f"Error en los servidores de análisis: {e}")
+                    st.download_button("📥 DESCARGAR REPORTE ESTRATÉGICO", pdf_file, f"Stark_Intelligence_{hora_actual}.pdf", "application/pdf")
 
+            except Exception as e:
+                st.error(f"Error en los servidores de razonamiento: {e}")
+                
 # --- TAB 2: COMUNICACIONES ---
 with tabs[2]:
     st.subheader("✉️ Centro de Despacho Gmail")
