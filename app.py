@@ -140,36 +140,57 @@ with tabs[0]:
             guardar_memoria_permanente(texto_final, ans)
             st.rerun()
 
-# --- TAB 1: ANÁLISIS (VERSIÓN DE ACCESO TOTAL) ---
+# --- TAB 1: ANÁLISIS (PROTOCOLO SCOUT LLAMA-4) ---
 with tabs[1]:
     st.subheader("📊 Escáner de Evidencia Stark")
-    file = st.file_uploader("Cargar archivo", type=['pdf','docx','xlsx','png','jpg','jpeg'], key="scanner_v175")
+    file = st.file_uploader("Cargar archivo (Imagen, Excel, PDF)", type=['pdf','docx','xlsx','png','jpg','jpeg'], key="scanner_scout_v178")
     
     if file and st.button("🔍 INICIAR ANÁLISIS"):
-        with st.spinner("Accediendo a satélites Stark..."):
+        with st.spinner("Sincronizando con Llama-4 Scout..."):
             try:
-                # 1. ANÁLISIS DE IMAGEN (USANDO EL MODELO DE ACCESO LIBRE)
+                # 1. ANÁLISIS DE IMAGEN (USANDO EL NUEVO FORMATO JSON)
                 if file.type.startswith('image/'):
                     img = Image.open(file).convert("RGB")
-                    st.image(img, width=400)
-                    buf = io.BytesIO(); img.save(buf, format="JPEG"); b64 = base64.b64encode(buf.getvalue()).decode()
+                    st.image(img, width=450, caption="Evidencia Visual")
                     
-                    # MODELO GARANTIZADO: llama-3.2-11b-vision-preview
-                    # Si este falla, el sistema le avisará qué modelos tiene activos.
+                    # Convertimos la imagen local a Base64 para enviarla
+                    buf = io.BytesIO()
+                    img.save(buf, format="JPEG")
+                    b64 = base64.b64encode(buf.getvalue()).decode()
+                    
+                    # Implementación del JSON que usted me dio
                     res = client.chat.completions.create(
-                        model="llama-3.2-11b-vision-preview", 
-                        messages=[{"role":"user", "content":[{"type":"text","text":"Analiza esta imagen para la Srta. Diana."},{"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{b64}"}}]} ]
+                        model="meta-llama/llama-4-scout-17b-16e-instruct",
+                        messages=[{
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "text", 
+                                    "text": "Señorita Diana, he detectado lo siguiente en esta imagen:"
+                                },
+                                {
+                                    "type": "image_url",
+                                    "image_url": {
+                                        "url": f"data:image/jpeg;base64,{b64}"
+                                    }
+                                }
+                            ]
+                        }],
+                        temperature=1,
+                        max_completion_tokens=1024,
+                        top_p=1
                     )
-                    st.success("Análisis Visual Completado")
+                    st.success("Análisis Scout Completado")
                     st.write(res.choices[0].message.content)
 
-                # 2. ANÁLISIS DE EXCEL (RESTAURADO)
+                # 2. ANÁLISIS DE EXCEL (RESTABLECIDO)
                 elif file.type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
                     df = pd.read_excel(file)
-                    st.write("Datos detectados:", df.head())
+                    st.write("📈 Estructura detectada:", df.head())
+                    datos_texto = df.to_string(index=False)[:3000]
                     res = client.chat.completions.create(
                         model=modelo_texto, 
-                        messages=[{"role":"user", "content":f"Analiza estos datos de Excel:\n{df.to_string(index=False)[:3000]}"}]
+                        messages=[{"role":"user", "content":f"Analiza estos datos de Excel para la Srta. Diana:\n{datos_texto}"}]
                     )
                     st.write(res.choices[0].message.content)
 
@@ -184,9 +205,7 @@ with tabs[1]:
                     st.write(res.choices[0].message.content)
 
             except Exception as e:
-                st.error(f"Falla en el sensor: {e}")
-                st.info("Señorita, si el error persiste, revise su panel de Groq Cloud para ver qué modelos tiene habilitados su API Key.")
-
+                st.error(f"Falla en el sensor Scout: {e}")
 # --- TAB 2: COMUNICACIONES ---
 with tabs[2]:
     st.subheader("✉️ Centro de Despacho Gmail")
