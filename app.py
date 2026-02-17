@@ -144,34 +144,54 @@ with tabs[0]:
             st.session_state.historial_chat.append({"role": "assistant", "content": ans})
             st.rerun()
 
-# --- TAB 1: ANÁLISIS ---
+# --- TAB 1: ANÁLISIS (SISTEMA DE INTELIGENCIA AVANZADA MARK 182) ---
 with tabs[1]:
-    st.subheader("📊 Escáner de Evidencia y Reportes")
-    file = st.file_uploader("Cargar archivo", type=['pdf','docx','xlsx','png','jpg','jpeg'], key="scanner_v181")
+    st.subheader("📊 Centro de Inteligencia y Diagnóstico Profundo")
+    file = st.file_uploader("Cargar evidencia para análisis exhaustivo", type=['pdf','docx','xlsx','png','jpg','jpeg'], key="scanner_v182")
     
-    if file and st.button("🔍 INICIAR PROCESAMIENTO"):
-        with st.spinner("Analizando..."):
+    if file and st.button("🔍 EJECUTAR PROTOCOLO DE ANÁLISIS"):
+        with st.spinner("Realizando escaneo de capas profundas..."):
             try:
                 res_content = ""
                 title = ""
+                
+                # Prompt Reforzado para Análisis Completo
+                PROMPT_AVANZADO = (
+                    "Actúa como JARVIS. Realiza un análisis exhaustivo y profesional para la Srta. Diana Stark. "
+                    "El reporte debe incluir: 1. RESUMEN EJECUTIVO, 2. DETALLES TÉCNICOS/MÉTRICAS, "
+                    "3. IDENTIFICACIÓN DE ANOMALÍAS O RIESGOS, 4. CONCLUSIÓN Y SIGUIENTES PASOS SUGERIDOS. "
+                    "Usa un tono sofisticado y estructurado."
+                )
 
                 if file.type.startswith('image/'):
                     img = Image.open(file).convert("RGB")
-                    st.image(img, width=400)
+                    st.image(img, width=500)
                     buf = io.BytesIO(); img.save(buf, format="JPEG"); b64 = base64.b64encode(buf.getvalue()).decode()
+                    
                     res = client.chat.completions.create(
                         model="meta-llama/llama-4-scout-17b-16e-instruct",
-                        messages=[{"role": "user", "content": [{"type": "text", "text": "Analiza esta imagen para la Srta. Diana."}, {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}]}]
+                        messages=[{
+                            "role": "user", 
+                            "content": [
+                                {"type": "text", "text": PROMPT_AVANZADO}, 
+                                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
+                            ]
+                        }]
                     )
                     res_content = res.choices[0].message.content
-                    title = "ANÁLISIS DE EVIDENCIA VISUAL"
+                    title = "REPORTE DE INTELIGENCIA VISUAL"
 
                 elif file.type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
                     df = pd.read_excel(file)
-                    st.write(df.head())
-                    res = client.chat.completions.create(model=modelo_texto, messages=[{"role":"user", "content":f"Analiza estos datos:\n{df.to_string()[:3000]}"}])
+                    st.write("📈 Dataset Detectado:", df)
+                    # Análisis estadístico básico para ayudar a la IA
+                    stats = df.describe().to_string()
+                    res = client.chat.completions.create(
+                        model=modelo_texto, 
+                        messages=[{"role":"user", "content": f"{PROMPT_AVANZADO}\n\nDatos del archivo:\n{df.to_string()}\n\nEstadísticas descriptivas:\n{stats}"}]
+                    )
                     res_content = res.choices[0].message.content
-                    title = "ANÁLISIS DE DATOS EXCEL"
+                    title = "AUDITORÍA DE DATOS ESTRUCTURADOS"
 
                 elif file.type in ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]:
                     txt = ""
@@ -179,15 +199,24 @@ with tabs[1]:
                         pdf = PyPDF2.PdfReader(file); txt = "".join([p.extract_text() for p in pdf.pages])
                     else:
                         doc = docx.Document(file); txt = "\n".join([p.text for p in doc.paragraphs])
-                    res = client.chat.completions.create(model=modelo_texto, messages=[{"role":"user", "content":f"Resume:\n{txt[:4000]}"}])
+                    
+                    res = client.chat.completions.create(
+                        model=modelo_texto, 
+                        messages=[{"role":"user", "content": f"{PROMPT_AVANZADO}\n\nContenido del documento:\n{txt}"}]
+                    )
                     res_content = res.choices[0].message.content
-                    title = "ANÁLISIS DE DOCUMENTACIÓN"
+                    title = "ANÁLISIS DE DOCUMENTACIÓN TÉCNICA"
 
                 if res_content:
+                    st.markdown("---")
+                    st.markdown(f"### {title}")
                     st.write(res_content)
+                    
+                    # Generación de Reporte PDF con el contenido expandido
                     pdf_file = generar_pdf_reporte(title, res_content)
-                    st.download_button("📥 DESCARGAR REPORTE PDF", pdf_file, f"Stark_Report_{hora_actual}.pdf", "application/pdf")
-            except Exception as e: st.error(f"Falla: {e}")
+                    st.download_button("📥 DESCARGAR REPORTE COMPLETO PDF", pdf_file, f"Stark_Intelligence_{fecha_actual}.pdf", "application/pdf")
+            except Exception as e:
+                st.error(f"Error en los servidores de análisis: {e}")
 
 # --- TAB 2: COMUNICACIONES ---
 with tabs[2]:
