@@ -44,38 +44,96 @@ PERSONALIDAD = (
     f"Fecha: {fecha_actual} | Hora: {hora_actual}."
 )
 
-# --- 2. ESTILOS HUD MARK 189 (DISEÑO CIAN NEÓN) ---
+# --- INYECCIÓN HUD AVANZADO (MARK 190 - RÉPLICA EXACTA) ---
 st.markdown("""
     <style>
+    /* 1. Fondo con Mapa Global y Gradientes */
     .stApp {
-        background-color: #010409 !important;
+        background: #010409 !important;
         background-image: 
-            radial-gradient(circle at 50% 20%, rgba(0, 242, 255, 0.15) 0%, transparent 40%),
-            linear-gradient(rgba(0, 242, 255, 0.05) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(0, 242, 255, 0.05) 1px, transparent 1px) !important;
-        background-size: 100% 100%, 50px 50px, 50px 50px !important;
-        color: #e0e1dd !important;
+            radial-gradient(circle at 50% 30%, rgba(0, 242, 255, 0.2) 0%, transparent 60%),
+            url('https://wallpaperaccess.com/full/156094.jpg') !important; /* Mapa sutil de fondo */
+        background-size: cover !important;
+        background-blend-mode: overlay;
     }
-    .reactor-container { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px 0; position: relative; }
-    .reactor-core { 
-        width: 100px; height: 100px; background: radial-gradient(circle, #fff 10%, #00f2ff 30%, transparent 70%);
-        border-radius: 50%; box-shadow: 0 0 50px rgba(0, 242, 255, 0.8); z-index: 2;
-        animation: glow 3s infinite ease-in-out; border: 2px solid rgba(0, 242, 255, 0.5);
+
+    /* 2. El Reactor Arc con Anillos Holográficos */
+    .reactor-container {
+        position: relative;
+        height: 250px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-top: -30px;
     }
-    .ring { position: absolute; border: 2px solid rgba(0, 242, 255, 0.3); border-radius: 50%; animation: rotate linear infinite; }
-    .ring-1 { width: 150px; height: 150px; border-style: dashed; animation-duration: 10s; }
-    .ring-2 { width: 180px; height: 180px; border-width: 1px; border-style: double; animation-duration: 15s; animation-direction: reverse; }
+
+    .reactor-core {
+        width: 80px;
+        height: 80px;
+        background: radial-gradient(circle, #fff 5%, #00f2ff 50%, transparent 80%);
+        border-radius: 50%;
+        box-shadow: 0 0 60px #00f2ff;
+        z-index: 10;
+    }
+
+    .hologram-ring {
+        position: absolute;
+        border: 2px solid rgba(0, 242, 255, 0.4);
+        border-radius: 50%;
+        animation: rotate linear infinite;
+    }
+
+    .ring-outer { width: 220px; height: 220px; border-style: double; animation-duration: 20s; }
+    .ring-middle { width: 180px; height: 180px; border-style: dashed; animation-duration: 15s; animation-direction: reverse; }
+    .ring-inner { width: 140px; height: 140px; border-width: 1px; border-color: rgba(0, 242, 255, 0.6); animation-duration: 10s; }
+
     @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-    @keyframes glow { 0%, 100% { opacity: 0.8; transform: scale(1); } 50% { opacity: 1; transform: scale(1.05); } }
-    
-    .stTabs [data-baseweb="tab-list"] { justify-content: center; background: transparent; gap: 15px; }
-    .stTabs [data-baseweb="tab"] { background: rgba(0, 242, 255, 0.05); border: 1px solid rgba(0, 242, 255, 0.2); color: #00f2ff; border-radius: 5px; }
-    .stTabs [aria-selected="true"] { background: rgba(0, 242, 255, 0.2) !important; box-shadow: 0 0 15px rgba(0, 242, 255, 0.5); }
+
+    /* 3. Barra de Chat "Cyan Glow" */
+    .stChatInputContainer {
+        border: 2px solid #00f2ff !important;
+        background: rgba(13, 27, 42, 0.8) !important;
+        border-radius: 15px !important;
+        box-shadow: 0 0 20px rgba(0, 242, 255, 0.4), inset 0 0 10px rgba(0, 242, 255, 0.2) !important;
+        padding: 5px !important;
+    }
+
+    /* 4. Estilo de Pestañas (Tabs) */
+    .stTabs [data-baseweb="tab-list"] {
+        background: transparent !important;
+        border-bottom: 1px solid rgba(0, 242, 255, 0.2);
+    }
+
+    .stTabs [data-baseweb="tab"] {
+        color: #778da9 !important;
+        font-family: 'Courier New', monospace;
+        font-weight: bold;
+    }
+
+    .stTabs [aria-selected="true"] {
+        color: #00f2ff !important;
+        border-bottom: 2px solid #00f2ff !important;
+    }
+
+    /* 5. Iconos de estado */
+    .status-text {
+        color: #00f2ff;
+        font-family: 'Courier New', monospace;
+        letter-spacing: 3px;
+        text-shadow: 0 0 5px #00f2ff;
+        font-size: 0.8rem;
+        margin-top: 10px;
+    }
     </style>
+
     <div class="reactor-container">
-        <div class="ring ring-1"></div><div class="ring ring-2"></div>
+        <div class="hologram-ring ring-outer"></div>
+        <div class="hologram-ring ring-middle"></div>
+        <div class="hologram-ring ring-inner"></div>
         <div class="reactor-core"></div>
-        <div style="color: #00f2ff; font-family: 'Courier New'; letter-spacing: 5px; margin-top: 15px; font-weight: bold;">SISTEMA JARVIS ONLINE</div>
+    </div>
+    <div style="text-align: center;">
+        <p class="status-text">JARVIS V.2.0 | PROTOCOLO DIANA STARK</p>
     </div>
 """, unsafe_allow_html=True)
 
