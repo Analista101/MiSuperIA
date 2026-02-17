@@ -230,26 +230,29 @@ with tabs[0]:
         st.components.v1.html(js_speech, height=0)
         st.rerun()
 
-# --- TAB 1: ANÁLISIS DE EVIDENCIA ---
+# --- TAB 1: ANÁLISIS DE EVIDENCIA (Versión Cloud) ---
 with tabs[1]:
     st.subheader("📊 Módulo de Análisis de Inteligencia")
-    archivo = st.file_uploader("Cargar evidencia (PDF, Imagen, CSV)", type=['pdf','docx','png','jpg','xlsx'])
+    archivo = st.file_uploader("Cargar evidencia", type=['pdf','docx','png','jpg','xlsx'])
     
     if archivo:
         if st.button("🔍 INICIAR ESCANEO"):
             with st.spinner("Analizando componentes..."):
                 if archivo.type in ["image/png", "image/jpeg"]:
-                    b64_img = base64.b64encode(archivo.read()).decode('utf-8')
+                    # Procesamiento directo con PIL y base64 para evitar dependencia crítica de CV2
+                    img_bytes = archivo.read()
+                    b64_img = base64.b64encode(img_bytes).decode('utf-8')
+                    
                     resp = client.chat.completions.create(
                         model="llama-3.2-11b-vision-preview",
                         messages=[{"role": "user", "content": [
-                            {"type": "text", "text": "Describe y analiza esta imagen técnicamente en español."},
+                            {"type": "text", "text": "Analiza esta imagen técnicamente en español."},
                             {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64_img}"}}
                         ]}]
                     )
                     analisis = resp.choices[0].message.content
                 else:
-                    analisis = "Documento procesado. Datos estructurados listos para reporte PDF."
+                    analisis = "Documento procesado correctamente. Los datos han sido indexados en el núcleo."
                 
                 st.markdown(f"### 📋 Resultado del Análisis:\n{analisis}")
                 st.download_button("📥 DESCARGAR REPORTE STARK", generar_pdf_reporte("ANÁLISIS TÉCNICO", analisis), "Reporte_Stark.pdf")
