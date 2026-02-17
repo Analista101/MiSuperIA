@@ -8,8 +8,6 @@ import requests
 import datetime
 import pytz
 import smtplib
-import numpy as np
-import cv2
 from PIL import Image
 from groq import Groq
 from dotenv import load_dotenv
