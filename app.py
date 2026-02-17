@@ -47,70 +47,67 @@ PERSONALIDAD = (
 # --- 2. ESTILOS HUD MARK 192 (CORREGIDO) ---
 st.markdown("""
     <style>
-    /* Fondo y Mapa */
+    /* 1. FONDO Y REACTOR (REPLICA MARK 190) */
     .stApp {
         background: #010409 !important;
         background-image: 
-            radial-gradient(circle at 50% 30%, rgba(0, 242, 255, 0.15) 0%, transparent 60%),
+            radial-gradient(circle at 50% 30%, rgba(0, 242, 255, 0.15) 0% , transparent 60%),
             url('https://wallpaperaccess.com/full/156094.jpg') !important;
         background-size: cover !important;
         background-blend-mode: overlay;
     }
 
-    /* BOTONES CON DETALLES NEÓN */
-    div.stButton > button, div.stDownloadButton > button {
+    /* 2. UNIFICACIÓN DE BOTONES (TODOS LOS MÓDULOS) */
+    /* Este selector ahora atrapa botones de chat, micro, y formularios */
+    button, div.stButton > button, div.stDownloadButton > button, .st-emotion-cache-19rxjzo {
         background: rgba(0, 242, 255, 0.05) !important;
         color: #00f2ff !important;
         border: 1px solid #00f2ff !important;
-        border-radius: 4px !important;
-        padding: 0.6em 1.2em !important;
-        font-family: 'Courier New', monospace !important;
-        font-weight: bold !important;
+        border-radius: 5px !important;
         text-transform: uppercase !important;
         letter-spacing: 2px !important;
-        transition: all 0.3s ease-in-out !important;
+        transition: all 0.3s ease !important;
         box-shadow: 0 0 8px rgba(0, 242, 255, 0.3) !important;
-        width: 100% !important;
     }
 
-    div.stButton > button:hover, div.stDownloadButton > button:hover {
+    button:hover {
         background: rgba(0, 242, 255, 0.2) !important;
-        box-shadow: 0 0 20px rgba(0, 242, 255, 0.6), inset 0 0 10px rgba(0, 242, 255, 0.4) !important;
-        border: 1px solid #ffffff !important;
+        box-shadow: 0 0 20px rgba(0, 242, 255, 0.6) !important;
         color: #ffffff !important;
-        transform: translateY(-2px);
+        border-color: #ffffff !important;
     }
 
-    /* Entradas de texto neón */
-    .stTextInput input, .stTextArea textarea {
-        background-color: rgba(0, 0, 0, 0.7) !important;
-        border: 1px solid rgba(0, 242, 255, 0.4) !important;
+    /* 3. COMANDO CENTRAL: BOTÓN DE MICRÓFONO ESPECÍFICO */
+    button[aria-label="🎙️"], button[aria-label="🟢"], button[aria-label="🛑"] {
+        border-radius: 50% !important;
+        width: 50px !important;
+        height: 50px !important;
+        border: 2px solid #00f2ff !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+    }
+
+    /* 4. ANÁLISIS: ÁREA DE CARGA DE ARCHIVOS */
+    .stFileUploader section {
+        background: rgba(0, 242, 255, 0.02) !important;
+        border: 1px dashed #00f2ff !important;
         color: #00f2ff !important;
-        font-family: 'Courier New', monospace !important;
     }
 
-    /* Reactor Triple Capa */
-    .reactor-container { 
-        position: relative; 
-        height: 250px; 
-        display: flex; 
-        justify-content: center; 
-        align-items: center; 
-        margin-top: -30px; 
+    /* 5. BARRA DE CHAT NEÓN */
+    .stChatInputContainer {
+        border: 2px solid #00f2ff !important;
+        box-shadow: 0 0 15px rgba(0, 242, 255, 0.4) !important;
+        background: rgba(0, 0, 0, 0.8) !important;
     }
-    .reactor-core { 
-        width: 80px; height: 80px; 
-        background: radial-gradient(circle, #fff 5%, #00f2ff 50%, transparent 80%); 
-        border-radius: 50%; box-shadow: 0 0 60px #00f2ff; z-index: 10; 
-    }
-    .hologram-ring { 
-        position: absolute; border: 2px solid rgba(0, 242, 255, 0.4); 
-        border-radius: 50%; animation: rotate linear infinite; 
-    }
+
+    /* REACTOR ANIMADO */
+    .reactor-container { position: relative; height: 250px; display: flex; justify-content: center; align-items: center; margin-top: -30px; }
+    .reactor-core { width: 80px; height: 80px; background: radial-gradient(circle, #fff 5%, #00f2ff 50%, transparent 80%); border-radius: 50%; box-shadow: 0 0 60px #00f2ff; z-index: 10; }
+    .hologram-ring { position: absolute; border: 2px solid rgba(0, 242, 255, 0.4); border-radius: 50%; animation: rotate linear infinite; }
     .ring-outer { width: 220px; height: 220px; border-style: double; animation-duration: 20s; }
-    .ring-middle { width: 180px; height: 180px; border-style: dashed; animation-duration: 15s; animation-direction: reverse; }
     .ring-inner { width: 140px; height: 140px; border-width: 1px; animation-duration: 10s; }
-    
     @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     </style>
 
