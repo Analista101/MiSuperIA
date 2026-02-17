@@ -142,23 +142,54 @@ with tabs[0]:
             st.rerun()
 
 # --- TAB 1: ANÁLISIS (REPARADO PARA IMÁGENES) ---
+# --- ACTUALIZACIÓN DE MODELOS (Configuración Inicial) ---
+modelo_texto = "llama-3.3-70b-versatile"
+modelo_vision = "llama-3.2-11b-vision-preview" # Cambio de 90B a 11B para estabilidad
+
+# --- TAB 1: ANÁLISIS (VERSIÓN 11B ESTABLE) ---
 with tabs[1]:
-    st.subheader("📊 Escáner de Evidencia")
-    file = st.file_uploader("Cargar archivo", type=['pdf','docx','png','jpg','jpeg'])
-    if file and st.button("🔍 ANALIZAR"):
-        with st.spinner("Analizando..."):
+    st.subheader("📊 Escáner de Evidencia Stark")
+    file = st.file_uploader("Cargar archivo", type=['pdf','docx','png','jpg','jpeg'], key="uploader_vision")
+    
+    if file and st.button("🔍 INICIAR ANÁLISIS"):
+        with st.spinner("Sincronizando sensores ópticos..."):
             try:
                 if file.type.startswith('image/'):
+                    # Procesamiento de Imagen
                     img = Image.open(file).convert("RGB")
-                    st.image(img, width=400)
-                    buf = io.BytesIO(); img.save(buf, format="JPEG"); b64 = base64.b64encode(buf.getvalue()).decode()
-                    res = client.chat.completions.create(model=modelo_vision, messages=[{"role":"user", "content":[{"type":"text","text":"Analiza esta imagen."},{"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{b64}"}}]}])
+                    st.image(img, width=400, caption="Evidencia capturada")
+                    
+                    buf = io.BytesIO()
+                    img.save(buf, format="JPEG")
+                    b64 = base64.b64encode(buf.getvalue()).decode()
+                    
+                    # Llamada al nuevo modelo de visión estable
+                    res = client.chat.completions.create(
+                        model=modelo_vision, 
+                        messages=[{
+                            "role":"user", 
+                            "content":[
+                                {"type":"text","text":"Sea breve y profesional. Analice esta imagen para la Srta. Diana Stark e identifique elementos clave."},
+                                {"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{b64}"}}
+                            ]
+                        }]
+                    )
+                    st.success("Análisis Visual Completado")
                     st.write(res.choices[0].message.content)
+                
                 elif file.type == "application/pdf":
-                    pdf = PyPDF2.PdfReader(file); text = "".join([p.extract_text() for p in pdf.pages])
-                    res = client.chat.completions.create(model=modelo_texto, messages=[{"role":"user", "content":f"Analiza: {text[:4000]}"}])
+                    # Procesamiento de PDF (Se mantiene igual)
+                    pdf = PyPDF2.PdfReader(file)
+                    text = "".join([p.extract_text() for p in pdf.pages])
+                    res = client.chat.completions.create(
+                        model=modelo_texto, 
+                        messages=[{"role":"user", "content":f"Analiza este reporte técnico: {text[:4000]}"}]
+                    )
+                    st.success("Análisis de Documento Completado")
                     st.write(res.choices[0].message.content)
-            except Exception as e: st.error(f"Falla: {e}")
+                    
+            except Exception as e:
+                st.error(f"Falla en el sensor de visión: {e}")
 
 # --- TAB 2: COMUNICACIONES (RESTAURADA) ---
 with tabs[2]:
