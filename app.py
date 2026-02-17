@@ -25,7 +25,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Variables de Entorno
+# Variables de Entorno (Prioriza Secrets de Streamlit, luego .env local)
 ACCESS_PASSWORD = st.secrets.get("ACCESS_PASSWORD") or os.getenv("ACCESS_PASSWORD", "STARK_RECOVERY_2026")
 GROQ_API_KEY = st.secrets.get("GROQ_API_KEY") or os.getenv("GROQ_API_KEY")
 GMAIL_USER = st.secrets.get("GMAIL_USER") or os.getenv("GMAIL_USER")
@@ -34,8 +34,9 @@ HF_TOKEN = st.secrets.get("HF_TOKEN") or os.getenv("HF_TOKEN")
 
 # Zona Horaria Santiago, Chile
 zona_horaria = pytz.timezone('America/Santiago')
-fecha_actual = datetime.datetime.now(zona_horaria).strftime("%d de febrero de 2026")
-hora_actual = datetime.datetime.now(zona_horaria).strftime("%H:%M")
+ahora = datetime.datetime.now(zona_horaria)
+fecha_actual = ahora.strftime("%d de febrero de 2026")
+hora_actual = ahora.strftime("%H:%M")
 
 PERSONALIDAD = (
     f"Eres JARVIS, el asistente de la Srta. Diana. Tu tono es sofisticado, ingenioso y servicial. "
@@ -81,10 +82,10 @@ def conectar_google_sheets():
         client_gs = gspread.authorize(creds)
         sheet = client_gs.open("JARVIS_MEMORY").sheet1
         return sheet
-    except Exception as e:
+    except:
         return None
 
-# --- LINEA DE DIAGNOSTICO EN BARRA LATERAL ---
+# --- BARRA LATERAL: STATUS GLOBAL ---
 with st.sidebar:
     st.title("🛰️ Status Global")
     sheet_test = conectar_google_sheets()
@@ -93,6 +94,9 @@ with st.sidebar:
     else:
         st.error("❌ Falla en enlace de Base de Datos")
     st.info(f"📍 Santiago, Chile\n\n⌚ {hora_actual}")
+    if st.button("Cerrar Sesión"):
+        st.session_state["autenticado"] = False
+        st.rerun()
 
 # --- 4. FUNCIONES LÓGICAS ---
 client = Groq(api_key=GROQ_API_KEY)
@@ -124,14 +128,17 @@ st.markdown("""
     <style>
     .stApp { background: radial-gradient(circle at center, #0a192f 0%, #010409 100%) !important; color: #00f2ff !important; font-family: 'Courier New', monospace; }
     .arc-reactor { width: 80px; height: 80px; border-radius: 50%; margin: 10px auto; background: radial-gradient(circle, #fff 0%, #00f2ff 30%, transparent 70%); box-shadow: 0 0 30px #00f2ff; animation: pulse 2s infinite ease-in-out; }
+    .stTabs [data-baseweb="tab-list"] { background-color: transparent; }
+    .stTabs [data-baseweb="tab"] { color: #00f2ff !important; font-weight: bold; }
     </style>
     <div class="arc-reactor"></div>
     <div style="text-align: center; color: #00f2ff; font-size: 10px; letter-spacing: 3px; margin-bottom: 20px;">SISTEMA JARVIS | PROTOCOLO DIANA STARK</div>
 """, unsafe_allow_html=True)
 
-# --- 6. INTERFAZ ---
+# --- 6. INTERFAZ DE PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
+# --- PESTAÑA 0: COMANDO CENTRAL ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: st.session_state.historial_chat = []
     
@@ -144,7 +151,7 @@ with tabs[0]:
     with col_chat: prompt = st.chat_input("Escriba su comando, señorita...")
 
     if prompt or audio:
-        texto_usuario = prompt if prompt else "Comando de voz recibido."
+        texto_usuario = prompt if prompt else "Comando de voz detectado."
         st.session_state.historial_chat.append({"role": "user", "content": texto_usuario})
         
         with st.spinner("Procesando..."):
@@ -157,6 +164,7 @@ with tabs[0]:
                 st.rerun()
             except Exception as e: st.error(f"Error: {e}")
 
+# --- PESTAÑA 1: ANÁLISIS ---
 with tabs[1]:
     st.subheader("📊 Escáner de Evidencia")
     file = st.file_uploader("Cargar archivo", type=['pdf','docx','xlsx','png','jpg','jpeg'])
@@ -165,21 +173,37 @@ with tabs[1]:
             img = Image.open(file).convert("RGB")
             buf = io.BytesIO(); img.save(buf, format="JPEG")
             img_b64 = base64.b64encode(buf.getvalue()).decode()
-            res = client.chat.completions.create(model=modelo_vision, messages=[{"role":"user", "content":[{"type":"text","text":"Analice esto"},{"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{img_b64}"}}]}])
-            st.write(res.choices[0].message.content)
+            res = client.chat.completions.create(model=modelo_vision, messages=[{"role":"user", "content":[{"type":"text","text":"Analice esta imagen detalladamente."},{"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{img_b64}"}}]}])
+            st.success(res.choices[0].message.content)
 
+# --- PESTAÑA 2: COMUNICACIONES ---
 with tabs[2]:
     st.subheader("✉️ Despacho Gmail")
     dest = st.text_input("Para:", value=GMAIL_USER)
     asunto = st.text_input("Asunto:", value="Reporte Stark")
     cuerpo = st.text_area("Mensaje:")
     if st.button("🚀 ENVIAR"):
-        if enviar_correo_stark(dest, asunto, cuerpo): st.success("Enviado.")
+        if enviar_correo_stark(dest, asunto, cuerpo): st.success("Mensaje enviado con éxito.")
 
+# --- PESTAÑA 3: LABORATORIO (MARK 85 CON FILTROS) ---
 with tabs[3]:
     st.subheader("🎨 Estación Mark 85")
-    idea = st.text_input("Prototipo:")
+    
+    col_prom, col_filt = st.columns([2, 1])
+    
+    with col_prom:
+        idea = st.text_input("Prototipo a materializar:", placeholder="Ej: Nueva armadura Mark 100...")
+        
+    with col_filt:
+        estilo = st.selectbox("Filtro Visual:", ["Cinematic Marvel", "Technical Drawing", "Cyberpunk", "Industrial Stark"])
+        intensidad = st.slider("Intensidad de Efecto:", 0, 100, 75)
+    
     if st.button("🚀 SINTETIZAR") and idea:
-        headers = {"Authorization": f"Bearer {HF_TOKEN}"}
-        resp = requests.post("https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0", headers=headers, json={"inputs": idea})
-        if resp.status_code == 200: st.image(Image.open(io.BytesIO(resp.content)))
+        with st.spinner("Generando prototipo..."):
+            prompt_final = f"{idea}, {estilo} style, high resolution, highly detailed, masterwork, {intensidad} percent stylistic accuracy"
+            headers = {"Authorization": f"Bearer {HF_TOKEN}"}
+            resp = requests.post("https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0", headers=headers, json={"inputs": prompt_final})
+            if resp.status_code == 200:
+                st.image(Image.open(io.BytesIO(resp.content)), caption=f"Resultado: {idea} ({estilo})", use_container_width=True)
+            else:
+                st.error("Error en la síntesis del laboratorio.")
