@@ -117,76 +117,88 @@ st.markdown("""
 # --- 6. PESTAÑAS (MÓDULOS UNIFICADOS) ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: COMANDO CENTRAL (MARK 184 - VOZ Y ANTI-REPETICIÓN) ---
+# --- TAB 0: COMANDO CENTRAL (MARK 187 - MODO MANOS LIBRES) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
     
-    # Renderizado del historial en el HUD
+    # Interruptor de Modo Manos Libres
+    if "modo_fluido" not in st.session_state:
+        st.session_state.modo_fluido = False
+
+    col_t, col_sw = st.columns([4, 1])
+    with col_sw:
+        st.session_state.modo_fluido = st.toggle("🎙️ MODO MANOS LIBRES", value=st.session_state.modo_fluido)
+
+    # Mostrar historial
     for m in st.session_state.historial_chat:
         avatar = "🚀" if m["role"] == "assistant" else "👤"
         with st.chat_message(m["role"], avatar=avatar):
             st.write(m["content"])
 
+    # --- LÓGICA DE GRABACIÓN AUTOMÁTICA ---
     col_mic, col_chat = st.columns([1, 12])
     with col_mic:
-        # Grabación con clave única para evitar interferencias
-        audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v184")
+        # Si el modo fluido está activo, el micro se activa con un prompt distinto
+        audio_data = mic_recorder(
+            start_prompt="🎙️" if not st.session_state.modo_fluido else "🟢 ESCUCHANDO...", 
+            stop_prompt="🛑", 
+            key="mic_v187"
+        )
     
     with col_chat:
-        prompt = st.chat_input("Esperando órdenes, señorita...")
+        prompt = st.chat_input("Escriba o hable, Srta. Diana...")
 
     texto_a_procesar = None
 
-    # Protocolo Anti-Eco: Verificamos si es un audio nuevo
     if audio_data and 'bytes' in audio_data:
         audio_hash = hash(audio_data['bytes'])
         if "last_audio_hash" not in st.session_state or st.session_state.last_audio_hash != audio_hash:
             try:
-                with st.spinner("Descifrando mensaje de voz..."):
-                    trans = client.audio.transcriptions.create(
-                        file=("voice.wav", audio_data['bytes']), 
-                        model="whisper-large-v3", 
-                        language="es"
-                    )
-                    texto_a_procesar = trans.text
-                    st.session_state.last_audio_hash = audio_hash
-            except Exception as e:
-                st.error(f"Falla en enlace de voz: {e}")
+                trans = client.audio.transcriptions.create(
+                    file=("voice.wav", audio_data['bytes']), 
+                    model="whisper-large-v3", 
+                    language="es"
+                )
+                texto_a_procesar = trans.text
+                st.session_state.last_audio_hash = audio_hash
+            except: st.error("Error de conexión.")
     elif prompt:
         texto_a_procesar = prompt
 
     if texto_a_procesar:
         st.session_state.historial_chat.append({"role": "user", "content": texto_a_procesar})
         
-        with st.spinner("Sintonizando respuesta..."):
+        with st.spinner("Procesando..."):
             ctx = [{"role": "system", "content": PERSONALIDAD}] + st.session_state.historial_chat[-6:]
             res = client.chat.completions.create(model=modelo_texto, messages=ctx)
             ans = res.choices[0].message.content
-            
             st.session_state.historial_chat.append({"role": "assistant", "content": ans})
             
-            # --- PROTOCOLO DE VOZ JARVIS (SÍNTESIS NATIVA) ---
-            js_speech = f"""
+            # --- JAVASCRIPT: RESPUESTA Y AUTO-ACTIVACIÓN ---
+            # Este script hace que JARVIS hable y, si el modo fluido está activo, 
+            # emule un clic en el botón del micro tras terminar de hablar.
+            js_script = f"""
                 <script>
                 var msg = new SpeechSynthesisUtterance({repr(ans)});
-                var voices = window.speechSynthesis.getVoices();
-                
-                // Buscamos una voz masculina sofisticada
-                var seleccionada = voices.find(v => v.name.includes('Male') || v.name.includes('Jorge') || v.name.includes('Google español'));
-                if(seleccionada) msg.voice = seleccionada;
-
                 msg.lang = 'es-ES';
-                msg.pitch = 0.85; // Tono grave
-                msg.rate = 0.95;  // Velocidad calmada
+                msg.pitch = 0.85;
+                msg.rate = 1.0;
+
+                msg.onend = function(event) {{
+                    if ({str(st.session_state.modo_fluido).lower()}) {{
+                        // Pequeño delay para no escucharse a sí mismo
+                        setTimeout(function() {{
+                            const micBtn = window.parent.document.querySelector('button[aria-label="🎙️"]');
+                            if (micBtn) micBtn.click();
+                        }}, 1000);
+                    }}
+                }};
+
                 window.speechSynthesis.speak(msg);
                 </script>
             """
-            st.components.v1.html(js_speech, height=0)
-            
-            # Guardamos en memoria permanente si el sistema está conectado
-            guardar_memoria_permanente(texto_a_procesar, ans)
-            
+            st.components.v1.html(js_script, height=0)
             st.rerun()
 
 # --- TAB 1: ANÁLISIS (SISTEMA DE RAZONAMIENTO EN ESPAÑOL MARK 186) ---
