@@ -7,13 +7,11 @@ import PyPDF2
 import requests
 import datetime
 import pytz
-import gspread
 import smtplib
 from PIL import Image
 from groq import Groq
 from dotenv import load_dotenv
 from streamlit_mic_recorder import mic_recorder
-from google.oauth2.service_account import Credentials
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from reportlab.lib.pagesizes import letter
@@ -46,49 +44,44 @@ PERSONALIDAD = (
     f"Fecha: {fecha_actual} | Hora: {hora_actual}."
 )
 
-# --- 2. PROTOCOLOS DE SOPORTE (PDF Y CORREO) ---
-def generar_pdf_reporte(titulo, contenido):
-    buffer = io.BytesIO()
-    c = canvas.Canvas(buffer, pagesize=letter)
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(100, 750, "STARK INDUSTRIES - REPORTE DE INTELIGENCIA")
-    c.setFont("Helvetica", 10)
-    c.drawString(100, 735, f"Fecha: {fecha_actual} | Hora: {hora_actual}")
-    c.line(100, 725, 500, 725)
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(100, 700, f"Asunto: {titulo}")
-    text_object = c.beginText(100, 675)
-    text_object.setFont("Helvetica", 10)
-    lines = contenido.split('\n')
-    for line in lines:
-        if text_object.getY() < 50:
-            c.drawText(text_object)
-            c.showPage()
-            text_object = c.beginText(100, 750)
-            text_object.setFont("Helvetica", 10)
-        text_object.textLine(line[:95])
-    c.drawText(text_object)
-    c.showPage()
-    c.save()
-    buffer.seek(0)
-    return buffer
-
-def enviar_correo_stark(dest, asunto, cuerpo):
-    try:
-        server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.starttls(); server.login(GMAIL_USER, GMAIL_PASS)
-        msg = MIMEMultipart(); msg['From'] = GMAIL_USER; msg['To'] = dest; msg['Subject'] = asunto
-        msg.attach(MIMEText(cuerpo, 'plain'))
-        server.send_message(msg); server.quit()
-        return True
-    except: return False
+# --- 2. ESTILOS HUD MARK 189 (DISEÑO CIAN NEÓN) ---
+st.markdown("""
+    <style>
+    .stApp {
+        background-color: #010409 !important;
+        background-image: 
+            radial-gradient(circle at 50% 20%, rgba(0, 242, 255, 0.15) 0%, transparent 40%),
+            linear-gradient(rgba(0, 242, 255, 0.05) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 242, 255, 0.05) 1px, transparent 1px) !important;
+        background-size: 100% 100%, 50px 50px, 50px 50px !important;
+        color: #e0e1dd !important;
+    }
+    .reactor-container { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px 0; position: relative; }
+    .reactor-core { 
+        width: 100px; height: 100px; background: radial-gradient(circle, #fff 10%, #00f2ff 30%, transparent 70%);
+        border-radius: 50%; box-shadow: 0 0 50px rgba(0, 242, 255, 0.8); z-index: 2;
+        animation: glow 3s infinite ease-in-out; border: 2px solid rgba(0, 242, 255, 0.5);
+    }
+    .ring { position: absolute; border: 2px solid rgba(0, 242, 255, 0.3); border-radius: 50%; animation: rotate linear infinite; }
+    .ring-1 { width: 150px; height: 150px; border-style: dashed; animation-duration: 10s; }
+    .ring-2 { width: 180px; height: 180px; border-width: 1px; border-style: double; animation-duration: 15s; animation-direction: reverse; }
+    @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    @keyframes glow { 0%, 100% { opacity: 0.8; transform: scale(1); } 50% { opacity: 1; transform: scale(1.05); } }
+    
+    .stTabs [data-baseweb="tab-list"] { justify-content: center; background: transparent; gap: 15px; }
+    .stTabs [data-baseweb="tab"] { background: rgba(0, 242, 255, 0.05); border: 1px solid rgba(0, 242, 255, 0.2); color: #00f2ff; border-radius: 5px; }
+    .stTabs [aria-selected="true"] { background: rgba(0, 242, 255, 0.2) !important; box-shadow: 0 0 15px rgba(0, 242, 255, 0.5); }
+    </style>
+    <div class="reactor-container">
+        <div class="ring ring-1"></div><div class="ring ring-2"></div>
+        <div class="reactor-core"></div>
+        <div style="color: #00f2ff; font-family: 'Courier New'; letter-spacing: 5px; margin-top: 15px; font-weight: bold;">SISTEMA JARVIS ONLINE</div>
+    </div>
+""", unsafe_allow_html=True)
 
 # --- 3. AUTENTICACIÓN ---
-if "autenticado" not in st.session_state:
-    st.session_state["autenticado"] = False
-
+if "autenticado" not in st.session_state: st.session_state["autenticado"] = False
 if not st.session_state["autenticado"]:
-    st.markdown('<div class="arc-reactor"></div>', unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.subheader("🔐 ACCESO RESTRINGIDO")
@@ -103,209 +96,122 @@ if not st.session_state["autenticado"]:
 client = Groq(api_key=GROQ_API_KEY)
 modelo_texto = "llama-3.3-70b-versatile"
 
-# --- PROTOCOLO DE ANIMACIÓN DE NÚCLEO (MARK 188-B) ---
-st.markdown("""
-    <style>
-    /* Animación del Reactor Arc (Pulsación) */
-    @keyframes pulse {
-        0% { box-shadow: 0 0 10px #00f2ff, inset 0 0 5px #00f2ff; }
-        50% { box-shadow: 0 0 30px #00f2ff, inset 0 0 15px #00f2ff; }
-        100% { box-shadow: 0 0 10px #00f2ff, inset 0 0 5px #00f2ff; }
-    }
+# --- 5. PROTOCOLOS DE SOPORTE ---
+def generar_pdf_reporte(titulo, contenido):
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=letter)
+    c.setFont("Helvetica-Bold", 16); c.drawString(100, 750, "STARK INDUSTRIES - REPORTE DE INTELIGENCIA")
+    c.line(100, 725, 500, 725)
+    text_object = c.beginText(100, 700); text_object.setFont("Helvetica", 10)
+    for line in contenido.split('\n'): text_object.textLine(line[:95])
+    c.drawText(text_object); c.showPage(); c.save(); buffer.seek(0)
+    return buffer
 
-    /* Animación de Rotación para capas de datos */
-    @keyframes rotate {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
-    }
+def enviar_correo_stark(dest, asunto, cuerpo):
+    try:
+        server = smtplib.SMTP('smtp.gmail.com', 587); server.starttls()
+        server.login(GMAIL_USER, GMAIL_PASS)
+        msg = MIMEMultipart(); msg['From'] = GMAIL_USER; msg['To'] = dest; msg['Subject'] = asunto
+        msg.attach(MIMEText(cuerpo, 'plain'))
+        server.send_message(msg); server.quit()
+        return True
+    except: return False
 
-    /* Aplicando el Reactor al encabezado */
-    .stApp {
-        background: #010409;
-        background-image: radial-gradient(circle at 50% 10%, rgba(0, 242, 255, 0.15) 0%, transparent 50%);
-    }
-
-    /* El "Reactor" visual en la parte superior */
-    .reactor-core {
-        width: 100px;
-        height: 100px;
-        background: radial-gradient(circle, #ffffff 10%, #00f2ff 40%, transparent 70%);
-        border-radius: 50%;
-        margin: 0 auto;
-        animation: pulse 3s infinite ease-in-out;
-        border: 2px solid rgba(0, 242, 255, 0.5);
-    }
-    
-    /* Capas transparentes con movimiento */
-    .hud-layer {
-        border: 1px dashed rgba(0, 242, 255, 0.3);
-        border-radius: 50%;
-        position: absolute;
-        animation: rotate 20s infinite linear;
-    }
-    </style>
-    
-    <div style="text-align: center; padding: 20px; position: relative;">
-        <div class="reactor-core"></div>
-        <div style="color: #00f2ff; font-weight: bold; margin-top: 10px; letter-spacing: 5px;">SISTEMA ONLINE</div>
-    </div>
-""", unsafe_allow_html=True)
-
-# --- 6. PESTAÑAS (MÓDULOS UNIFICADOS) ---
+# --- 6. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: COMANDO CENTRAL (MARK 187 - MODO MANOS LIBRES) ---
+# --- TAB 0: COMANDO CENTRAL (MANOS LIBRES) ---
 with tabs[0]:
-    if "historial_chat" not in st.session_state: 
-        st.session_state.historial_chat = []
-    
-    # Interruptor de Modo Manos Libres
-    if "modo_fluido" not in st.session_state:
-        st.session_state.modo_fluido = False
-
-    col_t, col_sw = st.columns([4, 1])
-    with col_sw:
-        st.session_state.modo_fluido = st.toggle("🎙️ MODO MANOS LIBRES", value=st.session_state.modo_fluido)
-
-    # Mostrar historial
+    if "historial_chat" not in st.session_state: st.session_state.historial_chat = []
+    if "modo_fluido" not in st.session_state: st.session_state.modo_fluido = False
+    st.session_state.modo_fluido = st.toggle("🎙️ MODO MANOS LIBRES (SIRI STYLE)", value=st.session_state.modo_fluido)
     for m in st.session_state.historial_chat:
-        avatar = "🚀" if m["role"] == "assistant" else "👤"
-        with st.chat_message(m["role"], avatar=avatar):
-            st.write(m["content"])
-
-    # --- LÓGICA DE GRABACIÓN AUTOMÁTICA ---
+        with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): st.write(m["content"])
     col_mic, col_chat = st.columns([1, 12])
     with col_mic:
-        # Si el modo fluido está activo, el micro se activa con un prompt distinto
-        audio_data = mic_recorder(
-            start_prompt="🎙️" if not st.session_state.modo_fluido else "🟢 ESCUCHANDO...", 
-            stop_prompt="🛑", 
-            key="mic_v187"
-        )
-    
-    with col_chat:
-        prompt = st.chat_input("Escriba o hable, Srta. Diana...")
-
+        audio_data = mic_recorder(start_prompt="🎙️" if not st.session_state.modo_fluido else "🟢", stop_prompt="🛑", key="mic_v189")
+    with col_chat: prompt = st.chat_input("Escriba o hable, Srta. Diana...")
     texto_a_procesar = None
-
     if audio_data and 'bytes' in audio_data:
         audio_hash = hash(audio_data['bytes'])
         if "last_audio_hash" not in st.session_state or st.session_state.last_audio_hash != audio_hash:
-            try:
-                trans = client.audio.transcriptions.create(
-                    file=("voice.wav", audio_data['bytes']), 
-                    model="whisper-large-v3", 
-                    language="es"
-                )
-                texto_a_procesar = trans.text
-                st.session_state.last_audio_hash = audio_hash
-            except: st.error("Error de conexión.")
-    elif prompt:
-        texto_a_procesar = prompt
-
+            trans = client.audio.transcriptions.create(file=("voice.wav", audio_data['bytes']), model="whisper-large-v3", language="es")
+            texto_a_procesar = trans.text
+            st.session_state.last_audio_hash = audio_hash
+    elif prompt: texto_a_procesar = prompt
     if texto_a_procesar:
         st.session_state.historial_chat.append({"role": "user", "content": texto_a_procesar})
-        
-        with st.spinner("Procesando..."):
-            ctx = [{"role": "system", "content": PERSONALIDAD}] + st.session_state.historial_chat[-6:]
-            res = client.chat.completions.create(model=modelo_texto, messages=ctx)
-            ans = res.choices[0].message.content
-            st.session_state.historial_chat.append({"role": "assistant", "content": ans})
-            
-            # --- JAVASCRIPT: RESPUESTA Y AUTO-ACTIVACIÓN ---
-            # Este script hace que JARVIS hable y, si el modo fluido está activo, 
-            # emule un clic en el botón del micro tras terminar de hablar.
-            js_script = f"""
-                <script>
-                var msg = new SpeechSynthesisUtterance({repr(ans)});
-                msg.lang = 'es-ES';
-                msg.pitch = 0.85;
-                msg.rate = 1.0;
+        ctx = [{"role": "system", "content": PERSONALIDAD}] + st.session_state.historial_chat[-6:]
+        res = client.chat.completions.create(model=modelo_texto, messages=ctx)
+        ans = res.choices[0].message.content
+        st.session_state.historial_chat.append({"role": "assistant", "content": ans})
+        js_script = f"<script>var msg = new SpeechSynthesisUtterance({repr(ans)}); msg.lang='es-ES'; msg.onend=function(){{if({str(st.session_state.modo_fluido).lower()}){{setTimeout(function(){{const b=window.parent.document.querySelector('button[aria-label=\"🎙️\"]'); if(b)b.click();}},1000);}}}}; window.speechSynthesis.speak(msg);</script>"
+        st.components.v1.html(js_script, height=0); st.rerun()
 
-                msg.onend = function(event) {{
-                    if ({str(st.session_state.modo_fluido).lower()}) {{
-                        // Pequeño delay para no escucharse a sí mismo
-                        setTimeout(function() {{
-                            const micBtn = window.parent.document.querySelector('button[aria-label="🎙️"]');
-                            if (micBtn) micBtn.click();
-                        }}, 1000);
-                    }}
-                }};
-
-                window.speechSynthesis.speak(msg);
-                </script>
-            """
-            st.components.v1.html(js_script, height=0)
-            st.rerun()
-
-# --- TAB 1: ANÁLISIS (SISTEMA DE RAZONAMIENTO EN ESPAÑOL MARK 186) ---
+# --- TAB 1: ANÁLISIS (VISIÓN + DOCUMENTOS) ---
 with tabs[1]:
-    st.subheader("📊 Centro de Inteligencia con Pensamiento Crítico")
-    file = st.file_uploader("Cargar evidencia", type=['pdf','docx','xlsx','png','jpg','jpeg'], key="scanner_v186")
-    
-    if file and st.button("🔍 INICIAR PROTOCOLO DE RAZONAMIENTO"):
-        with st.spinner("JARVIS está reflexionando en español..."):
+    st.subheader("📊 Análisis de Inteligencia Multimodal")
+    file = st.file_uploader("Cargar evidencia", type=['pdf','docx','xlsx','txt','png','jpg','jpeg'], key="scanner_v189")
+    if file and st.button("🔍 INICIAR ANÁLISIS"):
+        with st.spinner("JARVIS está analizando..."):
             try:
-                # Instrucción explícita de idioma para el proceso de pensamiento
-                PROMPT_REASONING = (
-                    "IMPORTANTE: Tanto tu proceso de pensamiento (<think>) como tu respuesta final "
-                    "DEBEN ESTAR TOTALMENTE EN ESPAÑOL. "
-                    "Analiza este documento de manera exhaustiva para la Srta. Diana Stark. "
-                    "Divide tu respuesta en: 1. Resumen de Alto Nivel, 2. Hallazgos Críticos, "
-                    "3. Análisis de Riesgos y 4. Recomendaciones de Ingeniería/Negocio."
-                )
-
-                if file.type in ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"]:
-                    # ... (código de extracción de texto igual al anterior) ...
-                    
+                if file.type in ["image/png", "image/jpeg", "image/jpg"]:
+                    base64_image = base64.b64encode(file.read()).decode('utf-8')
                     response = client.chat.completions.create(
-                        model="qwen/qwen3-32b",
-                        messages=[{"role": "user", "content": f"{PROMPT_REASONING}\n\nContenido:\n{txt[:8000]}"}],
-                        reasoning_format="raw"
+                        model="llama-3.2-11b-vision-preview",
+                        messages=[{"role": "user", "content": [{"type": "text", "text": "Analiza esta imagen en ESPAÑOL."}, {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}]}]
                     )
-                    
-                    full_res = response.choices[0].message.content
-                    
-                    if "<think>" in full_res and "</think>" in full_res:
-                        thinking_process = full_res.split("<think>")[1].split("</think>")[0]
-                        res_content = full_res.split("</think>")[1]
-                    else:
-                        res_content = full_res
-
-                    if thinking_process:
-                        with st.expander("🧠 VER PROCESO DE RAZONAMIENTO (ESPAÑOL)"):
-                            st.info(thinking_process)
-                    
-                    st.markdown("---")
-                    st.markdown(res_content)
-                    
-                    # Generar PDF
-                    pdf_file = generar_pdf_reporte("REPORTE ESTRATÉGICO STARK", res_content)
-                    st.download_button("📥 DESCARGAR REPORTE", pdf_file, f"Stark_Intelligence_{hora_actual}.pdf", "application/pdf")
-            except Exception as e:
-                st.error(f"Error en los servidores: {e}")
+                else:
+                    txt = ""
+                    if file.type == "application/pdf":
+                        reader = PyPDF2.PdfReader(file)
+                        for page in reader.pages: txt += page.extract_text()
+                    elif file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+                        doc = docx.Document(file)
+                        for p in doc.paragraphs: txt += p.text + "\n"
+                    elif file.type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+                        df = pd.read_excel(file); txt = df.to_string()
+                    else: txt = file.read().decode()
+                    prompt_an = f"Razonamiento y respuesta en ESPAÑOL: {txt[:8000]}"
+                    response = client.chat.completions.create(model="qwen/qwen3-32b", messages=[{"role":"user","content":prompt_an}], reasoning_format="raw")
+                
+                full_res = response.choices[0].message.content
+                if "<think>" in full_res:
+                    parts = full_res.split("</think>")
+                    with st.expander("🧠 RAZONAMIENTO"): st.info(parts[0].replace("<think>",""))
+                    st.markdown(parts[1])
+                    rep_content = parts[1]
+                else: 
+                    st.markdown(full_res)
+                    rep_content = full_res
+                
+                pdf_file = generar_pdf_reporte("REPORTE STARK", rep_content)
+                st.download_button("📥 DESCARGAR REPORTE PDF", pdf_file, "Reporte_Stark.pdf", "application/pdf")
+            except Exception as e: st.error(f"Error: {e}")
 
 # --- TAB 2: COMUNICACIONES ---
 with tabs[2]:
-    st.subheader("✉️ Centro de Despacho Gmail")
+    st.subheader("✉️ Centro de Despacho")
     c1, c2 = st.columns(2)
-    with c1: dest = st.text_input("Para:", value=GMAIL_USER)
-    with c2: asun = st.text_input("Asunto:", value="Reporte Stark")
+    dest = c1.text_input("Para:", value=GMAIL_USER)
+    asun = c2.text_input("Asunto:", value="Reporte Stark")
     cuer = st.text_area("Mensaje:")
     if st.button("🚀 ENVIAR CORREO"):
-        if enviar_correo_stark(dest, asun, cuer): st.success("Mensaje enviado con éxito, señorita.")
-        else: st.error("Error en servidor SMTP.")
+        if enviar_correo_stark(dest, asun, cuer): st.success("Mensaje enviado con éxito.")
+        else: st.error("Error en el envío.")
 
-# --- TAB 3: LABORATORIO ---
+# --- TAB 3: LABORATORIO (MARK 85 - CON FILTROS) ---
 with tabs[3]:
-    st.subheader("🎨 Estación Mark 85")
+    st.subheader("🎨 Estación de Diseño Mark 85")
     col_p, col_f = st.columns([2, 1])
-    with col_p: idea = st.text_input("Prototipo:", key="lab_v181")
-    with col_f: 
-        estilo = st.selectbox("Filtro:", ["Cinematic Marvel", "Technical Drawing", "Cyberpunk", "Industrial Stark"])
-    if st.button("🚀 SINTETIZAR") and idea:
-        with st.spinner("Sintetizando..."):
+    with col_p: idea = st.text_input("Descripción del Prototipo:", key="lab_v189")
+    with col_f: estilo = st.selectbox("Filtro de Renderizado:", ["Cinematic Marvel", "Technical Drawing", "Cyberpunk", "Industrial Stark", "Photorealistic"])
+    
+    if st.button("🚀 SINTETIZAR DISEÑO") and idea:
+        with st.spinner("Sintetizando en la forja digital..."):
             url = "https://router.huggingface.co/hf-inference/models/stabilityai/stable-diffusion-xl-base-1.0"
-            resp = requests.post(url, headers={"Authorization": f"Bearer {HF_TOKEN}"}, json={"inputs": f"{idea}, {estilo} style"})
-            if resp.status_code == 200: st.image(Image.open(io.BytesIO(resp.content)))
-            else: st.error("Error en sintetizador.")
+            headers = {"Authorization": f"Bearer {HF_TOKEN}"}
+            resp = requests.post(url, headers=headers, json={"inputs": f"{idea}, {estilo} style, high quality, 8k"})
+            if resp.status_code == 200:
+                st.image(Image.open(io.BytesIO(resp.content)), caption=f"Prototipo: {idea} | Estilo: {estilo}")
+            else: st.error("El sintetizador está fuera de línea o el token es inválido.")
