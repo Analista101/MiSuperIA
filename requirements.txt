@@ -11,3 +11,5 @@ streamlit-paste-button
 gradio_client
 python-dotenv
 docx2txt
+gspread
+google-auth

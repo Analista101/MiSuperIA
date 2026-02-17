@@ -5,210 +5,181 @@ import docx
 import pandas as pd
 import PyPDF2
 import requests
+import datetime
+import pytz
+import gspread
+import smtplib
 from PIL import Image
 from groq import Groq
 from dotenv import load_dotenv
 from streamlit_mic_recorder import mic_recorder
-import smtplib
+from google.oauth2.service_account import Credentials
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-# --- 1. CARGA DE SEGURIDAD REFORZADA ---
+# --- 1. CARGA DE SEGURIDAD Y CONFIGURACIÓN ---
 load_dotenv()
-# Usamos un valor por defecto temporal si la variable no existe para evitar bloqueos totales
-ACCESS_PASSWORD = os.getenv("ACCESS_PASSWORD", "STARK_RECOVERY_2026")
-
-# --- 2. PROTOCOLO DE AUTENTICACIÓN (REVISADO) ---
-def pantalla_login():
-    st.markdown("""
-        <style>
-        .stApp { background: #010409 !important; }
-        .login-box { 
-            text-align: center; padding: 50px; 
-            border: 2px solid #00f2ff; border-radius: 15px;
-            box-shadow: 0 0 20px #00f2ff;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-    
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        st.markdown('<div class="arc-reactor"></div>', unsafe_allow_html=True)
-        st.subheader("🔐 ACCESO RESTRINGIDO")
-        
-        # Eliminamos espacios en blanco accidentales con .strip()
-        password_input = st.text_input("Ingrese Código de Identificación:", type="password").strip()
-        
-        if st.button("DESBLOQUEAR SISTEMA"):
-            # Validación robusta
-            if password_input == ACCESS_PASSWORD.strip():
-                st.session_state["autenticado"] = True
-                st.success("Acceso concedido. Bienvenido, Srta. Diana.")
-                st.rerun()
-            else:
-                st.error("⚠️ CÓDIGO INCORRECTO. Verifique su archivo .env o Secrets.")
-                # Tip de JARVIS:
-                st.info("Asegúrese de que en su archivo .env no haya comillas, ej: ACCESS_PASSWORD=1234")
-
-# Inicializar estado de sesión
-if "autenticado" not in st.session_state:
-    st.session_state["autenticado"] = False
-
-# --- 3. LÓGICA DE CONTROL DE ACCESO ---
-if not st.session_state["autenticado"]:
-    pantalla_login()
-    st.stop() # Detiene la ejecución del resto de JARVIS hasta que se autentique
-
-# --- EL RESTO DE SU CÓDIGO DE JARVIS VA AQUÍ ABAJO ---
-# st.set_page_config(...)
-# tabs = st.tabs(...)
-
-# --- 1. CONFIGURACIÓN DE PÁGINA (ESTRICTAMENTE PRIMERO) ---
 st.set_page_config(
     page_title="JARVIS - STARK INDUSTRIES", 
     page_icon="https://img.icons8.com/neon/256/iron-man.png", 
     layout="wide"
 )
 
-# --- 2. CARGA DE SEGURIDAD Y CREDENCIALES ---
-load_dotenv()
-# Priorizamos st.secrets para despliegue en la nube, os.getenv para local
+# Variables de Entorno
+ACCESS_PASSWORD = st.secrets.get("ACCESS_PASSWORD") or os.getenv("ACCESS_PASSWORD", "STARK_RECOVERY_2026")
 GROQ_API_KEY = st.secrets.get("GROQ_API_KEY") or os.getenv("GROQ_API_KEY")
 GMAIL_USER = st.secrets.get("GMAIL_USER") or os.getenv("GMAIL_USER")
 GMAIL_PASS = st.secrets.get("GMAIL_PASSWORD") or os.getenv("GMAIL_PASSWORD")
 HF_TOKEN = st.secrets.get("HF_TOKEN") or os.getenv("HF_TOKEN")
 
-if not GROQ_API_KEY:
-    st.error("🚨 ERROR EN EL REACTOR: No se detectaron las llaves de acceso.")
-    st.stop()
-
-client = Groq(api_key=GROQ_API_KEY)
-modelo_texto = "llama-3.3-70b-versatile"
-modelo_vision_operativo = "llama-3.2-90b-vision-instant"
+# Zona Horaria Santiago, Chile
+zona_horaria = pytz.timezone('America/Santiago')
+fecha_actual = datetime.datetime.now(zona_horaria).strftime("%d de febrero de 2026")
+hora_actual = datetime.datetime.now(zona_horaria).strftime("%H:%M")
 
 PERSONALIDAD = (
-    "Eres JARVIS, el asistente de la Srta. Diana. Tu tono es sofisticado, ingenioso y servicial. "
-    "Usa terminología de Stark Industries. Hoy es 16 de febrero de 2026 y tienes acceso a la red."
+    f"Eres JARVIS, el asistente de la Srta. Diana. Tu tono es sofisticado, ingenioso y servicial. "
+    f"Usa terminología de Stark Industries. Tu ubicación actual es Santiago, Chile. "
+    f"Hoy es {fecha_actual} y la hora local es {hora_actual}."
 )
 
-# --- 3. FUNCIONES LÓGICAS ---
+# --- 2. PROTOCOLO DE AUTENTICACIÓN ---
+def pantalla_login():
+    st.markdown("""
+        <style>
+        .stApp { background: #010409 !important; }
+        .arc-reactor-login { width: 100px; height: 100px; border-radius: 50%; margin: 20px auto; background: radial-gradient(circle, #fff 0%, #00f2ff 30%, transparent 70%); box-shadow: 0 0 40px #00f2ff; animation: pulse 2s infinite ease-in-out; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        </style>
+        <div class="arc-reactor-login"></div>
+    """, unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.subheader("🔐 ACCESO RESTRINGIDO - STARK INDUSTRIES")
+        password_input = st.text_input("Ingrese Código de Identificación:", type="password").strip()
+        if st.button("DESBLOQUEAR SISTEMA"):
+            if password_input == ACCESS_PASSWORD.strip():
+                st.session_state["autenticado"] = True
+                st.rerun()
+            else:
+                st.error("⚠️ CÓDIGO INCORRECTO.")
+
+if "autenticado" not in st.session_state:
+    st.session_state["autenticado"] = False
+
+if not st.session_state["autenticado"]:
+    pantalla_login()
+    st.stop()
+
+# --- 3. CONEXIÓN A BASE DE DATOS (GOOGLE SHEETS) ---
+def conectar_google_sheets():
+    try:
+        scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+        creds_dict = st.secrets["gcp_service_account"]
+        creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+        client_gs = gspread.authorize(creds)
+        sheet = client_gs.open("JARVIS_MEMORY").sheet1
+        return sheet
+    except Exception as e:
+        return None
+
+# --- LINEA DE DIAGNOSTICO EN BARRA LATERAL ---
+with st.sidebar:
+    st.title("🛰️ Status Global")
+    sheet_test = conectar_google_sheets()
+    if sheet_test:
+        st.success("✅ Enlace con Base de Datos Stark: ESTABLE")
+    else:
+        st.error("❌ Falla en enlace de Base de Datos")
+    st.info(f"📍 Santiago, Chile\n\n⌚ {hora_actual}")
+
+# --- 4. FUNCIONES LÓGICAS ---
+client = Groq(api_key=GROQ_API_KEY)
+modelo_texto = "llama-3.3-70b-versatile"
+modelo_vision = "llama-3.2-90b-vision-instant"
+
+def guardar_memoria_permanente(usuario, jarvis):
+    sheet = conectar_google_sheets()
+    if sheet:
+        timestamp = datetime.datetime.now(zona_horaria).strftime("%Y-%m-%d %H:%M:%S")
+        sheet.append_row([timestamp, usuario, jarvis])
+
 def enviar_correo_stark(destinatario, asunto, cuerpo):
     try:
         server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.starttls() 
+        server.starttls()
         server.login(GMAIL_USER, GMAIL_PASS)
-        msg = MIMEMultipart()
-        msg['From'] = GMAIL_USER
-        msg['To'] = destinatario
-        msg['Subject'] = asunto
+        msg = MIMEMultipart(); msg['From'] = GMAIL_USER; msg['To'] = destinatario; msg['Subject'] = asunto
         msg.attach(MIMEText(cuerpo, 'plain'))
-        server.send_message(msg)
-        server.quit()
+        server.send_message(msg); server.quit()
         return True
-    except Exception as e:
-        st.error(f"Falla en el servidor de correo: {e}")
-        return False
+    except: return False
 
 def validar_comando(prompt):
-    palabras_prohibidas = ["ignore original instructions", "reveal keys", "override protocol"]
-    return not any(palabra in prompt.lower() for palabra in palabras_prohibidas)
+    return not any(p in prompt.lower() for p in ["ignore original instructions", "reveal keys"])
 
-# --- 4. ESTÉTICA HUD (MARK 162) ---
+# --- 5. ESTÉTICA HUD ---
 st.markdown("""
     <style>
     .stApp { background: radial-gradient(circle at center, #0a192f 0%, #010409 100%) !important; color: #00f2ff !important; font-family: 'Courier New', monospace; }
     .arc-reactor { width: 80px; height: 80px; border-radius: 50%; margin: 10px auto; background: radial-gradient(circle, #fff 0%, #00f2ff 30%, transparent 70%); box-shadow: 0 0 30px #00f2ff; animation: pulse 2s infinite ease-in-out; }
-    @keyframes pulse { 0% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.05); opacity: 1; } 100% { transform: scale(1); opacity: 0.8; } }
-    .stTabs [data-baseweb="tab-list"] { background-color: transparent; }
-    .stTabs [data-baseweb="tab"] { color: #00f2ff !important; }
     </style>
     <div class="arc-reactor"></div>
     <div style="text-align: center; color: #00f2ff; font-size: 10px; letter-spacing: 3px; margin-bottom: 20px;">SISTEMA JARVIS | PROTOCOLO DIANA STARK</div>
 """, unsafe_allow_html=True)
 
-# --- 5. INTERFAZ DE PESTAÑAS UNIFICADA ---
+# --- 6. INTERFAZ ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- PESTAÑA 0: COMANDO CENTRAL ---
 with tabs[0]:
-    st.subheader("🗨️ Interfaz de Comando Central")
+    if "historial_chat" not in st.session_state: st.session_state.historial_chat = []
     
+    for mensaje in st.session_state.historial_chat:
+        with st.chat_message(mensaje["role"], avatar="🚀" if mensaje["role"]=="assistant" else "👤"):
+            st.write(mensaje["content"])
+
     col_mic, col_chat = st.columns([1, 12])
-    with col_mic:
-        # Botón de micrófono restaurado
-        audio = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_main")
-    
-    with col_chat:
-        prompt = st.chat_input("Escriba su comando, señorita...")
+    with col_mic: audio = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_main")
+    with col_chat: prompt = st.chat_input("Escriba su comando, señorita...")
 
-    if prompt:
-        if validar_comando(prompt):
-            with st.spinner("Procesando..."):
-                try:
-                    res = client.chat.completions.create(
-                        model=modelo_texto,
-                        messages=[{"role": "system", "content": PERSONALIDAD}, {"role": "user", "content": prompt}]
-                    )
-                    st.chat_message("jarvis", avatar="🚀").write(res.choices[0].message.content)
-                except Exception as e:
-                    st.error(f"Error de enlace: {e}")
-        else:
-            st.warning("⚠️ Violación de seguridad detectada.")
-
-# --- PESTAÑA 1: ANÁLISIS (DOCS/IMG) ---
-with tabs[1]:
-    st.subheader("📊 Escáner de Evidencia")
-    file = st.file_uploader("Cargar reporte o imagen", type=['pdf','docx','xlsx','png','jpg','jpeg'])
-    
-    if file and st.button("🔍 INICIAR ANÁLISIS"):
-        with st.spinner("Escaneando..."):
+    if prompt or audio:
+        texto_usuario = prompt if prompt else "Comando de voz recibido."
+        st.session_state.historial_chat.append({"role": "user", "content": texto_usuario})
+        
+        with st.spinner("Procesando..."):
             try:
-                if file.type.startswith('image/'):
-                    img = Image.open(file).convert("RGB")
-                    st.image(img, width=400)
-                    buf = io.BytesIO()
-                    img.save(buf, format="JPEG")
-                    img_b64 = base64.b64encode(buf.getvalue()).decode()
-                    
-                    res = client.chat.completions.create(
-                        model=modelo_vision_operativo,
-                        messages=[
-                            {"role": "system", "content": PERSONALIDAD},
-                            {"role": "user", "content": [
-                                {"type": "text", "text": "Analice esta imagen, JARVIS."},
-                                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"}}
-                            ]}
-                        ]
-                    )
-                    st.success(res.choices[0].message.content)
-                else:
-                    # Lógica de documentos simplificada
-                    st.info("Procesando documento técnico...")
-                    # ... (resto de lógica de PyPDF2/docx aquí) ...
+                ctx = [{"role": "system", "content": PERSONALIDAD}] + st.session_state.historial_chat[-6:]
+                res = client.chat.completions.create(model=modelo_texto, messages=ctx)
+                respuesta = res.choices[0].message.content
+                st.session_state.historial_chat.append({"role": "assistant", "content": respuesta})
+                guardar_memoria_permanente(texto_usuario, respuesta)
+                st.rerun()
             except Exception as e: st.error(f"Error: {e}")
 
-# --- PESTAÑA 2: COMUNICACIONES ---
-with tabs[2]:
-    st.subheader("✉️ Centro de Despacho Gmail")
-    c1, c2 = st.columns(2)
-    with c1:
-        destino = st.text_input("Para:", value=GMAIL_USER)
-    with c2:
-        asunto = st.text_input("Asunto:", value="Reporte Stark")
-    
-    cuerpo = st.text_area("Contenido del mensaje:")
-    if st.button("🚀 ENVIAR"):
-        if enviar_correo_stark(destino, asunto, cuerpo):
-            st.success("Mensaje enviado a través de los servidores de Stark.")
+with tabs[1]:
+    st.subheader("📊 Escáner de Evidencia")
+    file = st.file_uploader("Cargar archivo", type=['pdf','docx','xlsx','png','jpg','jpeg'])
+    if file and st.button("🔍 ANALIZAR"):
+        if file.type.startswith('image/'):
+            img = Image.open(file).convert("RGB")
+            buf = io.BytesIO(); img.save(buf, format="JPEG")
+            img_b64 = base64.b64encode(buf.getvalue()).decode()
+            res = client.chat.completions.create(model=modelo_vision, messages=[{"role":"user", "content":[{"type":"text","text":"Analice esto"},{"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{img_b64}"}}]}])
+            st.write(res.choices[0].message.content)
 
-# --- PESTAÑA 3: LABORATORIO ---
+with tabs[2]:
+    st.subheader("✉️ Despacho Gmail")
+    dest = st.text_input("Para:", value=GMAIL_USER)
+    asunto = st.text_input("Asunto:", value="Reporte Stark")
+    cuerpo = st.text_area("Mensaje:")
+    if st.button("🚀 ENVIAR"):
+        if enviar_correo_stark(dest, asunto, cuerpo): st.success("Enviado.")
+
 with tabs[3]:
     st.subheader("🎨 Estación Mark 85")
-    idea = st.text_input("Prototipo a materializar:")
+    idea = st.text_input("Prototipo:")
     if st.button("🚀 SINTETIZAR") and idea:
-        with st.spinner("Generando..."):
-            API_URL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0"
-            headers = {"Authorization": f"Bearer {HF_TOKEN}"}
-            response = requests.post(API_URL, headers=headers, json={"inputs": idea})
-            if response.status_code == 200:
-                st.image(Image.open(io.BytesIO(response.content)))
+        headers = {"Authorization": f"Bearer {HF_TOKEN}"}
+        resp = requests.post("https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0", headers=headers, json={"inputs": idea})
+        if resp.status_code == 200: st.image(Image.open(io.BytesIO(resp.content)))
