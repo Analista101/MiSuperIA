@@ -25,7 +25,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Variables de Entorno (Prioriza Secrets de Streamlit, luego .env local)
+# Variables de Entorno
 ACCESS_PASSWORD = st.secrets.get("ACCESS_PASSWORD") or os.getenv("ACCESS_PASSWORD", "STARK_RECOVERY_2026")
 GROQ_API_KEY = st.secrets.get("GROQ_API_KEY") or os.getenv("GROQ_API_KEY")
 GMAIL_USER = st.secrets.get("GMAIL_USER") or os.getenv("GMAIL_USER")
@@ -93,10 +93,7 @@ with st.sidebar:
         st.success("✅ Enlace con Base de Datos Stark: ESTABLE")
     else:
         st.error("❌ Falla en enlace de Base de Datos")
-    st.info(f"📍 Santiago, Chile\n\n⌚ {hora_actual}")
-    if st.button("Cerrar Sesión"):
-        st.session_state["autenticado"] = False
-        st.rerun()
+    st.info(f"📍 Santiago, Chile\n⌚ {hora_actual}")
 
 # --- 4. FUNCIONES LÓGICAS ---
 client = Groq(api_key=GROQ_API_KEY)
@@ -120,195 +117,81 @@ def enviar_correo_stark(destinatario, asunto, cuerpo):
         return True
     except: return False
 
-def validar_comando(prompt):
-    return not any(p in prompt.lower() for p in ["ignore original instructions", "reveal keys"])
-
 # --- 5. ESTÉTICA HUD ---
 st.markdown("""
     <style>
     .stApp { background: radial-gradient(circle at center, #0a192f 0%, #010409 100%) !important; color: #00f2ff !important; font-family: 'Courier New', monospace; }
     .arc-reactor { width: 80px; height: 80px; border-radius: 50%; margin: 10px auto; background: radial-gradient(circle, #fff 0%, #00f2ff 30%, transparent 70%); box-shadow: 0 0 30px #00f2ff; animation: pulse 2s infinite ease-in-out; }
-    .stTabs [data-baseweb="tab-list"] { background-color: transparent; }
-    .stTabs [data-baseweb="tab"] { color: #00f2ff !important; font-weight: bold; }
     </style>
     <div class="arc-reactor"></div>
     <div style="text-align: center; color: #00f2ff; font-size: 10px; letter-spacing: 3px; margin-bottom: 20px;">SISTEMA JARVIS | PROTOCOLO DIANA STARK</div>
 """, unsafe_allow_html=True)
 
-# --- 6. INTERFAZ DE PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- PESTAÑA 0: COMANDO CENTRAL (REPARACIÓN DE AUDIO) ---
+# --- PESTAÑA 0: COMANDO CENTRAL (AUDIO REPARADO) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: st.session_state.historial_chat = []
-    
-    # Mostrar historial
     for mensaje in st.session_state.historial_chat:
         with st.chat_message(mensaje["role"], avatar="🚀" if mensaje["role"]=="assistant" else "👤"):
             st.write(mensaje["content"])
 
     col_mic, col_chat = st.columns([1, 12])
-    
-    with col_mic:
-        # 1. CAPTURA DE AUDIO
-        audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_main")
-    
-    with col_chat:
-        prompt = st.chat_input("Escriba su comando, señorita...")
+    with col_mic: audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_main")
+    with col_chat: prompt = st.chat_input("Escriba su comando, señorita...")
 
-    # 2. PROCESAMIENTO DE ENTRADA (VOZ O TEXTO)
     texto_final = None
-
     if audio_data and 'bytes' in audio_data:
-        with st.spinner("Traduciendo audio a datos Stark..."):
-            try:
-                # Enviamos los bytes del audio a Groq para transcripción
-                transcription = client.audio.transcriptions.create(
-                    file=("audio.wav", audio_data['bytes']),
-                    model="whisper-large-v3", # El mejor modelo para español
-                    language="es"
-                )
-                texto_final = transcription.text
-            except Exception as e:
-                st.error(f"Error en el procesador de voz: {e}")
+        try:
+            transcription = client.audio.transcriptions.create(file=("audio.wav", audio_data['bytes']), model="whisper-large-v3", language="es")
+            texto_final = transcription.text
+        except Exception as e: st.error(f"Error de voz: {e}")
+    elif prompt: texto_final = prompt
 
-    elif prompt:
-        texto_final = prompt
-
-    # 3. GENERACIÓN DE RESPUESTA
     if texto_final:
         st.session_state.historial_chat.append({"role": "user", "content": texto_final})
-        
-        with st.spinner("JARVIS está pensando..."):
-            try:
-                ctx = [{"role": "system", "content": PERSONALIDAD}] + st.session_state.historial_chat[-6:]
-                res = client.chat.completions.create(model=modelo_texto, messages=ctx)
-                respuesta = res.choices[0].message.content
-                
-                st.session_state.historial_chat.append({"role": "assistant", "content": respuesta})
-                guardar_memoria_permanente(texto_final, respuesta)
-                st.rerun()
-            except Exception as e:
-                st.error(f"Error en el enlace neuronal: {e}")
+        with st.spinner("Procesando..."):
+            ctx = [{"role": "system", "content": PERSONALIDAD}] + st.session_state.historial_chat[-6:]
+            res = client.chat.completions.create(model=modelo_texto, messages=ctx)
+            respuesta = res.choices[0].message.content
+            st.session_state.historial_chat.append({"role": "assistant", "content": respuesta})
+            guardar_memoria_permanente(texto_final, respuesta)
+            st.rerun()
 
-# --- PESTAÑA 1: ANÁLISIS (DOCS/IMG REFORZADO) ---
+# --- PESTAÑA 1: ANÁLISIS (REPARADO) ---
 with tabs[1]:
-    st.subheader("📊 Escáner de Evidencia Stark")
-    file = st.file_uploader("Cargar reporte, imagen o documento técnico", type=['pdf','docx','png','jpg','jpeg'])
-    
-    if file and st.button("🔍 INICIAR ANÁLISIS ESTRUCTURAL"):
-        with st.spinner("Extrayendo datos y analizando..."):
+    st.subheader("📊 Escáner de Evidencia")
+    file = st.file_uploader("Cargar archivo", type=['pdf','docx','png','jpg','jpeg'])
+    if file and st.button("🔍 ANALIZAR"):
+        with st.spinner("Escaneando..."):
             try:
-                contenido_extraido = ""
-                
-                # --- CASO A: IMÁGENES (Análisis Visual) ---
                 if file.type.startswith('image/'):
                     img = Image.open(file).convert("RGB")
-                    st.image(img, caption="Imagen cargada para análisis", width=500)
-                    
-                    buf = io.BytesIO()
-                    img.save(buf, format="JPEG")
-                    img_b64 = base64.b64encode(buf.getvalue()).decode()
-                    
-                    res = client.chat.completions.create(
-                        model=modelo_vision,
-                        messages=[
-                            {"role": "system", "content": PERSONALIDAD},
-                            {"role": "user", "content": [
-                                {"type": "text", "text": "Analice detalladamente esta imagen y extraiga cualquier dato relevante."},
-                                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"}}
-                            ]}
-                        ]
-                    )
-                    contenido_extraido = res.choices[0].message.content
-
-                # --- CASO B: PDF (Extracción de Texto) ---
-                elif file.type == "application/pdf":
-                    pdf_reader = PyPDF2.PdfReader(file)
-                    for page in pdf_reader.pages:
-                        contenido_extraido += page.extract_text() + "\n"
-                    
-                # --- CASO C: WORD (Extracción de Texto) ---
-                elif file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-                    doc = docx.Document(file)
-                    for para in doc.paragraphs:
-                        contenido_extraido += para.text + "\n"
-
-                # --- PROCESAMIENTO FINAL POR JARVIS ---
-                if contenido_extraido and not file.type.startswith('image/'):
-                    # Enviamos el texto extraído a la IA para un resumen inteligente
-                    res = client.chat.completions.create(
-                        model=modelo_texto,
-                        messages=[
-                            {"role": "system", "content": PERSONALIDAD},
-                            {"role": "user", "content": f"Analiza el siguiente contenido extraído del archivo y dame un resumen ejecutivo Stark:\n\n{contenido_extraido}"}
-                        ]
-                    )
-                    st.success("Análisis de Documento Completado")
+                    buf = io.BytesIO(); img.save(buf, format="JPEG"); img_b64 = base64.b64encode(buf.getvalue()).decode()
+                    res = client.chat.completions.create(model=modelo_vision, messages=[{"role":"user", "content":[{"type":"text","text":"Analice esta imagen."},{"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{img_b64}"}}]}])
                     st.write(res.choices[0].message.content)
-                elif file.type.startswith('image/'):
-                    st.success("Análisis Visual Completado")
-                    st.write(contenido_extraido)
-                else:
-                    st.warning("⚠️ No se pudo extraer contenido del archivo.")
+                elif file.type == "application/pdf":
+                    pdf = PyPDF2.PdfReader(file); text = "".join([p.extract_text() for p in pdf.pages])
+                    res = client.chat.completions.create(model=modelo_texto, messages=[{"role":"user", "content":f"Analiza este PDF: {text[:4000]}"}])
+                    st.write(res.choices[0].message.content)
+            except Exception as e: st.error(f"Falla: {e}")
 
-            except Exception as e:
-                st.error(f"Falla crítica en el escáner: {e}")
-
-# --- PESTAÑA 2: COMUNICACIONES ---
-with tabs[2]:
-    st.subheader("✉️ Despacho Gmail")
-    dest = st.text_input("Para:", value=GMAIL_USER)
-    asunto = st.text_input("Asunto:", value="Reporte Stark")
-    cuerpo = st.text_area("Mensaje:")
-    if st.button("🚀 ENVIAR"):
-        if enviar_correo_stark(dest, asunto, cuerpo): st.success("Mensaje enviado con éxito.")
-
-# --- PESTAÑA 3: LABORATORIO (MARK 85 - PROTOCOLO CORREGIDO) ---
+# --- PESTAÑA 3: LABORATORIO (NUEVA URL ROUTER) ---
 with tabs[3]:
     st.subheader("🎨 Estación Mark 85")
-    
-    col_prom, col_filt = st.columns([2, 1])
-    
-    with col_prom:
-        idea = st.text_input("Prototipo a materializar:", placeholder="Ej: Reactor Arc de nueva generación...")
-        
-    with col_filt:
-        estilo = st.selectbox("Filtro Visual:", ["Cinematic Marvel", "Technical Drawing", "Cyberpunk", "Industrial Stark"])
-        intensidad = st.slider("Intensidad de Efecto:", 0, 100, 75)
+    col_p, col_f = st.columns([2, 1])
+    with col_p: idea = st.text_input("Prototipo:", key="lab_idea")
+    with col_f: 
+        estilo = st.selectbox("Filtro:", ["Cinematic Marvel", "Technical Drawing", "Cyberpunk", "Industrial Stark"])
+        intensidad = st.slider("Intensidad:", 0, 100, 75)
     
     if st.button("🚀 SINTETIZAR") and idea:
-        with st.spinner("Sintonizando frecuencias del sintetizador..."):
-            try:
-                # 1. Preparación del Prompt
-                prompt_final = f"{idea}, {estilo} style, high resolution, highly detailed, masterwork, {intensidad} percent stylistic accuracy"
-                
-                # 2. Configuración de API
-                API_URL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0"
-                headers = {"Authorization": f"Bearer {HF_TOKEN}"}
-                
-                # 3. Petición al servidor de Stark (Hugging Face)
-                response = requests.post(API_URL, headers=headers, json={"inputs": prompt_final})
-                
-                # 4. Manejo de estados del servidor
-                if response.status_code == 200:
-                    # Éxito: Convertir bytes a imagen
-                    image_bytes = response.content
-                    image = Image.open(io.BytesIO(image_bytes))
-                    st.image(image, caption=f"Prototipo: {idea} | Estilo: {estilo}", use_container_width=True)
-                    st.success("Materialización completada con éxito, señorita.")
-                
-                elif response.status_code == 503:
-                    # El modelo se está cargando (Error común en Hugging Face)
-                    st.warning("⏳ Los motores de la Mark 85 se están precalentando. Por favor, espere 20 segundos y reintente la síntesis.")
-                
-                elif response.status_code == 401:
-                    st.error("❌ Error de Autenticación: Verifique su HF_TOKEN en los Secrets.")
-                
-                else:
-                    # Capturar otros errores (JSON de error)
-                    error_info = response.json()
-                    st.error(f"Falla en el sintetizador: {error_info.get('error', 'Error desconocido')}")
-
-            except Exception as e:
-                st.error(f"⚠️ Falla crítica en la Estación de Trabajo: {e}")
+        with st.spinner("Sintetizando..."):
+            # NUEVA URL DE ROUTER HUGGING FACE
+            API_URL = "https://router.huggingface.co/hf-inference/models/stabilityai/stable-diffusion-xl-base-1.0"
+            headers = {"Authorization": f"Bearer {HF_TOKEN}"}
+            p_final = f"{idea}, {estilo} style, detail {intensidad}"
+            resp = requests.post(API_URL, headers=headers, json={"inputs": p_final})
+            if resp.status_code == 200:
+                st.image(Image.open(io.BytesIO(resp.content)))
+            else: st.error(f"Error {resp.status_code}: {resp.text}")
