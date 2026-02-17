@@ -47,7 +47,7 @@ PERSONALIDAD = (
 # --- 2. ESTILOS HUD MARK 192 (CORREGIDO) ---
 st.markdown("""
     <style>
-    /* 1. FONDO Y REACTOR (REPLICA MARK 190) */
+    /* 1. FONDO Y REACTOR (MANTENIENDO MARK 193) */
     .stApp {
         background: #010409 !important;
         background-image: 
@@ -58,7 +58,6 @@ st.markdown("""
     }
 
     /* 2. UNIFICACIÓN DE BOTONES (TODOS LOS MÓDULOS) */
-    /* Este selector ahora atrapa botones de chat, micro, y formularios */
     button, div.stButton > button, div.stDownloadButton > button, .st-emotion-cache-19rxjzo {
         background: rgba(0, 242, 255, 0.05) !important;
         color: #00f2ff !important;
@@ -102,13 +101,39 @@ st.markdown("""
         background: rgba(0, 0, 0, 0.8) !important;
     }
 
-    /* REACTOR ANIMADO */
-    .reactor-container { position: relative; height: 250px; display: flex; justify-content: center; align-items: center; margin-top: -30px; }
-    .reactor-core { width: 80px; height: 80px; background: radial-gradient(circle, #fff 5%, #00f2ff 50%, transparent 80%); border-radius: 50%; box-shadow: 0 0 60px #00f2ff; z-index: 10; }
-    .hologram-ring { position: absolute; border: 2px solid rgba(0, 242, 255, 0.4); border-radius: 50%; animation: rotate linear infinite; }
-    .ring-outer { width: 220px; height: 220px; border-style: double; animation-duration: 20s; }
-    .ring-inner { width: 140px; height: 140px; border-width: 1px; animation-duration: 10s; }
+    /* 6. REACTOR ANIMADO CON EFECTO DE RESPIRACIÓN */
+    .reactor-container { 
+        position: relative; 
+        height: 250px; 
+        display: flex; 
+        justify-content: center; 
+        align-items: center; 
+        margin-top: -30px; 
+    }
+
+    .reactor-core { 
+        width: 80px; height: 80px; 
+        background: radial-gradient(circle, #fff 5%, #00f2ff 50%, transparent 80%); 
+        border-radius: 50%; 
+        box-shadow: 0 0 60px #00f2ff; 
+        z-index: 10; 
+        animation: pulse-breathe 2.5s infinite alternate ease-in-out; /* Animación de respiración */
+    }
+
+    .hologram-ring { 
+        position: absolute; border: 2px solid rgba(0, 242, 255, 0.4); 
+        border-radius: 50%; animation: rotate linear infinite, pulse-breathe 2.5s infinite alternate ease-in-out; 
+    }
+    .ring-outer { width: 220px; height: 220px; border-style: double; animation-duration: 20s, 2.5s; }
+    .ring-inner { width: 140px; height: 140px; border-width: 1px; animation-duration: 10s, 2.5s; }
+    
     @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+    /* Nueva animación para el efecto de respiración */
+    @keyframes pulse-breathe {
+        0% { transform: scale(1); box-shadow: 0 0 40px rgba(0, 242, 255, 0.6); }
+        100% { transform: scale(1.05); box-shadow: 0 0 80px rgba(0, 242, 255, 1); }
+    }
     </style>
 
     <div class="reactor-container">
