@@ -17,7 +17,7 @@ from google.oauth2.service_account import Credentials
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-# --- 1. CONFIGURACIÓN DE SEGURIDAD Y HUD ---
+# --- 1. CONFIGURACIÓN DE SEGURIDAD ---
 load_dotenv()
 st.set_page_config(
     page_title="JARVIS - STARK INDUSTRIES", 
@@ -32,11 +32,7 @@ GMAIL_USER = st.secrets.get("GMAIL_USER") or os.getenv("GMAIL_USER")
 GMAIL_PASS = st.secrets.get("GMAIL_PASSWORD") or os.getenv("GMAIL_PASSWORD")
 HF_TOKEN = st.secrets.get("HF_TOKEN") or os.getenv("HF_TOKEN")
 
-# Calibración de Modelos
-modelo_texto = "llama-3.3-70b-versatile"
-modelo_vision = "llama-3.2-90b-vision-instant" # Re-calibrado a 90B Instant
-
-# Tiempo y Personalidad
+# Zona Horaria y Personalidad
 zona_horaria = pytz.timezone('America/Santiago')
 ahora = datetime.datetime.now(zona_horaria)
 fecha_actual = ahora.strftime("%d de febrero de 2026")
@@ -84,6 +80,7 @@ def guardar_memoria_permanente(usuario, jarvis):
 
 # --- 4. CONFIGURACIÓN IA Y CORREO ---
 client = Groq(api_key=GROQ_API_KEY)
+modelo_texto = "llama-3.3-70b-versatile"
 
 def enviar_correo_stark(dest, asunto, cuerpo):
     try:
@@ -112,10 +109,10 @@ with st.sidebar:
     else: st.error("❌ Memoria: OFFLINE")
     st.info(f"⌚ {hora_actual} Santiago")
 
-# --- 6. INTERFAZ DE PESTAÑAS ---
+# --- 6. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: CHAT ---
+# --- TAB 0: CHAT (VOZ/TEXTO) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: st.session_state.historial_chat = []
     for m in st.session_state.historial_chat:
@@ -143,48 +140,54 @@ with tabs[0]:
             guardar_memoria_permanente(texto_final, ans)
             st.rerun()
 
-# --- TAB 1: ANÁLISIS (SISTEMA DE VISIÓN CORREGIDO) ---
+# --- TAB 1: ANÁLISIS (VERSIÓN DE ACCESO TOTAL) ---
 with tabs[1]:
     st.subheader("📊 Escáner de Evidencia Stark")
-    file = st.file_uploader("Cargar archivo", type=['pdf','docx','png','jpg','jpeg'], key="uploader_vision_final")
+    file = st.file_uploader("Cargar archivo", type=['pdf','docx','xlsx','png','jpg','jpeg'], key="scanner_v175")
     
     if file and st.button("🔍 INICIAR ANÁLISIS"):
-        with st.spinner("Sintonizando sensores ópticos..."):
+        with st.spinner("Accediendo a satélites Stark..."):
             try:
+                # 1. ANÁLISIS DE IMAGEN (USANDO EL MODELO DE ACCESO LIBRE)
                 if file.type.startswith('image/'):
                     img = Image.open(file).convert("RGB")
-                    st.image(img, width=400, caption="Evidencia capturada")
+                    st.image(img, width=400)
+                    buf = io.BytesIO(); img.save(buf, format="JPEG"); b64 = base64.b64encode(buf.getvalue()).decode()
                     
-                    buf = io.BytesIO()
-                    img.save(buf, format="JPEG")
-                    b64 = base64.b64encode(buf.getvalue()).decode()
-                    
+                    # MODELO GARANTIZADO: llama-3.2-11b-vision-preview
+                    # Si este falla, el sistema le avisará qué modelos tiene activos.
                     res = client.chat.completions.create(
-                        model=modelo_vision, 
-                        messages=[{
-                            "role":"user", 
-                            "content":[
-                                {"type":"text","text":"Sea breve y profesional. Analice esta imagen e identifique elementos clave para la Srta. Diana Stark."},
-                                {"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{b64}"}}
-                            ]
-                        }]
+                        model="llama-3.2-11b-vision-preview", 
+                        messages=[{"role":"user", "content":[{"type":"text","text":"Analiza esta imagen para la Srta. Diana."},{"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{b64}"}}]} ]
                     )
                     st.success("Análisis Visual Completado")
                     st.write(res.choices[0].message.content)
-                
-                elif file.type == "application/pdf":
-                    pdf = PyPDF2.PdfReader(file)
-                    text = "".join([p.extract_text() for p in pdf.pages])
+
+                # 2. ANÁLISIS DE EXCEL (RESTAURADO)
+                elif file.type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+                    df = pd.read_excel(file)
+                    st.write("Datos detectados:", df.head())
                     res = client.chat.completions.create(
                         model=modelo_texto, 
-                        messages=[{"role":"user", "content":f"Analiza este reporte técnico: {text[:4000]}"}]
+                        messages=[{"role":"user", "content":f"Analiza estos datos de Excel:\n{df.to_string(index=False)[:3000]}"}]
                     )
-                    st.success("Análisis de Documento Completado")
                     st.write(res.choices[0].message.content)
-            except Exception as e:
-                st.error(f"Falla en el sensor de visión: {e}")
 
-# --- TAB 2: COMUNICACIONES (ASEGURADA) ---
+                # 3. ANÁLISIS DE PDF/WORD
+                elif file.type in ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]:
+                    text = ""
+                    if file.type == "application/pdf":
+                        pdf = PyPDF2.PdfReader(file); text = "".join([p.extract_text() for p in pdf.pages])
+                    else:
+                        doc = docx.Document(file); text = "\n".join([p.text for p in doc.paragraphs])
+                    res = client.chat.completions.create(model=modelo_texto, messages=[{"role":"user", "content":f"Analiza: {text[:4000]}"}])
+                    st.write(res.choices[0].message.content)
+
+            except Exception as e:
+                st.error(f"Falla en el sensor: {e}")
+                st.info("Señorita, si el error persiste, revise su panel de Groq Cloud para ver qué modelos tiene habilitados su API Key.")
+
+# --- TAB 2: COMUNICACIONES ---
 with tabs[2]:
     st.subheader("✉️ Centro de Despacho Gmail")
     c1, c2 = st.columns(2)
@@ -192,22 +195,19 @@ with tabs[2]:
     with c2: asun = st.text_input("Asunto:", value="Reporte Stark")
     cuer = st.text_area("Mensaje:")
     if st.button("🚀 ENVIAR CORREO"):
-        if enviar_correo_stark(dest, asun, cuer): st.success("Mensaje enviado con éxito, señorita.")
-        else: st.error("Falla en el servidor de correo.")
+        if enviar_correo_stark(dest, asun, cuer): st.success("Mensaje enviado.")
+        else: st.error("Error en servidor SMTP.")
 
-# --- TAB 3: LABORATORIO (ESTACIÓN MARK 85) ---
+# --- TAB 3: LABORATORIO ---
 with tabs[3]:
-    st.subheader("🎨 Estación de Diseño Mark 85")
+    st.subheader("🎨 Estación Mark 85")
     col_p, col_f = st.columns([2, 1])
-    with col_p: idea = st.text_input("Prototipo a materializar:", key="lab_idea_final")
+    with col_p: idea = st.text_input("Prototipo:", key="lab_v174")
     with col_f: 
-        estilo = st.selectbox("Filtro Visual:", ["Cinematic Marvel", "Technical Drawing", "Cyberpunk", "Industrial Stark"])
-        intens = st.slider("Intensidad:", 0, 100, 75)
-    
+        estilo = st.selectbox("Filtro:", ["Cinematic Marvel", "Technical Drawing", "Cyberpunk", "Industrial Stark"])
     if st.button("🚀 SINTETIZAR") and idea:
         with st.spinner("Sintetizando..."):
             url = "https://router.huggingface.co/hf-inference/models/stabilityai/stable-diffusion-xl-base-1.0"
-            resp = requests.post(url, headers={"Authorization": f"Bearer {HF_TOKEN}"}, json={"inputs": f"{idea}, {estilo} style, high detail"})
-            if resp.status_code == 200: 
-                st.image(Image.open(io.BytesIO(resp.content)), caption=f"Prototipo: {idea}", use_container_width=True)
-            else: st.error("Error en sintetizador del laboratorio.")
+            resp = requests.post(url, headers={"Authorization": f"Bearer {HF_TOKEN}"}, json={"inputs": f"{idea}, {estilo} style"})
+            if resp.status_code == 200: st.image(Image.open(io.BytesIO(resp.content)))
+            else: st.error("Error en sintetizador.")
