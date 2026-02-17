@@ -13,3 +13,4 @@ python-dotenv
 docx2txt
 gspread
 google-auth
+reportlab
