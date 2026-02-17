@@ -103,15 +103,52 @@ if not st.session_state["autenticado"]:
 client = Groq(api_key=GROQ_API_KEY)
 modelo_texto = "llama-3.3-70b-versatile"
 
-# --- 5. DISEÑO HUD ---
+# --- PROTOCOLO DE ANIMACIÓN DE NÚCLEO (MARK 188-B) ---
 st.markdown("""
     <style>
-    .stApp { background: radial-gradient(circle at center, #0a192f 0%, #010409 100%) !important; color: #00f2ff !important; font-family: 'Courier New', monospace; }
-    .arc-reactor { width: 80px; height: 80px; border-radius: 50%; margin: 10px auto; background: radial-gradient(circle, #fff 0%, #00f2ff 30%, transparent 70%); box-shadow: 0 0 30px #00f2ff; animation: pulse 2s infinite ease-in-out; }
-    @keyframes pulse { 0% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.05); opacity: 1; } 100% { transform: scale(1); opacity: 0.8; } }
+    /* Animación del Reactor Arc (Pulsación) */
+    @keyframes pulse {
+        0% { box-shadow: 0 0 10px #00f2ff, inset 0 0 5px #00f2ff; }
+        50% { box-shadow: 0 0 30px #00f2ff, inset 0 0 15px #00f2ff; }
+        100% { box-shadow: 0 0 10px #00f2ff, inset 0 0 5px #00f2ff; }
+    }
+
+    /* Animación de Rotación para capas de datos */
+    @keyframes rotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+
+    /* Aplicando el Reactor al encabezado */
+    .stApp {
+        background: #010409;
+        background-image: radial-gradient(circle at 50% 10%, rgba(0, 242, 255, 0.15) 0%, transparent 50%);
+    }
+
+    /* El "Reactor" visual en la parte superior */
+    .reactor-core {
+        width: 100px;
+        height: 100px;
+        background: radial-gradient(circle, #ffffff 10%, #00f2ff 40%, transparent 70%);
+        border-radius: 50%;
+        margin: 0 auto;
+        animation: pulse 3s infinite ease-in-out;
+        border: 2px solid rgba(0, 242, 255, 0.5);
+    }
+    
+    /* Capas transparentes con movimiento */
+    .hud-layer {
+        border: 1px dashed rgba(0, 242, 255, 0.3);
+        border-radius: 50%;
+        position: absolute;
+        animation: rotate 20s infinite linear;
+    }
     </style>
-    <div class="arc-reactor"></div>
-    <div style="text-align: center; color: #00f2ff; font-size: 10px; letter-spacing: 3px; margin-bottom: 20px;">SISTEMA JARVIS | PROTOCOLO DIANA STARK</div>
+    
+    <div style="text-align: center; padding: 20px; position: relative;">
+        <div class="reactor-core"></div>
+        <div style="color: #00f2ff; font-weight: bold; margin-top: 10px; letter-spacing: 5px;">SISTEMA ONLINE</div>
+    </div>
 """, unsafe_allow_html=True)
 
 # --- 6. PESTAÑAS (MÓDULOS UNIFICADOS) ---
