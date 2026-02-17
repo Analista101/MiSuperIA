@@ -138,31 +138,58 @@ st.markdown("""
 # --- 6. INTERFAZ DE PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- PESTAÑA 0: COMANDO CENTRAL ---
+# --- PESTAÑA 0: COMANDO CENTRAL (REPARACIÓN DE AUDIO) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: st.session_state.historial_chat = []
     
+    # Mostrar historial
     for mensaje in st.session_state.historial_chat:
         with st.chat_message(mensaje["role"], avatar="🚀" if mensaje["role"]=="assistant" else "👤"):
             st.write(mensaje["content"])
 
     col_mic, col_chat = st.columns([1, 12])
-    with col_mic: audio = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_main")
-    with col_chat: prompt = st.chat_input("Escriba su comando, señorita...")
+    
+    with col_mic:
+        # 1. CAPTURA DE AUDIO
+        audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_main")
+    
+    with col_chat:
+        prompt = st.chat_input("Escriba su comando, señorita...")
 
-    if prompt or audio:
-        texto_usuario = prompt if prompt else "Comando de voz detectado."
-        st.session_state.historial_chat.append({"role": "user", "content": texto_usuario})
+    # 2. PROCESAMIENTO DE ENTRADA (VOZ O TEXTO)
+    texto_final = None
+
+    if audio_data and 'bytes' in audio_data:
+        with st.spinner("Traduciendo audio a datos Stark..."):
+            try:
+                # Enviamos los bytes del audio a Groq para transcripción
+                transcription = client.audio.transcriptions.create(
+                    file=("audio.wav", audio_data['bytes']),
+                    model="whisper-large-v3", # El mejor modelo para español
+                    language="es"
+                )
+                texto_final = transcription.text
+            except Exception as e:
+                st.error(f"Error en el procesador de voz: {e}")
+
+    elif prompt:
+        texto_final = prompt
+
+    # 3. GENERACIÓN DE RESPUESTA
+    if texto_final:
+        st.session_state.historial_chat.append({"role": "user", "content": texto_final})
         
-        with st.spinner("Procesando..."):
+        with st.spinner("JARVIS está pensando..."):
             try:
                 ctx = [{"role": "system", "content": PERSONALIDAD}] + st.session_state.historial_chat[-6:]
                 res = client.chat.completions.create(model=modelo_texto, messages=ctx)
                 respuesta = res.choices[0].message.content
+                
                 st.session_state.historial_chat.append({"role": "assistant", "content": respuesta})
-                guardar_memoria_permanente(texto_usuario, respuesta)
+                guardar_memoria_permanente(texto_final, respuesta)
                 st.rerun()
-            except Exception as e: st.error(f"Error: {e}")
+            except Exception as e:
+                st.error(f"Error en el enlace neuronal: {e}")
 
 # --- PESTAÑA 1: ANÁLISIS ---
 with tabs[1]:
