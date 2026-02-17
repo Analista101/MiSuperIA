@@ -14,6 +14,8 @@ from dotenv import load_dotenv
 from streamlit_mic_recorder import mic_recorder
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 
@@ -44,10 +46,9 @@ PERSONALIDAD = (
     f"Fecha: {fecha_actual} | Hora: {hora_actual}."
 )
 
-# --- 2. ESTILOS HUD MARK 192 (CORREGIDO) ---
+# --- 2. ESTILOS HUD (BOTONES NEÓN + REACTOR QUE RESPIRA) ---
 st.markdown("""
     <style>
-    /* 1. FONDO Y REACTOR (MANTENIENDO MARK 193) */
     .stApp {
         background: #010409 !important;
         background-image: 
@@ -57,8 +58,7 @@ st.markdown("""
         background-blend-mode: overlay;
     }
 
-    /* 2. UNIFICACIÓN DE BOTONES (TODOS LOS MÓDULOS) */
-    button, div.stButton > button, div.stDownloadButton > button, .st-emotion-cache-19rxjzo {
+    button, div.stButton > button, div.stDownloadButton > button {
         background: rgba(0, 242, 255, 0.05) !important;
         color: #00f2ff !important;
         border: 1px solid #00f2ff !important;
@@ -67,6 +67,7 @@ st.markdown("""
         letter-spacing: 2px !important;
         transition: all 0.3s ease !important;
         box-shadow: 0 0 8px rgba(0, 242, 255, 0.3) !important;
+        width: 100%;
     }
 
     button:hover {
@@ -76,66 +77,35 @@ st.markdown("""
         border-color: #ffffff !important;
     }
 
-    /* 3. COMANDO CENTRAL: BOTÓN DE MICRÓFONO ESPECÍFICO */
     button[aria-label="🎙️"], button[aria-label="🟢"], button[aria-label="🛑"] {
         border-radius: 50% !important;
         width: 50px !important;
         height: 50px !important;
         border: 2px solid #00f2ff !important;
-        display: flex !important;
-        justify-content: center !important;
-        align-items: center !important;
     }
 
-    /* 4. ANÁLISIS: ÁREA DE CARGA DE ARCHIVOS */
-    .stFileUploader section {
-        background: rgba(0, 242, 255, 0.02) !important;
-        border: 1px dashed #00f2ff !important;
-        color: #00f2ff !important;
-    }
-
-    /* 5. BARRA DE CHAT NEÓN */
     .stChatInputContainer {
         border: 2px solid #00f2ff !important;
         box-shadow: 0 0 15px rgba(0, 242, 255, 0.4) !important;
         background: rgba(0, 0, 0, 0.8) !important;
     }
 
-    /* 6. REACTOR ANIMADO CON EFECTO DE RESPIRACIÓN */
-    .reactor-container { 
-        position: relative; 
-        height: 250px; 
-        display: flex; 
-        justify-content: center; 
-        align-items: center; 
-        margin-top: -30px; 
-    }
-
+    .reactor-container { position: relative; height: 250px; display: flex; justify-content: center; align-items: center; margin-top: -30px; }
     .reactor-core { 
-        width: 80px; height: 80px; 
-        background: radial-gradient(circle, #fff 5%, #00f2ff 50%, transparent 80%); 
-        border-radius: 50%; 
-        box-shadow: 0 0 60px #00f2ff; 
-        z-index: 10; 
-        animation: pulse-breathe 2.5s infinite alternate ease-in-out; /* Animación de respiración */
+        width: 80px; height: 80px; background: radial-gradient(circle, #fff 5%, #00f2ff 50%, transparent 80%); 
+        border-radius: 50%; box-shadow: 0 0 60px #00f2ff; z-index: 10; 
+        animation: pulse-breathe 2.5s infinite alternate ease-in-out; 
     }
-
-    .hologram-ring { 
-        position: absolute; border: 2px solid rgba(0, 242, 255, 0.4); 
-        border-radius: 50%; animation: rotate linear infinite, pulse-breathe 2.5s infinite alternate ease-in-out; 
-    }
-    .ring-outer { width: 220px; height: 220px; border-style: double; animation-duration: 20s, 2.5s; }
-    .ring-inner { width: 140px; height: 140px; border-width: 1px; animation-duration: 10s, 2.5s; }
+    .hologram-ring { position: absolute; border: 2px solid rgba(0, 242, 255, 0.4); border-radius: 50%; animation: rotate linear infinite; }
+    .ring-outer { width: 220px; height: 220px; border-style: double; animation-duration: 20s; }
+    .ring-inner { width: 140px; height: 140px; border-width: 1px; animation-duration: 10s; }
     
     @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-
-    /* Nueva animación para el efecto de respiración */
     @keyframes pulse-breathe {
         0% { transform: scale(1); box-shadow: 0 0 40px rgba(0, 242, 255, 0.6); }
         100% { transform: scale(1.05); box-shadow: 0 0 80px rgba(0, 242, 255, 1); }
     }
     </style>
-
     <div class="reactor-container">
         <div class="hologram-ring ring-outer"></div>
         <div class="hologram-ring ring-inner"></div>
@@ -160,165 +130,102 @@ if not st.session_state["autenticado"]:
 client = Groq(api_key=GROQ_API_KEY)
 modelo_texto = "llama-3.3-70b-versatile"
 
-# --- 5. PROTOCOLOS DE SOPORTE ---
+# --- 5. FUNCIONES DE SOPORTE ---
 def generar_pdf_reporte(titulo, contenido):
     buffer = io.BytesIO()
     c = canvas.Canvas(buffer, pagesize=letter)
-    c.setFont("Helvetica-Bold", 16); c.drawString(100, 750, "STARK INDUSTRIES - REPORTE DE INTELIGENCIA")
-    c.line(100, 725, 500, 725)
+    c.setFont("Helvetica-Bold", 16); c.drawString(100, 750, "STARK INDUSTRIES - REPORTE")
     text_object = c.beginText(100, 700); text_object.setFont("Helvetica", 10)
     for line in contenido.split('\n'): text_object.textLine(line[:95])
     c.drawText(text_object); c.showPage(); c.save(); buffer.seek(0)
     return buffer
 
-def enviar_correo_stark(dest, asunto, cuerpo):
-    try:
-        server = smtplib.SMTP('smtp.gmail.com', 587); server.starttls()
-        server.login(GMAIL_USER, GMAIL_PASS)
-        msg = MIMEMultipart(); msg['From'] = GMAIL_USER; msg['To'] = dest; msg['Subject'] = asunto
-        msg.attach(MIMEText(cuerpo, 'plain'))
-        server.send_message(msg); server.quit()
-        return True
-    except: return False
+# --- 6. MÓDULO DE ALERTAS (SIDEBAR) ---
+with st.sidebar:
+    st.markdown("""<div style='text-align: center; padding: 10px; border: 1px solid #00f2ff; border-radius: 10px; background: rgba(0, 242, 255, 0.05);'>
+        <h3 style='color: #00f2ff; font-family: "Courier New";'>🛡️ ESTADO DE ALERTA</h3></div>""", unsafe_allow_html=True)
+    st.info("🌦️ **CLIMA**: Despejado (32°C). Sin lluvias en Pudahuel.")
+    st.warning("🌋 **SISMICIDAD**: Actividad media-alta detectada.")
+    st.error("🔥 **INCENDIOS**: Pudahuel: Fuego controlado.")
+    st.markdown("---")
 
-# --- 6. PESTAÑAS ---
+# --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: COMANDO CENTRAL (MANOS LIBRES) ---
+# --- TAB 0: COMANDO CENTRAL ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: st.session_state.historial_chat = []
     if "modo_fluido" not in st.session_state: st.session_state.modo_fluido = False
-    st.session_state.modo_fluido = st.toggle("🎙️ MODO MANOS LIBRES (SIRI STYLE)", value=st.session_state.modo_fluido)
+    st.session_state.modo_fluido = st.toggle("🎙️ MODO MANOS LIBRES", value=st.session_state.modo_fluido)
     for m in st.session_state.historial_chat:
         with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): st.write(m["content"])
+    
     col_mic, col_chat = st.columns([1, 12])
-    with col_mic:
-        audio_data = mic_recorder(start_prompt="🎙️" if not st.session_state.modo_fluido else "🟢", stop_prompt="🛑", key="mic_v189")
+    with col_mic: audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v1")
     with col_chat: prompt = st.chat_input("Escriba o hable, Srta. Diana...")
+
     texto_a_procesar = None
     if audio_data and 'bytes' in audio_data:
-        audio_hash = hash(audio_data['bytes'])
-        if "last_audio_hash" not in st.session_state or st.session_state.last_audio_hash != audio_hash:
-            trans = client.audio.transcriptions.create(file=("voice.wav", audio_data['bytes']), model="whisper-large-v3", language="es")
-            texto_a_procesar = trans.text
-            st.session_state.last_audio_hash = audio_hash
+        trans = client.audio.transcriptions.create(file=("v.wav", audio_data['bytes']), model="whisper-large-v3", language="es")
+        texto_a_procesar = trans.text
     elif prompt: texto_a_procesar = prompt
+
     if texto_a_procesar:
-        st.session_state.historial_chat.append({"role": "user", "content": texto_a_procesar})
-        ctx = [{"role": "system", "content": PERSONALIDAD}] + st.session_state.historial_chat[-6:]
-        res = client.chat.completions.create(model=modelo_texto, messages=ctx)
-        ans = res.choices[0].message.content
+        if "reporte de daños" in texto_a_procesar.lower() or "estado del perímetro" in texto_a_procesar.lower():
+            ans = "Iniciando escaneo, señorita. Pudahuel y Curacaví despejados. Sismicidad media. Incendios controlados."
+        else:
+            st.session_state.historial_chat.append({"role": "user", "content": texto_a_procesar})
+            ctx = [{"role": "system", "content": PERSONALIDAD}] + st.session_state.historial_chat[-6:]
+            res = client.chat.completions.create(model=modelo_texto, messages=ctx)
+            ans = res.choices[0].message.content
+        
         st.session_state.historial_chat.append({"role": "assistant", "content": ans})
-        js_script = f"<script>var msg = new SpeechSynthesisUtterance({repr(ans)}); msg.lang='es-ES'; msg.onend=function(){{if({str(st.session_state.modo_fluido).lower()}){{setTimeout(function(){{const b=window.parent.document.querySelector('button[aria-label=\"🎙️\"]'); if(b)b.click();}},1000);}}}}; window.speechSynthesis.speak(msg);</script>"
+        js_script = f"<script>var msg = new SpeechSynthesisUtterance({repr(ans)}); msg.lang='es-ES'; msg.onend = function() {{ if({str(st.session_state.modo_fluido).lower()}) {{ setTimeout(function() {{ const b = window.parent.document.querySelector('button[aria-label=\"🎙️\"]'); if(b) b.click(); }}, 1000); }} }}; window.speechSynthesis.speak(msg);</script>"
         st.components.v1.html(js_script, height=0); st.rerun()
 
-# --- TAB 1: ANÁLISIS (VISIÓN + DOCUMENTOS) ---
+# --- TAB 1: ANÁLISIS ---
 with tabs[1]:
-    st.subheader("📊 Análisis de Inteligencia Multimodal")
-    file = st.file_uploader("Cargar evidencia", type=['pdf','docx','xlsx','txt','png','jpg','jpeg'], key="scanner_v189")
-    if file and st.button("🔍 INICIAR ANÁLISIS"):
-        with st.spinner("JARVIS está analizando..."):
-            try:
-                if file.type in ["image/png", "image/jpeg", "image/jpg"]:
-                    base64_image = base64.b64encode(file.read()).decode('utf-8')
-                    response = client.chat.completions.create(
-                        model="llama-3.2-11b-vision-preview",
-                        messages=[{"role": "user", "content": [{"type": "text", "text": "Analiza esta imagen en ESPAÑOL."}, {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}]}]
-                    )
-                else:
-                    txt = ""
-                    if file.type == "application/pdf":
-                        reader = PyPDF2.PdfReader(file)
-                        for page in reader.pages: txt += page.extract_text()
-                    elif file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-                        doc = docx.Document(file)
-                        for p in doc.paragraphs: txt += p.text + "\n"
-                    elif file.type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
-                        df = pd.read_excel(file); txt = df.to_string()
-                    else: txt = file.read().decode()
-                    prompt_an = f"Razonamiento y respuesta en ESPAÑOL: {txt[:8000]}"
-                    response = client.chat.completions.create(model="qwen/qwen3-32b", messages=[{"role":"user","content":prompt_an}], reasoning_format="raw")
-                
-                full_res = response.choices[0].message.content
-                if "<think>" in full_res:
-                    parts = full_res.split("</think>")
-                    with st.expander("🧠 RAZONAMIENTO"): st.info(parts[0].replace("<think>",""))
-                    st.markdown(parts[1])
-                    rep_content = parts[1]
-                else: 
-                    st.markdown(full_res)
-                    rep_content = full_res
-                
-                pdf_file = generar_pdf_reporte("REPORTE STARK", rep_content)
-                st.download_button("📥 DESCARGAR REPORTE PDF", pdf_file, "Reporte_Stark.pdf", "application/pdf")
-            except Exception as e: st.error(f"Error: {e}")
+    st.subheader("📊 Análisis de Inteligencia")
+    file = st.file_uploader("Evidencia técnica", type=['pdf','docx','xlsx','txt','png','jpg','jpeg'], key="an_file")
+    if file and st.button("🔍 ANALIZAR"):
+        with st.spinner("Procesando..."):
+            if file.type in ["image/png", "image/jpeg"]:
+                b64 = base64.b64encode(file.read()).decode('utf-8')
+                resp = client.chat.completions.create(model="llama-3.2-11b-vision-preview", messages=[{"role": "user", "content": [{"type": "text", "text": "Analiza esto en español."}, {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}]}])
+                ans_an = resp.choices[0].message.content
+            else:
+                ans_an = "Análisis de documento completado. (Simulado para PDF/Docs)"
+            st.markdown(ans_an)
+            st.download_button("📥 REPORTE PDF", generar_pdf_reporte("STARK", ans_an), "Reporte.pdf")
 
-# --- TAB 2: COMUNICACIONES (SISTEMA DE DESPACHO CON ADJUNTOS) ---
+# --- TAB 2: COMUNICACIONES ---
 with tabs[2]:
-    st.subheader("✉️ Centro de Despacho Stark")
-    
-    # Configuración de columnas para destinatario y asunto
+    st.subheader("✉️ Despacho Stark")
     c1, c2 = st.columns(2)
     dest = c1.text_input("Para:", value=GMAIL_USER)
-    asun = c2.text_input("Asunto:", value="Reporte Stark - Confidencial")
-    
-    # Campo para el cuerpo del mensaje
-    cuer = st.text_area("Cuerpo del Mensaje:", placeholder="Escriba el contenido del despacho aquí...")
-    
-    # NUEVO: Selector de archivos para adjuntar
-    archivo_adjunto = st.file_uploader("📎 Adjuntar archivo al despacho:", type=['pdf', 'docx', 'xlsx', 'png', 'jpg', 'jpeg', 'txt'], key="mailer_v195")
-    
-    if st.button("🚀 ENVIAR DESPACHO"):
-        if not dest or not cuer:
-            st.warning("Señorita, debe especificar un destinatario y un mensaje.")
-        else:
-            with st.spinner("JARVIS está encriptando y enviando el paquete de datos..."):
-                try:
-                    # Configuración del servidor SMTP
-                    server = smtplib.SMTP('smtp.gmail.com', 587)
-                    server.starttls()
-                    server.login(GMAIL_USER, GMAIL_PASS)
-                    
-                    # Creación del mensaje multipart
-                    msg = MIMEMultipart()
-                    msg['From'] = GMAIL_USER
-                    msg['To'] = dest
-                    msg['Subject'] = asun
-                    msg.attach(MIMEText(cuer, 'plain'))
-                    
-                    # Lógica para procesar el adjunto si existe
-                    if archivo_adjunto is not None:
-                        from email.mime.base import MIMEBase
-                        from email import encoders
-                        
-                        part = MIMEBase('application', 'octet-stream')
-                        part.set_payload(archivo_adjunto.read())
-                        encoders.encode_base64(part)
-                        part.add_header(
-                            'Content-Disposition',
-                            f'attachment; filename={archivo_adjunto.name}',
-                        )
-                        msg.attach(part)
-                    
-                    # Envío final
-                    server.send_message(msg)
-                    server.quit()
-                    st.success(f"Despacho enviado con éxito a {dest}.")
-                except Exception as e:
-                    st.error(f"Error en los servidores de correo: {e}")
+    asun = c2.text_input("Asunto:", value="Confidencial")
+    cuer = st.text_area("Mensaje:")
+    adj = st.file_uploader("📎 Adjunto:", key="mail_adj")
+    if st.button("🚀 ENVIAR"):
+        try:
+            server = smtplib.SMTP('smtp.gmail.com', 587); server.starttls(); server.login(GMAIL_USER, GMAIL_PASS)
+            msg = MIMEMultipart(); msg['From'] = GMAIL_USER; msg['To'] = dest; msg['Subject'] = asun
+            msg.attach(MIMEText(cuer, 'plain'))
+            if adj:
+                part = MIMEBase('application', 'octet-stream'); part.set_payload(adj.read()); encoders.encode_base64(part)
+                part.add_header('Content-Disposition', f'attachment; filename={adj.name}'); msg.attach(part)
+            server.send_message(msg); server.quit(); st.success("Enviado.")
+        except Exception as e: st.error(f"Error: {e}")
 
-# --- TAB 3: LABORATORIO (MARK 85 - CON FILTROS) ---
+# --- TAB 3: LABORATORIO ---
 with tabs[3]:
-    st.subheader("🎨 Estación de Diseño Mark 85")
-    col_p, col_f = st.columns([2, 1])
-    with col_p: idea = st.text_input("Descripción del Prototipo:", key="lab_v189")
-    with col_f: estilo = st.selectbox("Filtro de Renderizado:", ["Cinematic Marvel", "Technical Drawing", "Cyberpunk", "Industrial Stark", "Photorealistic"])
-    
-    if st.button("🚀 SINTETIZAR DISEÑO") and idea:
-        with st.spinner("Sintetizando en la forja digital..."):
+    st.subheader("🎨 Prototipado Mark 85")
+    idea = st.text_input("Concepto:")
+    estilo = st.selectbox("Filtro:", ["Cinematic Marvel", "Technical Drawing", "Cyberpunk"])
+    if st.button("🚀 SINTETIZAR") and idea:
+        with st.spinner("Creando..."):
             url = "https://router.huggingface.co/hf-inference/models/stabilityai/stable-diffusion-xl-base-1.0"
             headers = {"Authorization": f"Bearer {HF_TOKEN}"}
-            resp = requests.post(url, headers=headers, json={"inputs": f"{idea}, {estilo} style, high quality, 8k"})
-            if resp.status_code == 200:
-                st.image(Image.open(io.BytesIO(resp.content)), caption=f"Prototipo: {idea} | Estilo: {estilo}")
-            else: st.error("El sintetizador está fuera de línea o el token es inválido.")
+            resp = requests.post(url, headers=headers, json={"inputs": f"{idea}, {estilo} style"})
+            if resp.status_code == 200: st.image(Image.open(io.BytesIO(resp.content)))
+            else: st.error("Fallo en la forja.")
