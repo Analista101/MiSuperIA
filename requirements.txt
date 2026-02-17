@@ -15,3 +15,5 @@ gspread
 google-auth
 reportlab
 pytz
+opencv-python
+ffpyplayer
