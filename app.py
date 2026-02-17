@@ -44,89 +44,10 @@ PERSONALIDAD = (
     f"Fecha: {fecha_actual} | Hora: {hora_actual}."
 )
 
-# --- INYECCIÓN HUD AVANZADO (MARK 190 - RÉPLICA EXACTA) ---
+# --- 2. ESTILOS HUD MARK 192 (CORREGIDO) ---
 st.markdown("""
     <style>
-    /* 1. Fondo con Mapa Global y Gradientes */
-    .stApp {
-        background: #010409 !important;
-        background-image: 
-            radial-gradient(circle at 50% 30%, rgba(0, 242, 255, 0.2) 0%, transparent 60%),
-            url('https://wallpaperaccess.com/full/156094.jpg') !important; /* Mapa sutil de fondo */
-        background-size: cover !important;
-        background-blend-mode: overlay;
-    }
-
-    /* 2. El Reactor Arc con Anillos Holográficos */
-    .reactor-container {
-        position: relative;
-        height: 250px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        margin-top: -30px;
-    }
-
-    .reactor-core {
-        width: 80px;
-        height: 80px;
-        background: radial-gradient(circle, #fff 5%, #00f2ff 50%, transparent 80%);
-        border-radius: 50%;
-        box-shadow: 0 0 60px #00f2ff;
-        z-index: 10;
-    }
-
-    .hologram-ring {
-        position: absolute;
-        border: 2px solid rgba(0, 242, 255, 0.4);
-        border-radius: 50%;
-        animation: rotate linear infinite;
-    }
-
-    .ring-outer { width: 220px; height: 220px; border-style: double; animation-duration: 20s; }
-    .ring-middle { width: 180px; height: 180px; border-style: dashed; animation-duration: 15s; animation-direction: reverse; }
-    .ring-inner { width: 140px; height: 140px; border-width: 1px; border-color: rgba(0, 242, 255, 0.6); animation-duration: 10s; }
-
-    @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-
-    /* 3. Barra de Chat "Cyan Glow" */
-    .stChatInputContainer {
-        border: 2px solid #00f2ff !important;
-        background: rgba(13, 27, 42, 0.8) !important;
-        border-radius: 15px !important;
-        box-shadow: 0 0 20px rgba(0, 242, 255, 0.4), inset 0 0 10px rgba(0, 242, 255, 0.2) !important;
-        padding: 5px !important;
-    }
-
-    /* 4. Estilo de Pestañas (Tabs) */
-    .stTabs [data-baseweb="tab-list"] {
-        background: transparent !important;
-        border-bottom: 1px solid rgba(0, 242, 255, 0.2);
-    }
-
-    .stTabs [data-baseweb="tab"] {
-        color: #778da9 !important;
-        font-family: 'Courier New', monospace;
-        font-weight: bold;
-    }
-
-    .stTabs [aria-selected="true"] {
-        color: #00f2ff !important;
-        border-bottom: 2px solid #00f2ff !important;
-    }
-
-    /* 5. Iconos de estado */
-    .status-text {
-        color: #00f2ff;
-        font-family: 'Courier New', monospace;
-        letter-spacing: 3px;
-        text-shadow: 0 0 5px #00f2ff;
-        font-size: 0.8rem;
-        margin-top: 10px;
-    }
-  st.markdown("""
-    <style>
-    /* 1. Fondo y Reactor (Manteniendo Mark 190) */
+    /* Fondo y Mapa */
     .stApp {
         background: #010409 !important;
         background-image: 
@@ -136,8 +57,8 @@ st.markdown("""
         background-blend-mode: overlay;
     }
 
-    /* 2. BOTONES CON DETALLES NEÓN STARK */
-    div.stButton > button {
+    /* BOTONES CON DETALLES NEÓN */
+    div.stButton > button, div.stDownloadButton > button {
         background: rgba(0, 242, 255, 0.05) !important;
         color: #00f2ff !important;
         border: 1px solid #00f2ff !important;
@@ -148,12 +69,11 @@ st.markdown("""
         text-transform: uppercase !important;
         letter-spacing: 2px !important;
         transition: all 0.3s ease-in-out !important;
-        box-shadow: 0 0 5px rgba(0, 242, 255, 0.2) !important;
+        box-shadow: 0 0 8px rgba(0, 242, 255, 0.3) !important;
         width: 100% !important;
     }
 
-    /* Efecto al pasar el cursor (Hover) */
-    div.stButton > button:hover {
+    div.stButton > button:hover, div.stDownloadButton > button:hover {
         background: rgba(0, 242, 255, 0.2) !important;
         box-shadow: 0 0 20px rgba(0, 242, 255, 0.6), inset 0 0 10px rgba(0, 242, 255, 0.4) !important;
         border: 1px solid #ffffff !important;
@@ -161,39 +81,41 @@ st.markdown("""
         transform: translateY(-2px);
     }
 
-    /* Botones de descarga (Download) específicos */
-    div.stDownloadButton > button {
-        background: rgba(0, 242, 255, 0.1) !important;
-        border: 1px dashed #00f2ff !important;
-        color: #00f2ff !important;
-    }
-
-    /* 3. Estilo de los Campos de Entrada (Input Fields) */
+    /* Entradas de texto neón */
     .stTextInput input, .stTextArea textarea {
-        background-color: rgba(0, 0, 0, 0.6) !important;
-        border: 1px solid rgba(0, 242, 255, 0.3) !important;
+        background-color: rgba(0, 0, 0, 0.7) !important;
+        border: 1px solid rgba(0, 242, 255, 0.4) !important;
         color: #00f2ff !important;
         font-family: 'Courier New', monospace !important;
     }
 
-    .stTextInput input:focus {
-        border-color: #00f2ff !important;
-        box-shadow: 0 0 10px rgba(0, 242, 255, 0.5) !important;
+    /* Reactor Triple Capa */
+    .reactor-container { 
+        position: relative; 
+        height: 250px; 
+        display: flex; 
+        justify-content: center; 
+        align-items: center; 
+        margin-top: -30px; 
     }
-
-    /* 4. Reactor y Anillos (Réplica exacta de la imagen) */
-    .reactor-container { position: relative; height: 250px; display: flex; justify-content: center; align-items: center; margin-top: -30px; }
-    .reactor-core { width: 80px; height: 80px; background: radial-gradient(circle, #fff 5%, #00f2ff 50%, transparent 80%); border-radius: 50%; box-shadow: 0 0 60px #00f2ff; z-index: 10; }
-    .hologram-ring { position: absolute; border: 2px solid rgba(0, 242, 255, 0.4); border-radius: 50%; animation: rotate linear infinite; }
+    .reactor-core { 
+        width: 80px; height: 80px; 
+        background: radial-gradient(circle, #fff 5%, #00f2ff 50%, transparent 80%); 
+        border-radius: 50%; box-shadow: 0 0 60px #00f2ff; z-index: 10; 
+    }
+    .hologram-ring { 
+        position: absolute; border: 2px solid rgba(0, 242, 255, 0.4); 
+        border-radius: 50%; animation: rotate linear infinite; 
+    }
     .ring-outer { width: 220px; height: 220px; border-style: double; animation-duration: 20s; }
     .ring-middle { width: 180px; height: 180px; border-style: dashed; animation-duration: 15s; animation-direction: reverse; }
-    .ring-inner { width: 140px; height: 140px; border-width: 1px; border-color: rgba(0, 242, 255, 0.6); animation-duration: 10s; }
+    .ring-inner { width: 140px; height: 140px; border-width: 1px; animation-duration: 10s; }
+    
     @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     </style>
 
     <div class="reactor-container">
         <div class="hologram-ring ring-outer"></div>
-        <div class="hologram-ring ring-middle"></div>
         <div class="hologram-ring ring-inner"></div>
         <div class="reactor-core"></div>
     </div>
