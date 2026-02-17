@@ -142,20 +142,20 @@ with tabs[0]:
             st.rerun()
 
 # --- TAB 1: ANÁLISIS (REPARADO PARA IMÁGENES) ---
-# --- ACTUALIZACIÓN DE MODELOS (Configuración Inicial) ---
+# --- ACTUALIZACIÓN DE MODELOS (Protocolo de Producción) ---
 modelo_texto = "llama-3.3-70b-versatile"
-modelo_vision = "llama-3.2-11b-vision-preview" # Cambio de 90B a 11B para estabilidad
+# Cambiamos a la versión 'instant' que reemplaza a la 'preview'
+modelo_vision = "llama-3.2-11b-vision-instant" 
 
-# --- TAB 1: ANÁLISIS (VERSIÓN 11B ESTABLE) ---
+# --- TAB 1: ANÁLISIS (VERSIÓN DEFINITIVA) ---
 with tabs[1]:
     st.subheader("📊 Escáner de Evidencia Stark")
-    file = st.file_uploader("Cargar archivo", type=['pdf','docx','png','jpg','jpeg'], key="uploader_vision")
+    file = st.file_uploader("Cargar archivo", type=['pdf','docx','png','jpg','jpeg'], key="uploader_vision_v171")
     
     if file and st.button("🔍 INICIAR ANÁLISIS"):
-        with st.spinner("Sincronizando sensores ópticos..."):
+        with st.spinner("Sintonizando nueva frecuencia de visión..."):
             try:
                 if file.type.startswith('image/'):
-                    # Procesamiento de Imagen
                     img = Image.open(file).convert("RGB")
                     st.image(img, width=400, caption="Evidencia capturada")
                     
@@ -163,13 +163,13 @@ with tabs[1]:
                     img.save(buf, format="JPEG")
                     b64 = base64.b64encode(buf.getvalue()).decode()
                     
-                    # Llamada al nuevo modelo de visión estable
+                    # Llamada al nuevo modelo de producción instant
                     res = client.chat.completions.create(
                         model=modelo_vision, 
                         messages=[{
                             "role":"user", 
                             "content":[
-                                {"type":"text","text":"Sea breve y profesional. Analice esta imagen para la Srta. Diana Stark e identifique elementos clave."},
+                                {"type":"text","text":"Sea breve y profesional. Analice esta imagen e identifique elementos clave para la Srta. Diana."},
                                 {"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{b64}"}}
                             ]
                         }]
@@ -178,7 +178,7 @@ with tabs[1]:
                     st.write(res.choices[0].message.content)
                 
                 elif file.type == "application/pdf":
-                    # Procesamiento de PDF (Se mantiene igual)
+                    # El análisis de documentos se mantiene estable con el modelo de texto
                     pdf = PyPDF2.PdfReader(file)
                     text = "".join([p.extract_text() for p in pdf.pages])
                     res = client.chat.completions.create(
@@ -190,7 +190,7 @@ with tabs[1]:
                     
             except Exception as e:
                 st.error(f"Falla en el sensor de visión: {e}")
-
+                
 # --- TAB 2: COMUNICACIONES (RESTAURADA) ---
 with tabs[2]:
     st.subheader("✉️ Centro de Despacho Gmail")
