@@ -295,44 +295,50 @@ tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIO
 
 import streamlit_antd_components as sac
 
-# --- TAB 0: PROYECTO JARVIS (SIMETRÍA INDUSTRIAL V48 - ANTD) ---
+import streamlit_antd_components as sac
+
+# --- TAB 0: PROYECTO JARVIS (ARQUITECTURA DE PRECISIÓN V49) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
 
-    # --- 1. CABECERA DE BLOQUES ESTÁTICOS (ANT DESIGN) ---
-    # Dividimos el espacio en dos grandes zonas: Controles y Órdenes
-    c_botones, c_input = st.columns([3.5, 6.5])
+    # --- 1. CABECERA DE BLOQUES ESTÁTICOS ---
+    # Mantenemos las columnas para asegurar que el input tenga su espacio largo
+    c_botones, c_input = st.columns([3.8, 6.2])
 
     with c_botones:
-        # sac.segmented crea 3 cuadros idénticos que no se pueden encimar
+        # Eliminamos 'align' y simplificamos para evitar el TypeError
         control_hub = sac.segmented(
             items=[
-                sac.SegmentedItem(icon='trash', label=''),      # Botón 1: Purga
-                sac.SegmentedItem(icon='robot', label='ML'),    # Botón 2: Manos Libres
-                sac.SegmentedItem(icon='mic', label=''),        # Botón 3: Micrófono
+                sac.SegmentedItem(label='PURGAR', icon='trash'), 
+                sac.SegmentedItem(label='ML', icon='robot'),
+                sac.SegmentedItem(label='MIC', icon='mic'),
             ],
-            align='center', variant='outline', color='cyan', key='hub_stark_v48', size='sm'
+            variant='outline', 
+            color='cyan', 
+            key='hub_stark_v49', 
+            size='sm',
+            grow=True  # Esto hace que los 3 cuadros sean simétricos y llenen el espacio
         )
         
-        # --- LÓGICA DE ACTIVACIÓN DE LOS BLOQUES ---
-        # 1. Lógica del Basurero (Se activa al seleccionar el primer cuadro)
-        if control_hub == '': 
+        # --- LÓGICA DE ACTIVACIÓN POR BLOQUES ---
+        # Solo ejecutamos la purga si el usuario selecciona 'PURGAR'
+        if control_hub == 'PURGAR':
             st.session_state.historial_chat = []
+            # Resetear a ML para evitar bucle de purga al recargar
+            st.session_state.hub_stark_v49 = 'ML'
             st.rerun()
             
-        # 2. Lógica Manos Libres
         st.session_state.modo_fluido = (control_hub == 'ML')
 
     with c_input:
-        # PROTOCOLO ANTI-ECO: Enter -> Procesar -> Limpiar
-        def protocolo_stark_final():
-            query = st.session_state.input_v48
+        # PROTOCOLO ANTI-ECO CON AUTO-LIMPIEZA
+        def protocolo_stark_v49():
+            query = st.session_state.input_v49
             if query:
-                # Registro inmediato
                 st.session_state.historial_chat.append({"role": "user", "content": query})
                 
-                # Generación de respuesta con contexto
+                # Procesamiento de JARVIS
                 hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
                 try:
                     res = client.chat.completions.create(
@@ -340,35 +346,29 @@ with tabs[0]:
                         messages=[{"role": "system", "content": PERSONALIDAD}] + hist
                     )
                     st.session_state.historial_chat.append({"role": "assistant", "content": res.choices[0].message.content})
-                except Exception as e:
-                    st.error(f"Error en el enlace: {e}")
+                except:
+                    pass
                 
-                # AUTO-LIMPIEZA DEL CUADRO
-                st.session_state.input_v48 = ""
+                # LIMPIEZA TOTAL DEL CAMPO
+                st.session_state.input_v49 = ""
 
         st.text_input(
             "cmd", 
-            placeholder="Esperando órdenes, Srta. Diana...", 
+            placeholder="Órdenes, Srta. Diana...", 
             label_visibility="collapsed", 
-            key="input_v48", 
-            on_change=protocolo_stark_final
+            key="input_v49", 
+            on_change=protocolo_stark_v49
         )
-
-        # 3. Lógica del Micrófono (Invisible pero funcional al final de la fila)
-        # Esto asegura que el micro-recorder no rompa la simetría visual
-        if control_hub == '': # Selector oculto para el trigger del micro
-             audio_data = mic_recorder(start_prompt="", stop_prompt="", key="mic_v48_hidden")
 
     st.markdown("---")
 
-    # --- 2. REGISTRO VISUAL (AUTO-SCROLL ACTIVO) ---
+    # --- 2. CONTENEDOR DE CHAT (AUTO-SCROLL) ---
     chat_box = st.container(height=540, border=False)
     with chat_box:
         for m in st.session_state.historial_chat:
             with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
                 st.write(m["content"])
         
-        # Script de seguimiento de desplazamiento
         st.components.v1.html("""
             <script>
             function JARVIS_Scroll() {
@@ -379,34 +379,23 @@ with tabs[0]:
             </script>
         """, height=0)
 
-# --- CSS: CALIBRACIÓN DE CHASIS RÍGIDO ---
+# --- CSS: ESTABILIZACIÓN DEL CHASIS V49 ---
 st.markdown("""
     <style>
-    /* 1. ALTURA UNIFICADA PARA BLOQUES Y TEXTO */
+    /* Ajuste de altura para que los 3 cuadros y el input encajen en el horizonte */
     .ant-segmented, .stTextInput input {
-        height: 48px !important;
-        background: rgba(0, 242, 255, 0.05) !important;
-        border: 1px solid rgba(0, 242, 255, 0.3) !important;
+        height: 45px !important;
+    }
+    
+    /* Forzar que el widget de botones sea un bloque sólido */
+    div[data-testid="column"]:nth-child(1) {
+        min-width: 320px !important;
     }
 
-    /* 2. SIMETRÍA DE BOTONES (Estilo Pestañas) */
-    .ant-segmented-item {
-        min-width: 60px !important;
-        transition: 0.3s !important;
-    }
-
-    /* 3. ALINEACIÓN DE COLUMNAS PARA EVITAR "BOTES" */
-    div[data-testid="column"] {
-        display: flex !important;
-        align-items: center !important;
-        padding: 0 10px !important;
-    }
-
-    /* 4. PESTAÑAS: Mantener largas y equilibradas */
+    /* PESTAÑAS: Largas y estables (Sin afectar la barra lateral) */
     div[data-testid="stTabs"] button {
         flex: 1 !important;
-        min-width: 220px !important;
-        color: #00f2ff !important;
+        min-width: 200px !important;
     }
     </style>
 """, unsafe_allow_html=True)
