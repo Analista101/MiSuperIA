@@ -244,31 +244,45 @@ with tabs[2]:
                         st.error(f"❌ Error en el enlace: {str(e)}")
                         st.info("Sugerencia: Verifique que la 'Contraseña de Aplicación' de Google esté activa en los secretos.")
 
-# --- TAB 3: LABORATORIO (CORRECCIÓN DE ENRUTADOR 2026) ---
+# --- TAB 3: LABORATORIO (CONTROL DE CONCEPTO RECALIBRADO) ---
 with tabs[3]:
     st.subheader("🎨 Prototipado Mark 85")
     idea = st.text_input("Concepto:")
     estilo = st.selectbox("Filtro:", ["Cinematic Marvel", "Technical Drawing", "Cyberpunk", "Blueprint Tech"])
     
     if st.button("🚀 SINTETIZAR") and idea:
-        with st.spinner("Sintetizando polímeros visuales en el nuevo enrutador..."):
+        with st.spinner("Ajustando parámetros de síntesis para máxima coherencia..."):
             try:
-                # CAMBIO CRÍTICO: Nueva URL del enrutador de Hugging Face
                 url = "https://router.huggingface.co/hf-inference/models/stabilityai/stable-diffusion-xl-base-1.0"
                 headers = {"Authorization": f"Bearer {HF_TOKEN}"}
                 
+                # RECALIBRACIÓN CRÍTICA DEL PROMPT PARA MEJOR COHERENCIA
+                # Añadimos más descriptores para guiar al modelo
+                full_prompt = (
+                    f"Stark Industries advanced conceptual design, "
+                    f"highly detailed, photorealistic, {idea}, "
+                    f"in a distinct {estilo} style, "
+                    f"futuristic aesthetics, intricate composition, "
+                    f"8k, ultra HD, cinematic quality."
+                )
+                
                 payload = {
-                    "inputs": f"Stark Industries tech, {idea}, {estilo} style, masterpiece, high quality",
+                    "inputs": full_prompt,
+                    "parameters": {
+                        "num_inference_steps": 40,  # Aumentamos los pasos para mayor detalle
+                        "guidance_scale": 9.0,      # Aumentamos la escala para mayor adherencia al prompt
+                        "negative_prompt": "blurry, low quality, deformed, ugly, bad anatomy, grayscale, noise" # Filtro de calidad
+                    }
                 }
                 
-                resp = requests.post(url, headers=headers, json=payload, timeout=60)
+                resp = requests.post(url, headers=headers, json=payload, timeout=90) # Aumentamos timeout por pasos adicionales
                 
                 if resp.status_code == 200:
                     st.image(Image.open(io.BytesIO(resp.content)), caption=f"Prototipo: {idea}")
                 elif resp.status_code == 503:
-                    st.warning("⚠️ La forja se está calentando. JARVIS reintentará en breve... espere unos segundos.")
+                    st.warning("⚠️ La forja está saturada con otras tareas. JARVIS está en espera, por favor, reintente en 10-20 segundos.")
                 else:
                     st.error(f"Fallo en la forja: Código {resp.status_code}. Mensaje del Servidor: {resp.text}")
                     
             except Exception as e:
-                st.error(f"Error de conexión en los servidores: {str(e)}")
+                st.error(f"Error en la transmisión de conceptos a la forja: {str(e)}")
