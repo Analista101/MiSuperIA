@@ -293,128 +293,109 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: PROYECTO JARVIS (CENTRO DE MANDO STARK V40) ---
+# --- TAB 0: PROYECTO JARVIS (RESTAURACIÓN TOTAL V41) ---
 with tabs[0]:
-    # Inicialización de estados para evitar fugas de datos o errores de renderizado
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
     if "procesando" not in st.session_state:
         st.session_state.procesando = False
 
-    # --- 1. CABECERA DE PRECISIÓN (AISLAMIENTO DE WIDGETS) ---
-    # Columna 1 (0.5): Botón de Purga rígido
-    # Columna 2 (9.5): Cuadro de Órdenes expansivo
-    c_purga, c_orden = st.columns([0.5, 9.5])
+    # --- 1. CABECERA TÉCNICA (FILA ÚNICA DE PRECISIÓN) ---
+    # He ajustado las proporciones para que los 3 botones y el texto convivan sin saltos
+    c_purgar, c_ml, c_mic, c_input = st.columns([0.4, 0.8, 0.5, 8.3])
     
-    with c_purga:
-        # Protocolo de limpieza de registros
-        if st.button("🗑️", key="btn_purgar_v40", help="Eliminar historial de comandos"):
+    with c_purgar:
+        # Botón Basurero: Ahora con ID específico para miniaturización extrema
+        if st.button("🗑️", key="purgar_v41_mini"):
             st.session_state.historial_chat = []
             st.rerun()
             
-    with c_orden:
-        # PROTOCOLO ANTI-ECO Y AUTO-LIMPIEZA
-        def procesar_protocolo_stark():
-            # Extraemos la orden del estado de la sesión
-            orden_actual = st.session_state.input_stark_v40
-            
-            if orden_actual and not st.session_state.procesando:
+    with c_ml:
+        # Interruptor Manos Libres restaurado
+        st.session_state.modo_fluido = st.toggle("ML", value=st.session_state.get('modo_fluido', False), key="ml_v41")
+        
+    with c_mic:
+        # Módulo de Micrófono restaurado
+        audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v41")
+        
+    with c_input:
+        # PROTOCOLO ANTI-ECO Y AUTO-LIMPIEZA (ENTER PARA ENVIAR)
+        def protocolo_stark_final():
+            query = st.session_state.input_v41
+            if query and not st.session_state.procesando:
                 st.session_state.procesando = True
+                st.session_state.historial_chat.append({"role": "user", "content": query})
                 
-                # 1. Registrar entrada del usuario
-                st.session_state.historial_chat.append({"role": "user", "content": orden_actual})
-                
-                # 2. Generar respuesta de JARVIS (Contexto de los últimos 5 mensajes)
-                historial_reducido = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
-                
+                # Procesamiento
+                hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
                 try:
-                    response = client.chat.completions.create(
-                        model=modelo_texto, 
-                        messages=[{"role": "system", "content": PERSONALIDAD}] + historial_reducido
-                    )
-                    respuesta_ia = response.choices[0].message.content
-                    st.session_state.historial_chat.append({"role": "assistant", "content": respuesta_ia})
+                    res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + hist)
+                    st.session_state.historial_chat.append({"role": "assistant", "content": res.choices[0].message.content})
                 except Exception as e:
-                    st.error(f"Error en el enlace de datos: {e}")
+                    st.error(f"Error: {e}")
                 
-                # 3. AUTO-LIMPIEZA: Resetear el cuadro de texto inmediatamente
-                st.session_state.input_stark_v40 = ""
+                # Limpieza inmediata y reset de estado
+                st.session_state.input_v41 = ""
                 st.session_state.procesando = False
 
-        # Cuadro de mando: Envío solo con ENTER
-        st.text_input(
-            "cmd", 
-            placeholder="Esperando órdenes, Srta. Diana...", 
-            label_visibility="collapsed", 
-            key="input_stark_v40", 
-            on_change=procesar_protocolo_stark
-        )
+        st.text_input("cmd", placeholder="Órdenes, Srta. Diana...", label_visibility="collapsed", key="input_v41", on_change=protocolo_stark_final)
 
     st.markdown("---")
 
-    # --- 2. REGISTRO VISUAL (AUTO-SCROLL ACTIVO) ---
-    # Contenedor sin bordes para mantener la limpieza del HUD
-    chat_container = st.container(height=540, border=False)
-    with chat_container:
-        for mensaje in st.session_state.historial_chat:
-            # Avatar de JARVIS (Cohete/Robot) vs Usuario (Persona)
-            with st.chat_message(mensaje["role"], avatar="🚀" if mensaje["role"] == "assistant" else "👤"): 
-                st.write(mensaje["content"])
+    # --- 2. ÁREA DE CHAT (AUTO-SCROLL) ---
+    chat_box = st.container(height=540, border=False)
+    with chat_box:
+        for m in st.session_state.historial_chat:
+            with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
+                st.write(m["content"])
         
-        # SCRIPT DE SEGUIMIENTO (FUERZA EL SCROLL AL FINAL)
+        # Script de seguimiento visual
         st.components.v1.html("""
             <script>
-            function JARVIS_Sync_Scroll() {
-                const chatWindow = window.parent.document.querySelector('div[data-testid="stVBC"]');
-                if (chatWindow) {
-                    chatWindow.scrollTop = chatWindow.scrollHeight;
-                }
+            function JARVIS_Scroll() {
+                const el = window.parent.document.querySelector('div[data-testid="stVBC"]');
+                if (el) { el.scrollTop = el.scrollHeight; }
             }
-            // Ejecución doble para asegurar el desplazamiento tras el renderizado
-            JARVIS_Sync_Scroll();
-            setTimeout(JARVIS_Sync_Scroll, 400);
+            JARVIS_Scroll(); setTimeout(JARVIS_Scroll, 400);
             </script>
         """, height=0)
 
-# --- CSS: CALIBRACIÓN DE GEOMÉTRICA Y PESTAÑAS ---
+# --- CSS: CALIBRACIÓN DE MICRO-BOTONES Y PESTAÑAS ---
 st.markdown("""
     <style>
-    /* 1. DISEÑO DE PESTAÑAS (STARK INDUSTRIES) */
-    div[data-testid="stTabs"] button {
-        flex: 1 !important;
-        min-width: 220px !important;
-        background-color: transparent !important;
-        border-bottom: 2px solid rgba(0, 242, 255, 0.1) !important;
-        color: #00f2ff !important;
-        font-family: 'Share Tech Mono', monospace !important;
-        transition: 0.3s;
-    }
-    div[data-testid="stTabs"] button[aria-selected="true"] {
-        border-bottom: 2px solid #00f2ff !important;
-        background-color: rgba(0, 242, 255, 0.05) !important;
-        box-shadow: inset 0px 0px 10px rgba(0, 242, 255, 0.1) !important;
-    }
-
-    /* 2. BOTÓN DE PURGA: Cuadrado y alineado */
-    button[key="btn_purgar_v40"] {
-        width: 44px !important;
-        height: 44px !important;
-        min-width: 44px !important;
+    /* 1. MINIATURIZACIÓN DEL BASURERO: Eliminamos el exceso de tamaño */
+    button[key="purgar_v41_mini"] {
+        width: 32px !important;
+        height: 32px !important;
+        min-width: 32px !important;
+        max-width: 32px !important;
         padding: 0 !important;
-        border: 1px solid rgba(0, 242, 255, 0.3) !important;
+        line-height: 1 !important;
+        font-size: 14px !important;
+        border: 1px solid rgba(0, 242, 255, 0.2) !important;
         background: rgba(0, 242, 255, 0.05) !important;
+        margin-top: 5px !important;
     }
 
-    /* 3. ALINEACIÓN DE HORIZONTE */
+    /* 2. ALINEACIÓN DE HORIZONTE PARA LOS 3 BOTONES */
     div[data-testid="column"] {
         display: flex !important;
         align-items: center !important;
-        justify-content: center !important;
+        justify-content: flex-start !important;
+    }
+    
+    /* 3. PESTAÑAS: Largas y estables (Sin afectar la barra lateral) */
+    .stTabs [data-testid="stMarkdownContainer"] p { font-size: 14px; }
+    div[data-testid="stTabs"] button {
+        flex: 1 !important;
+        min-width: 180px !important;
+        color: #00f2ff !important;
     }
 
-    /* 4. LIMPIEZA DE INTERFAZ */
-    .stChatFloatingInputContainer { background-color: transparent !important; }
-    [data-testid="stVerticalBlock"] { gap: 0.2rem !important; }
+    /* 4. PROTECCIÓN DE LA BARRA LATERAL: No tocar márgenes internos */
+    [data-testid="stSidebar"] {
+        min-width: 300px !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
