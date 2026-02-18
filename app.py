@@ -293,84 +293,83 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: COMANDO CENTRAL (HUD FIJO CON FIRMA ESTÁTICA) ---
+# --- TAB 0: COMANDO CENTRAL (SOLUCIÓN ARQUITECTÓNICA FINAL) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
     
     st.session_state.modo_fluido = st.toggle("🎙️ MODO MANOS LIBRES", value=st.session_state.get('modo_fluido', False))
     
-    # 1. Área del Historial (Dinámica)
-    for m in st.session_state.historial_chat:
-        with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
-            st.write(m["content"])
-            if m.get("type") == "VIDEO_SIGNAL":
-                st.video(m["video_url"])
+    # 1. ESPACIO DEL HISTORIAL
+    # Usamos un contenedor con altura ajustable para que no choque con la barra
+    chat_holder = st.container()
+    with chat_holder:
+        for m in st.session_state.historial_chat:
+            with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
+                st.write(m["content"])
+                if m.get("type") == "VIDEO_SIGNAL":
+                    st.video(m["video_url"])
 
-    # 2. ZONA DE COMANDO (Firma Estática)
-    # Envolvemos la barra en un contenedor con un ID único que NUNCA cambia
-    st.markdown('<div id="stark-command-module">', unsafe_allow_html=True)
+    # 2. ZONA DE COMANDO UNIFICADA
+    # Creamos un marco vacío que servirá de imán para el CSS
+    st.markdown('<div id="iron-gate"></div>', unsafe_allow_html=True)
+    
+    # Este bloque DEBE ir al final del 'with tabs[0]'
     with st.container():
-        col_mic, col_text = st.columns([1, 8])
-        with col_mic:
+        # Asignamos una clave única para que Streamlit no duplique el widget
+        c1, c2 = st.columns([1, 8])
+        with c1:
             audio_data = mic_recorder(
-                start_prompt="🎙️", 
-                stop_prompt="🛑", 
-                key="mic_v16_stark", 
-                use_container_width=True
+                start_prompt="🎙️", stop_prompt="🛑", 
+                key="mic_final_v100", use_container_width=True
             )
-        with col_text:
+        with c2:
             prompt = st.text_input(
-                label="Comando",
-                placeholder="Órdenes, Srta. Diana...",
-                label_visibility="collapsed",
-                key="input_v16"
+                label="cmd", placeholder="Órdenes, Srta. Diana...",
+                label_visibility="collapsed", key="input_final_v100"
             )
-    st.markdown('</div>', unsafe_allow_html=True)
 
-    # 3. CSS DE ANCLAJE INVIOLABLE
+    # 3. CSS DE INYECCIÓN DE CAPA (Ajustado para evitar duplicados)
     st.markdown("""
         <style>
-        /* Localizamos el contenedor exacto por su jerarquía desde nuestro ID */
-        div:has(> div > div > #stark-command-module) {
+        /* Localizamos el contenedor que contiene nuestro 'iron-gate' */
+        /* El selector de adyacencia '+' asegura que solo fijamos la barra de comandos real */
+        div:has(> div > div > #iron-gate) + div {
             position: fixed !important;
-            bottom: 25px !important;
+            bottom: 30px !important;
             left: 330px !important; 
             width: calc(100% - 380px) !important;
-            z-index: 99999 !important;
-            background: rgba(1, 4, 9, 0.98) !important;
-            padding: 10px 20px !important;
+            z-index: 999999 !important;
+            background: rgba(1, 4, 9, 0.95) !important;
+            padding: 15px !important;
             border-radius: 15px !important;
-            border: 1px solid #00f2ff !important;
-            box-shadow: 0 0 15px rgba(0, 242, 255, 0.3) !important;
+            border: 2px solid #00f2ff !important;
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.5) !important;
         }
 
-        /* Aseguramos que el contenido principal tenga scroll y no se tape */
+        /* Ajuste de scroll para que el historial sea funcional y no se oculte */
         .main .block-container {
             padding-bottom: 180px !important;
-            overflow-y: auto !important;
         }
-
-        /* Mantenemos las pestañas en su lugar original */
-        [data-testid="stTabs"] {
-            position: relative !important;
-            top: 0 !important;
+        
+        /* Ocultar cualquier barra duplicada que Streamlit intente crear por error */
+        div[data-testid="stVerticalBlock"] > div:empty {
+            display: none !important;
         }
         </style>
     """, unsafe_allow_html=True)
 
-    # 4. Procesamiento JARVIS
+    # 4. LÓGICA DE PROCESAMIENTO
     text_in = None
     if audio_data and isinstance(audio_data, dict) and audio_data.get('bytes'):
         if len(audio_data['bytes']) > 5000:
             try:
-                with st.spinner("JARVIS: Procesando audio..."):
+                with st.spinner("JARVIS: Transcribiendo..."):
                     text_in = client.audio.transcriptions.create(
-                        file=("v.wav", audio_data['bytes']), 
-                        model="whisper-large-v3"
+                        file=("v.wav", audio_data['bytes']), model="whisper-large-v3"
                     ).text
             except Exception as e:
-                st.error(f"Fallo en sensor: {e}")
+                st.error(f"Error: {e}")
     elif prompt: 
         text_in = prompt
 
@@ -381,7 +380,7 @@ with tabs[0]:
         ans = res.choices[0].message.content
         st.session_state.historial_chat.append({"role": "assistant", "content": ans})
         
-        # 5. Voz y Scroll Inteligente
+        # Voz y Auto-Scroll
         import hashlib
         msg_hash = hashlib.md5(ans.encode()).hexdigest()
         js_voice = f"""
