@@ -293,64 +293,58 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: COMANDO CENTRAL (ANCLAJE SUPERIOR STARK) ---
+# --- TAB 0: COMANDO CENTRAL (AUTO-SCROLL Y LIMPIEZA) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
 
-    # --- 1. PANEL DE CONTROL FIJO (ARRIBA) ---
-    # Usamos un contenedor con una clave única para el control superior
-    with st.container():
-        st.markdown("### 🖥️ CONSOLA DE MANDO")
-        
-        # Fila 1: Controles de Audio
-        col_toggle, col_mic = st.columns([2, 1])
-        with col_toggle:
-            st.session_state.modo_fluido = st.toggle("🎙️ MODO MANOS LIBRES", value=st.session_state.get('modo_fluido', False))
-        with col_mic:
-            audio_data = mic_recorder(
-                start_prompt="HABLAR", 
-                stop_prompt="ENVIAR", 
-                key="mic_superior_stark",
-                use_container_width=True
-            )
-        
-        # Fila 2: Entrada de Texto (Sustituimos chat_input por text_input para control total)
-        prompt = st.text_input(
-            label="Comandos",
-            placeholder="Escriba sus órdenes aquí, Srta. Diana...",
-            label_visibility="collapsed",
-            key="input_superior_manual"
-        )
-        
-    st.markdown("---") # Línea de horizonte del HUD
+    # --- 1. CABECERA DE CONTROL (ESTÁTICA) ---
+    col_t1, col_t2 = st.columns([3, 1])
+    with col_t1:
+        st.markdown("### 🖥️ CONSOLA JARVIS")
+    with col_t2:
+        # BOTÓN DE LIMPIAR CHAT (ARRIBA)
+        if st.button("🗑️ LIMPIAR REGISTROS", use_container_width=True):
+            st.session_state.historial_chat = []
+            st.session_state.last_cmd = None
+            st.rerun()
 
-    # --- 2. ÁREA DE DATOS DINÁMICA (CON SCROLL) ---
-    # Este contenedor es el ÚNICO que se moverá
-    with st.container(height=600, border=False):
+    # Panel de mandos superior
+    with st.container():
+        c_toggle, c_mic = st.columns([2, 1])
+        with c_toggle:
+            st.session_state.modo_fluido = st.toggle("🎙️ MODO MANOS LIBRES", value=st.session_state.get('modo_fluido', False))
+        with c_mic:
+            audio_data = mic_recorder(start_prompt="HABLAR", stop_prompt="ENVIAR", key="mic_v25", use_container_width=True)
+        
+        # Barra de entrada funcional con Enter
+        prompt = st.text_input(label="cmd", placeholder="Ingrese orden...", label_visibility="collapsed", key="input_v25")
+
+    st.markdown("---")
+
+    # --- 2. ÁREA DE CHAT DINÁMICA (AUTO-SCROLL) ---
+    # Usamos un ID específico para que el JavaScript sepa dónde hacer scroll
+    st.markdown('<div id="chat-stark-anchor"></div>', unsafe_allow_html=True)
+    
+    chat_placeholder = st.container(height=500, border=False)
+    with chat_placeholder:
         for m in st.session_state.historial_chat:
             with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
                 st.write(m["content"])
                 if m.get("type") == "VIDEO_SIGNAL":
                     st.video(m["video_url"])
 
-    # --- 3. LÓGICA DE PROCESAMIENTO ---
+    # --- 3. LÓGICA Y PROTOCOLO DE AUTO-MOVIMIENTO ---
     text_in = None
     if audio_data and isinstance(audio_data, dict) and audio_data.get('bytes'):
         if len(audio_data['bytes']) > 5000:
             try:
-                with st.spinner("JARVIS: Transcribiendo..."):
-                    text_in = client.audio.transcriptions.create(
-                        file=("v.wav", audio_data['bytes']), 
-                        model="whisper-large-v3"
-                    ).text
-            except Exception as e:
-                st.error(f"Error de sensores: {e}")
+                text_in = client.audio.transcriptions.create(file=("v.wav", audio_data['bytes']), model="whisper-large-v3").text
+            except Exception as e: st.error(f"Error: {e}")
     elif prompt: 
         text_in = prompt
 
     if text_in:
-        # Evitar duplicidad de procesamiento
         if "last_cmd" not in st.session_state or st.session_state.last_cmd != text_in:
             st.session_state.last_cmd = text_in
             st.session_state.historial_chat.append({"role": "user", "content": text_in})
@@ -361,8 +355,34 @@ with tabs[0]:
             ans = res.choices[0].message.content
             st.session_state.historial_chat.append({"role": "assistant", "content": ans})
             
-            # Protocolo de Voz y Refresco
+            # JAVASCRIPT PARA AUTO-SCROLL AL ÚLTIMO MENSAJE
+            # Esto mueve el chat automáticamente hacia abajo al procesar la orden
+            js_scroll = """
+                <script>
+                setTimeout(function() {
+                    var chatDiv = window.parent.document.querySelector('div[data-testid="stVBC"]');
+                    if (chatDiv) {
+                        chatDiv.scrollTop = chatDiv.scrollHeight;
+                    }
+                }, 100);
+                </script>
+            """
+            st.components.v1.html(js_scroll, height=0)
             st.rerun()
+
+# --- CSS DE AJUSTE FINALES ---
+st.markdown("""
+    <style>
+    /* Ocultamos la barra nativa del fondo para evitar confusiones */
+    div[data-testid="stChatInput"] { display: none; }
+    
+    /* Mejoramos el estilo de la caja de mensajes */
+    .stChatMessage {
+        border-bottom: 1px solid rgba(0, 242, 255, 0.1);
+        padding: 10px;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 # --- CSS DE LIMPIEZA INTERFACE ---
 st.markdown("""
