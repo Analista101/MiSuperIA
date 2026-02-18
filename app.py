@@ -244,24 +244,24 @@ with tabs[2]:
                         st.error(f"❌ Error en el enlace: {str(e)}")
                         st.info("Sugerencia: Verifique que la 'Contraseña de Aplicación' de Google esté activa en los secretos.")
 
-# --- TAB 3: LABORATORIO (RAZONAMIENTO APLICADO) ---
+# --- TAB 3: LABORATORIO (RAZONAMIENTO EN SIGILO) ---
 with tabs[3]:
-    st.subheader("🎨 Prototipado Mark 85 - Motor de Razonamiento")
-    idea_simple = st.text_input("Concepto (ej. Un león con armadura):")
+    st.subheader("🎨 Prototipado Mark 85 - Modo Inferencia")
+    idea_simple = st.text_input("Concepto:")
     estilo = st.selectbox("Filtro:", ["Cinematic Marvel", "Technical Drawing", "Cyberpunk", "Blueprint Tech"])
     
     if st.button("🚀 SINTETIZAR") and idea_simple:
-        with st.spinner("JARVIS analizando y razonando el concepto..."):
+        with st.spinner("Sintetizando..."):
             try:
-                # PASO 1: EL RAZONAMIENTO (Usamos Llama para mejorar el prompt)
+                # PASO 1: RAZONAMIENTO OCULTO
                 razonamiento_ctx = [
-                    {"role": "system", "content": "Eres el módulo de diseño de JARVIS. Tu tarea es expandir una idea simple en un prompt detallado para generación de imágenes. Evita edificios si no se piden. Enfócate en el sujeto central."},
-                    {"role": "user", "content": f"Convierte esta idea: '{idea_simple}' en un prompt detallado con estilo {estilo}. Asegúrate de que el sujeto principal sea claramente visible."}
+                    {"role": "system", "content": "Eres el módulo de diseño de JARVIS. Genera un prompt de imagen técnico y ultra-detallado. Enfócate exclusivamente en el sujeto solicitado. No menciones edificios a menos que se pidan explícitamente."},
+                    {"role": "user", "content": f"Crea un prompt detallado para: '{idea_simple}' con estilo {estilo}. Responde solo con el prompt en inglés."}
                 ]
                 res_razonada = client.chat.completions.create(model=modelo_texto, messages=razonamiento_ctx)
                 prompt_final = res_razonada.choices[0].message.content
 
-                # PASO 2: LA SÍNTESIS (Enviamos el prompt razonado a la forja)
+                # PASO 2: SÍNTESIS DIRECTA
                 url = "https://router.huggingface.co/hf-inference/models/stabilityai/stable-diffusion-xl-base-1.0"
                 headers = {"Authorization": f"Bearer {HF_TOKEN}"}
                 
@@ -276,7 +276,7 @@ with tabs[3]:
                 resp = requests.post(url, headers=headers, json=payload, timeout=90)
                 
                 if resp.status_code == 200:
-                    st.write(f"**JARVIS razonó el siguiente diseño:** {prompt_final}")
+                    # Se ha eliminado st.write(prompt_final) para mantener la limpieza
                     st.image(Image.open(io.BytesIO(resp.content)))
                 else:
                     st.error(f"Fallo en la forja: {resp.status_code}")
