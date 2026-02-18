@@ -293,85 +293,76 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: PROYECTO JARVIS (GEOMETRÍA FLEX V36) ---
+# --- TAB 0: CONSOLA JARVIS (SIMPLIFICACIÓN TOTAL V37) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
 
-    # --- 1. CABECERA DE COMANDOS (ALINEACIÓN POR CÓDIGO) ---
-    # Usamos solo dos columnas: una para el grupo de botones y otra para el texto
-    col_iconos, col_input = st.columns([1.8, 6.2])
+    # --- 1. CABECERA ULTRA-MINIMALISTA ---
+    # Solo dos columnas: una mínima para el basurero y el resto para órdenes
+    c_accion, c_orden = st.columns([0.5, 9.5])
     
-    with col_iconos:
-        # Contenedor interno para forzar la alineación horizontal de los 3 botones
-        c1, c2, c3 = st.columns([1, 1, 1])
-        with c1:
-            if st.button("🗑️", key="purgar_v36"):
-                st.session_state.historial_chat = []
-                st.rerun()
-        with c2:
-            st.session_state.modo_fluido = st.toggle("ML", value=st.session_state.get('modo_fluido', False), key="ml_v36")
-        with c3:
-            audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v36")
+    with c_accion:
+        # Botón único de purga con ID para control estricto
+        if st.button("🗑️", key="purgar_final_v37"):
+            st.session_state.historial_chat = []
+            st.rerun()
             
-    with col_input:
-        def protocolo_final():
-            orden = st.session_state.input_v36
-            if orden:
-                st.session_state.historial_chat.append({"role": "user", "content": orden})
+    with c_orden:
+        def procesar_orden():
+            query = st.session_state.stark_input_v37
+            if query:
+                st.session_state.historial_chat.append({"role": "user", "content": query})
+                # Lógica de respuesta JARVIS
                 hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
                 res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + hist)
                 st.session_state.historial_chat.append({"role": "assistant", "content": res.choices[0].message.content})
-                st.session_state.input_v36 = "" # Limpieza instantánea
+                st.session_state.stark_input_v37 = "" # Limpieza automática inmediata
 
-        st.text_input("cmd", placeholder="Órdenes, Srta. Diana...", label_visibility="collapsed", key="input_v36", on_change=protocolo_final)
+        st.text_input("cmd", placeholder="Órdenes, Srta. Diana...", label_visibility="collapsed", key="stark_input_v37", on_change=procesar_orden)
 
     st.markdown("---")
 
-    # --- 2. ÁREA DE DATOS CON AUTO-SCROLL ---
-    chat_container = st.container(height=530, border=False)
-    with chat_container:
+    # --- 2. REGISTRO DE DATOS CON AUTO-SCROLL ---
+    chat_box = st.container(height=550, border=False)
+    with chat_box:
         for m in st.session_state.historial_chat:
             with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
                 st.write(m["content"])
         
-        # Script de desplazamiento automático forzado
+        # Script de movimiento automático para mantener el foco en la última línea
         st.components.v1.html("""
             <script>
-            function AutoScroll() {
-                const chat = window.parent.document.querySelector('div[data-testid="stVBC"]');
-                if (chat) { chat.scrollTop = chat.scrollHeight; }
+            function JARVIS_Scroll() {
+                const el = window.parent.document.querySelector('div[data-testid="stVBC"]');
+                if (el) { el.scrollTop = el.scrollHeight; }
             }
-            AutoScroll(); setTimeout(AutoScroll, 300);
+            JARVIS_Scroll(); setTimeout(JARVIS_Scroll, 400);
             </script>
         """, height=0)
 
-# --- CSS: CALIBRACIÓN GEOMÉTRICA STARK ---
+# --- CSS: CALIBRACIÓN FINAL DE PESTAÑAS Y BOTONES ---
 st.markdown("""
     <style>
-    /* 1. ALINEACIÓN DE LOS 3 BOTONES: Forzamos la fila perfecta */
-    [data-testid="column"]:nth-of-type(1) [data-testid="stVerticalBlock"] > div {
-        flex-direction: row !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: flex-start !important;
-        gap: 15px !important; /* Espacio fijo entre botones */
-    }
-
-    /* 2. MINI-BOTÓN PAPELERA */
-    button[key="purgar_v36"] {
+    /* 1. BOTÓN BASURERO: Cuadrado, pequeño y alineado */
+    button[key="purgar_final_v37"] {
         width: 42px !important;
-        min-width: 42px !important;
         height: 42px !important;
+        min-width: 42px !important;
+        max-width: 42px !important;
         padding: 0 !important;
+        margin: 0 !important;
+        border: 1px solid rgba(0, 242, 255, 0.4) !important;
+        background: rgba(0, 242, 255, 0.05) !important;
     }
 
-    /* 3. PESTAÑAS LARGAS Y SIMÉTRICAS */
+    /* 2. PESTAÑAS: Largas, distribuidas y estables */
     div[data-testid="stTabs"] button {
         flex: 1 !important;
         min-width: 200px !important;
-        color: #00f2ff !important;
+        background: transparent !important;
         border-bottom: 2px solid rgba(0, 242, 255, 0.1) !important;
+        color: #00f2ff !important;
     }
     
     div[data-testid="stTabs"] button[aria-selected="true"] {
@@ -379,8 +370,11 @@ st.markdown("""
         background: rgba(0, 242, 255, 0.05) !important;
     }
 
-    /* 4. ELIMINAR ESPACIOS MUERTOS */
-    [data-testid="stVerticalBlock"] { gap: 0rem !important; }
+    /* 3. ALINEACIÓN DE CABECERA */
+    div[data-testid="column"] {
+        display: flex !important;
+        align-items: center !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
