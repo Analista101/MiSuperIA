@@ -166,42 +166,39 @@ st.markdown("""
 
 st.markdown("""
     <style>
-    /* AJUSTE INTELIGENTE DE BARRA DE COMANDOS */
+    /* AJUSTE DE BARRA DE COMANDOS (CENTRAL) */
     div[data-testid="stChatInput"] {
         position: fixed;
         bottom: 30px;
-        /* Deja espacio para la Sidebar y se centra en el área visible */
         left: 330px !important; 
         width: calc(90% - 350px) !important;
         z-index: 1000;
-        background: rgba(1, 4, 9, 0.8) !important;
+        background: rgba(1, 4, 9, 0.9) !important;
         border-radius: 15px;
         border: 1px solid #00f2ff;
-        box-shadow: 0 0 20px rgba(0, 242, 255, 0.3);
+        box-shadow: 0 0 15px rgba(0, 242, 255, 0.2);
     }
 
-    /* POSICIONAMIENTO DEL MICRÓFONO */
-    /* Lo movemos a la derecha del cuadro de texto para que no se tape */
+    /* INTEGRACIÓN DEL MICRÓFONO DENTRO DE LA BARRA */
     .stMicRecorder {
         position: fixed;
-        bottom: 35px;
-        right: 5% !important;
-        z-index: 1001;
+        bottom: 38px; /* Ajustado para alinear verticalmente con el texto */
+        /* Calculamos la posición para que quede justo antes del botón de enviar */
+        left: calc(90% - 80px) !important; 
+        z-index: 1005; /* Por encima de la barra de texto */
     }
 
-    /* PREVENIR CORTE DE CONTENIDO AL FINAL */
+    /* ESTILO DEL BOTÓN DE MICRO PARA QUE PAREZCA PARTE DEL HUD */
+    .stMicRecorder button {
+        background: transparent !important;
+        border: none !important;
+        color: #00f2ff !important;
+        box-shadow: none !important;
+        font-size: 20px !important;
+    }
+
     .main .block-container {
         padding-bottom: 200px !important;
-        padding-left: 20px !important;
-        padding-right: 20px !important;
-    }
-
-    /* ESTILO ADICIONAL PARA EL BOTÓN DEL MICRO */
-    .stMicRecorder button {
-        border-radius: 50% !important;
-        width: 45px !important;
-        height: 45px !important;
-        background: rgba(0, 242, 255, 0.2) !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -293,18 +290,19 @@ tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIO
 
 # --- TAB 0: COMANDO CENTRAL (HUD EXPANDIDO + VOZ ANTI-ECO) ---
 with tabs[0]:
-    if "historial_chat" not in st.session_state: st.session_state.historial_chat = []
+    if "historial_chat" not in st.session_state: 
+        st.session_state.historial_chat = []
     
     st.session_state.modo_fluido = st.toggle("🎙️ MODO MANOS LIBRES", value=st.session_state.get('modo_fluido', False))
     
-    # Visualización del Historial
+    # 1. Visualización del Historial
     for m in st.session_state.historial_chat:
         with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
             st.write(m["content"])
             if m.get("type") == "VIDEO_SIGNAL":
                 st.video(m["video_url"])
 
-    # Interfaz de Entrada: El micrófono ahora se posiciona vía CSS flotante
+    # 2. Interfaz de Entrada (El CSS se encarga de posicionarlos)
     audio_data = mic_recorder(
         start_prompt="🎙️", 
         stop_prompt="🛑", 
@@ -312,32 +310,40 @@ with tabs[0]:
         use_container_width=False
     )
     
-    # El cuadro de texto ahora es el elemento principal
     prompt = st.chat_input("Órdenes, Srta. Diana...")
 
+    # 3. Procesamiento de Entrada
     text_in = None
     if audio_data and 'bytes' in audio_data:
-        text_in = client.audio.transcriptions.create(file=("v.wav", audio_data['bytes']), model="whisper-large-v3").text
-    elif prompt: text_in = prompt
+        with st.spinner("JARVIS: Transcribiendo frecuencia de audio..."):
+            text_in = client.audio.transcriptions.create(
+                file=("v.wav", audio_data['bytes']), 
+                model="whisper-large-v3"
+            ).text
+    elif prompt: 
+        text_in = prompt
 
     if text_in:
-        # 1. Registro de entrada del usuario
+        # Registro de entrada del usuario
         st.session_state.historial_chat.append({"role": "user", "content": text_in})
         
-        # 2. Análisis de Intención de Video
+        # Análisis de Intención de Video
         url_final = None
         prompt_intencion = f"Analiza si el usuario quiere ver un video. Si es así, responde únicamente 'BUSCAR: [nombre del video]'. Si no, responde 'NORMAL'. Usuario dice: {text_in}"
-        check = client.chat.completions.create(model=modelo_texto, messages=[{"role": "user", "content": prompt_intencion}])
-        intencion = check.choices[0].message.content
+        
+        try:
+            check = client.chat.completions.create(model=modelo_texto, messages=[{"role": "user", "content": prompt_intencion}])
+            intencion = check.choices[0].message.content
 
-        if "BUSCAR:" in intencion:
-            termino = intencion.split("BUSCAR:")[1].strip()
-            with st.spinner(f"JARVIS: Localizando frecuencias para '{termino}'..."):
-                url_final = buscar_video_youtube(termino)
-        else:
-            url_final = extraer_url_video(text_in)
+            if "BUSCAR:" in intencion:
+                termino = intencion.split("BUSCAR:")[1].strip()
+                with st.spinner(f"JARVIS: Localizando frecuencias para '{termino}'..."):
+                    url_final = buscar_video_youtube(termino)
+            # Nota: Si no hay intención de búsqueda, omitimos el 'extraer_url_video' a menos que sea necesario
+        except Exception as e:
+            st.error(f"Error en el análisis de intención: {e}")
 
-        # 3. Generación de respuesta de JARVIS
+        # Generación de respuesta de JARVIS
         historial_limpio = [
             {"role": m["role"], "content": m["content"]} 
             for m in st.session_state.historial_chat[-6:]
@@ -349,7 +355,7 @@ with tabs[0]:
         )
         ans = res.choices[0].message.content
         
-        # 4. Empaquetado de Datos
+        # Empaquetado de Datos del Asistente
         msg_data = {"role": "assistant", "content": ans}
         if url_final:
             msg_data["type"] = "VIDEO_SIGNAL"
@@ -357,18 +363,21 @@ with tabs[0]:
         
         st.session_state.historial_chat.append(msg_data)
         
-        # 5. Protocolo de Voz Anti-Eco y Anclaje Visual
+        # 4. Protocolo de Voz y Scroll Automático
         msg_id = f"speech_{len(st.session_state.historial_chat)}"
         js_voice = f"""
             <script>
             (function() {{
                 if (window.last_msg_id === "{msg_id}") return;
 
-                // Protocolo de Anclaje: Scroll suave al fondo para mantener el HUD a la vista
-                window.parent.document.querySelector('.main').scrollTo({{
-                    top: window.parent.document.querySelector('.main').scrollHeight,
-                    behavior: 'smooth'
-                }});
+                // Scroll automático al fondo del contenedor principal
+                const mainContent = window.parent.document.querySelector('.main');
+                if (mainContent) {{
+                    mainContent.scrollTo({{
+                        top: mainContent.scrollHeight,
+                        behavior: 'smooth'
+                    }});
+                }}
 
                 window.speechSynthesis.cancel();
                 var msg = new SpeechSynthesisUtterance({repr(ans)});
