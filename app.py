@@ -288,10 +288,16 @@ with tabs[0]:
         else:
             url_final = extraer_url_video(text_in)
 
-        # 3. Generación de respuesta de JARVIS
+    # 3. Generación de respuesta de JARVIS
+        # PROTOCOLO DE LIMPIEZA: Solo enviamos 'role' y 'content' a Groq
+        historial_limpio = [
+            {"role": m["role"], "content": m["content"]} 
+            for m in st.session_state.historial_chat[-6:]
+        ]
+
         res = client.chat.completions.create(
             model=modelo_texto, 
-            messages=[{"role": "system", "content": PERSONALIDAD}] + st.session_state.historial_chat[-6:]
+            messages=[{"role": "system", "content": PERSONALIDAD}] + historial_limpio
         )
         ans = res.choices[0].message.content
         
