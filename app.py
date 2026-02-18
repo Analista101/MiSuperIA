@@ -297,72 +297,60 @@ import streamlit_antd_components as sac
 
 import streamlit_antd_components as sac
 
-# --- TAB 0: PROYECTO JARVIS (ARQUITECTURA DE PRECISIÓN V49) ---
+import streamlit_antd_components as sac
+
+# --- TAB 0: PROYECTO JARVIS (SIMETRÍA DE BLOQUES V50) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
 
     # --- 1. CABECERA DE BLOQUES ESTÁTICOS ---
-    # Mantenemos las columnas para asegurar que el input tenga su espacio largo
-    c_botones, c_input = st.columns([3.8, 6.2])
+    # Dividimos el espacio: 4 columnas para los 3 botones y el input largo
+    c1, c2, c3, c4 = st.columns([1, 1, 1, 7])
 
-    with c_botones:
-        # Eliminamos 'align' y simplificamos para evitar el TypeError
-        control_hub = sac.segmented(
-            items=[
-                sac.SegmentedItem(label='PURGAR', icon='trash'), 
-                sac.SegmentedItem(label='ML', icon='robot'),
-                sac.SegmentedItem(label='MIC', icon='mic'),
-            ],
-            variant='outline', 
-            color='cyan', 
-            key='hub_stark_v49', 
-            size='sm',
-            grow=True  # Esto hace que los 3 cuadros sean simétricos y llenen el espacio
-        )
-        
-        # --- LÓGICA DE ACTIVACIÓN POR BLOQUES ---
-        # Solo ejecutamos la purga si el usuario selecciona 'PURGAR'
-        if control_hub == 'PURGAR':
+    # Usamos sac.segmented de forma individual en cada columna para garantizar 
+    # que cada uno sea un cuadro perfecto e independiente, igual que las pestañas.
+    
+    with c1:
+        # CUADRO 1: PURGA
+        if sac.segmented(items=[sac.SegmentedItem(icon='trash')], label=' ', key='btn_purgar', size='sm'):
             st.session_state.historial_chat = []
-            # Resetear a ML para evitar bucle de purga al recargar
-            st.session_state.hub_stark_v49 = 'ML'
             st.rerun()
-            
-        st.session_state.modo_fluido = (control_hub == 'ML')
 
-    with c_input:
-        # PROTOCOLO ANTI-ECO CON AUTO-LIMPIEZA
-        def protocolo_stark_v49():
-            query = st.session_state.input_v49
+    with c2:
+        # CUADRO 2: MANOS LIBRES
+        # El valor del toggle se guarda directamente en el estado
+        ml_status = sac.segmented(
+            items=[sac.SegmentedItem(label='ML')], 
+            label=' ', key='btn_ml', size='sm'
+        )
+        st.session_state.modo_fluido = True if ml_status else False
+
+    with c3:
+        # CUADRO 3: MICRÓFONO
+        # Reservamos el espacio simétrico para el micro-recorder
+        st.markdown('<div class="mic-container-stark">', unsafe_allow_html=True)
+        audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v50")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    with c4:
+        # CUADRO DE COMANDOS (Protocolo Enter + Limpieza)
+        def protocolo_jarvis_v50():
+            query = st.session_state.input_v50
             if query:
                 st.session_state.historial_chat.append({"role": "user", "content": query})
-                
-                # Procesamiento de JARVIS
                 hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
                 try:
-                    res = client.chat.completions.create(
-                        model=modelo_texto, 
-                        messages=[{"role": "system", "content": PERSONALIDAD}] + hist
-                    )
+                    res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + hist)
                     st.session_state.historial_chat.append({"role": "assistant", "content": res.choices[0].message.content})
-                except:
-                    pass
-                
-                # LIMPIEZA TOTAL DEL CAMPO
-                st.session_state.input_v49 = ""
+                except: pass
+                st.session_state.input_v50 = "" # Limpieza instantánea
 
-        st.text_input(
-            "cmd", 
-            placeholder="Órdenes, Srta. Diana...", 
-            label_visibility="collapsed", 
-            key="input_v49", 
-            on_change=protocolo_stark_v49
-        )
+        st.text_input("cmd", placeholder="Órdenes, Srta. Diana...", label_visibility="collapsed", key="input_v50", on_change=protocolo_jarvis_v50)
 
     st.markdown("---")
 
-    # --- 2. CONTENEDOR DE CHAT (AUTO-SCROLL) ---
+    # --- 2. REGISTRO VISUAL (AUTO-SCROLL) ---
     chat_box = st.container(height=540, border=False)
     with chat_box:
         for m in st.session_state.historial_chat:
@@ -379,20 +367,28 @@ with tabs[0]:
             </script>
         """, height=0)
 
-# --- CSS: ESTABILIZACIÓN DEL CHASIS V49 ---
+# --- CSS: CALIBRACIÓN FINAL DE SIMETRÍA ---
 st.markdown("""
     <style>
-    /* Ajuste de altura para que los 3 cuadros y el input encajen en el horizonte */
-    .ant-segmented, .stTextInput input {
+    /* Forzamos que los widgets de sac y el input tengan la misma altura */
+    .ant-segmented, .stTextInput input, .mic-container-stark button {
         height: 45px !important;
-    }
-    
-    /* Forzar que el widget de botones sea un bloque sólido */
-    div[data-testid="column"]:nth-child(1) {
-        min-width: 320px !important;
+        border: 1px solid rgba(0, 242, 255, 0.3) !important;
+        background: rgba(0, 242, 255, 0.05) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
     }
 
-    /* PESTAÑAS: Largas y estables (Sin afectar la barra lateral) */
+    /* Alineación de las columnas para evitar encimados */
+    div[data-testid="column"] {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 0 4px !important;
+    }
+
+    /* PESTAÑAS: Mantener el diseño largo y elegante */
     div[data-testid="stTabs"] button {
         flex: 1 !important;
         min-width: 200px !important;
