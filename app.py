@@ -293,44 +293,38 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: PROYECTO JARVIS (CONTROL DE COLISIÓN V33) ---
+# --- TAB 0: CONSOLA JARVIS (BOTONES COMPACTOS V34) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
 
-    # --- 1. CABECERA TÉCNICA (DISTRIBUCIÓN ESPACIAL FORZADA) ---
-    # Usamos una sola fila con anchos muy específicos para separar los widgets
-    c_limpiar, c_espacio, c_manos, c_micro, c_texto = st.columns([0.5, 0.1, 1.2, 0.8, 6.4])
+    # --- 1. CABECERA TÉCNICA (DISTRIBUCIÓN DE PRECISIÓN) ---
+    # Reducimos drásticamente el ancho de la primera columna para el botón de borrar
+    c_limpiar, c_manos, c_micro, c_texto = st.columns([0.3, 0.8, 0.5, 7.4])
     
     with c_limpiar:
-        # Botón con clave única para evitar refrescos fantasma
-        if st.button("🗑️", key="cmd_clear_final", help="Purgar Memoria"):
+        # Botón ultra-compacto
+        if st.button("🗑️", key="btn_purgar_compact", help="Limpiar"):
             st.session_state.historial_chat = []
             st.rerun()
             
-    # El c_espacio queda vacío como aislante de seguridad
-
     with c_manos:
-        # Interruptor ML con margen forzado por CSS
-        st.session_state.modo_fluido = st.toggle("ML", value=st.session_state.get('modo_fluido', False), key="ml_v33")
+        st.session_state.modo_fluido = st.toggle("ML", value=st.session_state.get('modo_fluido', False), key="toggle_v34")
         
     with c_micro:
-        # Receptor de audio Whisper
-        audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v33_final")
+        audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v34")
         
     with c_texto:
-        # Entrada de órdenes con limpieza automática
-        def ejecutar_protocolo():
-            query = st.session_state.stark_input
-            if query:
-                st.session_state.historial_chat.append({"role": "user", "content": query})
-                # Respuesta de JARVIS
+        def protocolo_envio():
+            orden = st.session_state.stark_input_v34
+            if orden:
+                st.session_state.historial_chat.append({"role": "user", "content": orden})
                 hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
                 res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + hist)
                 st.session_state.historial_chat.append({"role": "assistant", "content": res.choices[0].message.content})
-                st.session_state.stark_input = "" # Vaciado instantáneo
+                st.session_state.stark_input_v34 = "" 
 
-        st.text_input("cmd", placeholder="Órdenes, Srta. Diana...", label_visibility="collapsed", key="stark_input", on_change=ejecutar_protocolo)
+        st.text_input("cmd", placeholder="Órdenes...", label_visibility="collapsed", key="stark_input_v34", on_change=protocolo_envio)
 
     st.markdown("---")
 
@@ -341,51 +335,47 @@ with tabs[0]:
             with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
                 st.write(m["content"])
         
-        # Script de seguimiento visual (Auto-Scroll)
         st.components.v1.html("""
             <script>
-            function JARVIS_Follow() {
+            function JARVIS_Sync() {
                 const el = window.parent.document.querySelector('div[data-testid="stVBC"]');
-                if (el) { el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' }); }
+                if (el) { el.scrollTop = el.scrollHeight; }
             }
-            JARVIS_Follow(); setTimeout(JARVIS_Follow, 500);
+            JARVIS_Sync(); setTimeout(JARVIS_Sync, 400);
             </script>
         """, height=0)
 
-# --- CSS: REPARACIÓN DE COLISIONES Y ALINEACIÓN ---
+# --- CSS: COMPACTACIÓN DE BOTONES Y ALINEACIÓN ---
 st.markdown("""
     <style>
-    /* 1. SEPARACIÓN DE WIDGETS (Anti-sobreposición) */
+    /* 1. BOTÓN DE BORRAR: Reducción de escala y eliminación de márgenes */
+    div[data-testid="column"]:nth-of-type(1) button {
+        width: 40px !important;
+        height: 40px !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        min-width: 40px !important;
+        border: 1px solid rgba(0, 242, 255, 0.3) !important;
+    }
+
+    /* 2. ALINEACIÓN VERTICAL TOTAL */
     div[data-testid="column"] {
         display: flex !important;
         align-items: center !important;
-        justify-content: center !important;
-    }
-    
-    /* Forzamos que el toggle ML tenga su propio espacio vital */
-    div[data-testid="stCheckbox"] {
-        padding-left: 15px !important;
-        min-width: 80px !important;
+        justify-content: flex-start !important;
     }
 
-    /* 2. PESTAÑAS: Simetría y longitud Industrial */
+    /* 3. PESTAÑAS: Mantener longitud sin descuadre */
     div[data-testid="stTabs"] button {
         flex: 1 !important;
         min-width: 200px !important;
-        background-color: transparent !important;
-        border-bottom: 2px solid rgba(0, 242, 255, 0.1) !important;
         color: #00f2ff !important;
-        font-weight: bold !important;
-    }
-    
-    div[data-testid="stTabs"] button[aria-selected="true"] {
-        border-bottom: 2px solid #00f2ff !important;
-        background-color: rgba(0, 242, 255, 0.05) !important;
     }
 
-    /* 3. LIMPIEZA DE INTERFAZ */
-    [data-testid="stHeader"] { background: rgba(0,0,0,0); }
-    footer { visibility: hidden; }
+    /* Evitar que el toggle ML se pegue a la papelera */
+    div[data-testid="stCheckbox"] {
+        margin-left: 5px !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
