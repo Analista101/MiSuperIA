@@ -58,7 +58,7 @@ st.markdown("""
         background-size: cover !important;
         background-blend-mode: overlay;
     }
-
+            
     /* BARRA LATERAL - EFECTO CÓDIGO BINARIO */
     section[data-testid="stSidebar"] {
         background-image: linear-gradient(rgba(1, 4, 9, 0.9), rgba(1, 4, 9, 0.9)), 
@@ -75,6 +75,30 @@ st.markdown("""
         padding: 10px;
         white-space: pre-wrap;
         z-index: -1;
+    }
+            /* Contenedores de Telemetría Moderna */
+    .telemetry-card {
+        background: rgba(0, 20, 30, 0.6) !important;
+        border-left: 3px solid #00f2ff !important;
+        padding: 10px;
+        margin-bottom: 10px;
+        border-radius: 0 8px 8px 0;
+        font-family: 'Share Tech Mono', monospace;
+    }
+    .telemetry-label {
+        color: #00f2ff;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    .telemetry-value {
+        color: #ffffff;
+        font-size: 0.95rem;
+        font-weight: bold;
+    }
+    .telemetry-sub {
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 0.75rem;
     }
 
     /* INPUTS Y UPLOADERS CON BORDE NEÓN */
@@ -163,12 +187,47 @@ def generar_pdf_reporte(titulo, contenido):
     c.drawText(text_object); c.showPage(); c.save(); buffer.seek(0)
     return buffer
 
-# --- 6. SIDEBAR ---
+# --- 6. SIDEBAR - TELEMETRÍA AVANZADA ---
 with st.sidebar:
-    st.markdown("<h3 style='color: #00f2ff;'>🛡️ ESTADO DE ALERTA</h3>", unsafe_allow_html=True)
-    st.info("🌦️ **CLIMA**: Despejado (32°C).")
-    st.warning("🌋 **SISMICIDAD**: Actividad media-alta.")
-    st.error("🔥 **INCENDIOS**: Pudahuel controlado.")
+    st.markdown("<h2 style='color: #00f2ff; text-align: center;'>📡 MONITOR DE RED</h2>", unsafe_allow_html=True)
+    st.markdown("---")
+
+    # MÓDULO: CLIMA SEMANAL
+    with st.expander("🌤️ PRONÓSTICO EXTENDIDO", expanded=True):
+        # Datos simulados de alta precisión para Santiago
+        dias = ["Sáb", "Dom", "Lun", "Mar", "Mié", "Jue", "Vie"]
+        temps = ["32°C", "31°C", "29°C", "33°C", "34°C", "30°C", "28°C"]
+        
+        clima_html = "<div style='display: flex; justify-content: space-between;'>"
+        for d, t in zip(dias, temps):
+            clima_html += f"<div style='text-align: center;'><div class='telemetry-sub'>{d}</div><div style='color:#00f2ff; font-size:12px;'>{t}</div></div>"
+        clima_html += "</div>"
+        st.markdown(clima_html, unsafe_allow_html=True)
+
+    # MÓDULO: SISMICIDAD GLOBAL
+    st.markdown("<div class='telemetry-card'><div class='telemetry-label'>🛰️ Alerta Sísmica</div>", unsafe_allow_html=True)
+    # Aquí puede actualizar estos datos manualmente según el último reporte de CSN
+    st.markdown("""
+        <div class='telemetry-value'>6.2 Mw - COQUIMBO</div>
+        <div class='telemetry-sub'>Epicentro: 42km al O de Tongoy</div>
+        <div class='telemetry-sub'>Hora: 07:42:15 AM | Prof: 35km</div>
+    """, unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    # MÓDULO: CONTROL DE INCENDIOS (CONAF)
+    st.markdown("<div class='telemetry-card' style='border-left-color: #ff4b4b;'><div class='telemetry-label'>🔥 Foco de Incendio</div>", unsafe_allow_html=True)
+    st.markdown("""
+        <div class='telemetry-value'>Pudahuel: "Sector Noviciado"</div>
+        <div class='telemetry-sub'>Estado: Controlado con brigadas terrestres</div>
+        <div class='telemetry-sub'>Área afectada: 1.2 Hectáreas</div>
+    """, unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    # MÓDULO: ESTADO DEL SISTEMA
+    st.markdown("---")
+    st.caption(f"Última sincronización satelital: {hora_actual}")
+    if st.button("🔄 RECALIBRAR SENSORES"):
+        st.rerun()
 
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
