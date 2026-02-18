@@ -290,41 +290,48 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: COMANDO CENTRAL (HUD STARK INTEGRADO) ---
+# --- TAB 0: COMANDO CENTRAL (HUD REFORZADO + FILTRO DE ERRORES) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
     
     st.session_state.modo_fluido = st.toggle("🎙️ MODO MANOS LIBRES", value=st.session_state.get('modo_fluido', False))
     
-    # 1. Visualización del Historial (Área de Mensajes)
+    # 1. Visualización del Historial
     for m in st.session_state.historial_chat:
         with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
             st.write(m["content"])
             if m.get("type") == "VIDEO_SIGNAL":
                 st.video(m["video_url"])
 
-    # 2. Interfaz de Entrada (Micro y Texto integrados por CSS)
-    # Declaramos el contenedor del micro primero para que el CSS lo eleve
+    # 2. Interfaz de Entrada
     with st.container():
         audio_data = mic_recorder(
             start_prompt="🎙️", 
             stop_prompt="🛑", 
-            key="mic_v2_final", # Nueva clave para evitar conflictos de caché
+            key="mic_v2_final", 
             use_container_width=False
         )
     
-    # La barra de texto recibirá al micro en su extremo derecho vía CSS
     prompt = st.chat_input("Órdenes, Srta. Diana...")
 
-    # 3. Lógica de Procesamiento
+    # 3. Procesamiento de Entrada con Failsafe
     text_in = None
-    if audio_data and 'bytes' in audio_data:
-        with st.spinner("JARVIS: Transcribiendo audio..."):
-            text_in = client.audio.transcriptions.create(
-                file=("v.wav", audio_data['bytes']), 
-                model="whisper-large-v3"
-            ).text
+    
+    # Validamos que audio_data no solo exista, sino que contenga bytes reales
+    if audio_data and isinstance(audio_data, dict) and audio_data.get('bytes'):
+        if len(audio_data['bytes']) > 1000:  # Filtro para evitar archivos vacíos
+            try:
+                with st.spinner("JARVIS: Procesando frecuencia de voz..."):
+                    text_in = client.audio.transcriptions.create(
+                        file=("v.wav", audio_data['bytes']), 
+                        model="whisper-large-v3"
+                    ).text
+            except Exception as e:
+                st.error(f"Error de conexión con Groq Audio: {e}")
+        else:
+            st.warning("JARVIS: Audio demasiado corto o vacío. Inténtelo de nuevo.")
+
     elif prompt: 
         text_in = prompt
 
@@ -332,34 +339,24 @@ with tabs[0]:
         # Registro del usuario
         st.session_state.historial_chat.append({"role": "user", "content": text_in})
         
-        # Análisis de Intención (Video/Normal)
+        # Análisis de Intención
         url_final = None
-        prompt_intencion = f"Analiza si el usuario quiere ver un video. Si es así, responde únicamente 'BUSCAR: [nombre del video]'. Si no, responde 'NORMAL'. Usuario dice: {text_in}"
-        
         try:
+            prompt_intencion = f"Analiza si el usuario quiere ver un video. Si es así, responde únicamente 'BUSCAR: [nombre del video]'. Si no, responde 'NORMAL'. Usuario dice: {text_in}"
             check = client.chat.completions.create(model=modelo_texto, messages=[{"role": "user", "content": prompt_intencion}])
             intencion = check.choices[0].message.content
 
             if "BUSCAR:" in intencion:
                 termino = intencion.split("BUSCAR:")[1].strip()
-                with st.spinner(f"JARVIS: Buscando en YouTube: {termino}..."):
-                    url_final = buscar_video_youtube(termino)
-        except Exception:
-            pass # Failsafe para mantener el sistema arriba
+                url_final = buscar_video_youtube(termino)
+        except:
+            pass
 
-        # Generación de respuesta JARVIS
-        historial_limpio = [
-            {"role": m["role"], "content": m["content"]} 
-            for m in st.session_state.historial_chat[-6:]
-        ]
-
-        res = client.chat.completions.create(
-            model=modelo_texto, 
-            messages=[{"role": "system", "content": PERSONALIDAD}] + historial_limpio
-        )
+        # Generación de respuesta
+        historial_limpio = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-6:]]
+        res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + historial_limpio)
         ans = res.choices[0].message.content
         
-        # Guardar respuesta
         msg_data = {"role": "assistant", "content": ans}
         if url_final:
             msg_data["type"] = "VIDEO_SIGNAL"
@@ -367,21 +364,17 @@ with tabs[0]:
         
         st.session_state.historial_chat.append(msg_data)
         
-        # 4. Protocolo de Voz y Scroll Automático (JavaScript)
+        # 4. Voz y Scroll
         msg_id = f"speech_{len(st.session_state.historial_chat)}"
         js_voice = f"""
             <script>
             (function() {{
                 if (window.last_msg_id === "{msg_id}") return;
-
-                // Anclaje: Mantiene la vista en el último mensaje
                 const main = window.parent.document.querySelector('.main');
                 if (main) {{ main.scrollTo({{top: main.scrollHeight, behavior: 'smooth'}}); }}
-
                 window.speechSynthesis.cancel();
                 var msg = new SpeechSynthesisUtterance({repr(ans)});
                 msg.lang = 'es-ES';
-                msg.pitch = 0.9;
                 msg.onstart = function() {{ window.last_msg_id = "{msg_id}"; }};
                 msg.onend = function() {{
                     if({str(st.session_state.modo_fluido).lower()}) {{
