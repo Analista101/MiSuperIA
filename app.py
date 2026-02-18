@@ -187,6 +187,15 @@ def generar_pdf_reporte(titulo, contenido):
     c.drawText(text_object); c.showPage(); c.save(); buffer.seek(0)
     return buffer
 
+def extraer_url_video(texto):
+    """Protocolo de interceptación de enlaces de video"""
+    # Si el usuario pega una URL directamente
+    if "youtube.com/watch?v=" in texto or "youtu.be/" in texto:
+        import re
+        enlace = re.search(r'(https?://\S+)', texto)
+        return enlace.group(0) if enlace else None
+    return None
+
 # --- 6. SIDEBAR - TELEMETRÍA AVANZADA ---
 with st.sidebar:
     st.markdown("<h2 style='color: #00f2ff; text-align: center;'>📡 MONITOR DE RED</h2>", unsafe_allow_html=True)
@@ -232,13 +241,21 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: COMANDO CENTRAL ---
+# --- TAB 0: COMANDO CENTRAL (UPGRADE: REPRODUCTOR MULTIMEDIA) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: st.session_state.historial_chat = []
+    if "video_activo" not in st.session_state: st.session_state.video_activo = None
+
     st.session_state.modo_fluido = st.toggle("🎙️ MODO MANOS LIBRES", value=st.session_state.get('modo_fluido', False))
-    for m in st.session_state.historial_chat:
-        with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): st.write(m["content"])
     
+    # Renderizado de la conversación
+    for m in st.session_state.historial_chat:
+        with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
+            st.write(m["content"])
+            # Si el mensaje contiene una señal de video, lo proyectamos
+            if "VIDEO_SIGNAL:" in m.get("type", ""):
+                st.video(m["video_url"])
+
     col_mic, col_chat = st.columns([1, 12])
     with col_mic: audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v1")
     with col_chat: prompt = st.chat_input("Órdenes, Srta. Diana...")
@@ -249,11 +266,29 @@ with tabs[0]:
     elif prompt: text_in = prompt
 
     if text_in:
+        # 1. Registrar entrada del usuario
         st.session_state.historial_chat.append({"role": "user", "content": text_in})
-        res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + st.session_state.historial_chat[-6:])
+        
+        # 2. Verificar si es una petición de video
+        url_detectada = extraer_url_video(text_in)
+        
+        # 3. Respuesta de JARVIS
+        res = client.chat.completions.create(
+            model=modelo_texto, 
+            messages=[{"role": "system", "content": PERSONALIDAD + " Si el usuario envía un link de video, confirma que vas a proyectarlo."}] + st.session_state.historial_chat[-6:]
+        )
         ans = res.choices[0].message.content
-        st.session_state.historial_chat.append({"role": "assistant", "content": ans})
-        js = f"<script>var m=new SpeechSynthesisUtterance({repr(ans)}); m.lang='es-ES'; m.onend=function(){{ if({str(st.session_state.modo_fluido).lower()}){{ setTimeout(()=>{{const b=window.parent.document.querySelector('button[aria-label=\"🎙️\"]'); if(b) b.click();}}, 1000); }} }}; window.speechSynthesis.speak(m);</script>"
+        
+        # Guardar respuesta con metadatos de video si aplica
+        msg_data = {"role": "assistant", "content": ans}
+        if url_detectada:
+            msg_data["type"] = "VIDEO_SIGNAL"
+            msg_data["video_url"] = url_detectada
+            
+        st.session_state.historial_chat.append(msg_data)
+        
+        # Voz y actualización
+        js = f"<script>var m=new SpeechSynthesisUtterance({repr(ans)}); m.lang='es-ES'; window.speechSynthesis.speak(m);</script>"
         st.components.v1.html(js, height=0); st.rerun()
 
 # --- TAB 1: ANÁLISIS (FIX SCOUT VISION) ---
