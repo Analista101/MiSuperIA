@@ -293,43 +293,64 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: COMANDO CENTRAL (RESTAURADO Y FUNCIONAL) ---
+# --- TAB 0: COMANDO CENTRAL (MICRO SOBRE LA BARRA) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
     
-    # 1. Interruptor Manos Libres (Visible arriba)
+    # 1. Botón Manos Libres
     st.session_state.modo_fluido = st.toggle("🎙️ MODO MANOS LIBRES", value=st.session_state.get('modo_fluido', False))
     
-    # 2. Área de Mensajes (Historial)
-    # Usamos un contenedor con scroll natural
+    # 2. Historial de Mensajes
     for m in st.session_state.historial_chat:
         with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
             st.write(m["content"])
             if m.get("type") == "VIDEO_SIGNAL":
                 st.video(m["video_url"])
 
-    st.markdown("---") # Separador para que no se pegue al historial
-
-    # 3. ZONA DE COMANDOS (Visibilidad Garantizada)
-    # Usamos columnas estándar de Streamlit sin posicionamiento fijo para que NO desaparezcan
-    col_mic, col_text = st.columns([1, 5])
+    # 3. ZONA DE COMANDO (CAPA DOBLE)
+    # Primero el micrófono: el CSS lo moverá para que flote sobre la barra
+    audio_data = mic_recorder(
+        start_prompt="🎙️", 
+        stop_prompt="🛑", 
+        key="mic_layer_final", 
+        use_container_width=False
+    )
     
-    with col_mic:
-        audio_data = mic_recorder(
-            start_prompt="🎙️", 
-            stop_prompt="🛑", 
-            key="mic_final_v100", 
-            use_container_width=True
-        )
-    
-    with col_text:
-        prompt = st.chat_input("Órdenes, Srta. Diana...")
+    # Segundo la barra: nativa y fija por defecto
+    prompt = st.chat_input("Órdenes, Srta. Diana...")
 
-    # 4. Lógica de Procesamiento JARVIS
+    # 4. CSS DE POSICIONAMIENTO QUIRÚRGICO
+    st.markdown("""
+        <style>
+        /* Localizamos el botón del micrófono y lo movemos sobre la barra de chat */
+        .stMicRecorder {
+            position: fixed !important;
+            bottom: 35px !important; /* Altura de la barra de chat */
+            left: 350px !important;  /* Ajustado para no chocar con la sidebar */
+            z-index: 1000000 !important; /* Por encima de todo */
+        }
+        
+        /* Estilo del botón para que parezca parte del HUD Stark */
+        .stMicRecorder button {
+            background-color: #00f2ff !important;
+            color: black !important;
+            border: 2px solid #ffffff !important;
+            border-radius: 50% !important;
+            box-shadow: 0 0 10px #00f2ff !important;
+            width: 40px !important;
+            height: 40px !important;
+        }
+
+        /* Desplazamos el texto del chat a la derecha para que el micro no lo tape */
+        div[data-testid="stChatInput"] textarea {
+            padding-left: 50px !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    # 5. Lógica de Procesamiento JARVIS
     text_in = None
-    
-    # Prioridad al audio si se detecta grabación
     if audio_data and isinstance(audio_data, dict) and audio_data.get('bytes'):
         if len(audio_data['bytes']) > 5000:
             try:
@@ -339,48 +360,30 @@ with tabs[0]:
                         model="whisper-large-v3"
                     ).text
             except Exception as e:
-                st.error(f"Fallo en sensor: {e}")
+                st.error(f"Error: {e}")
     elif prompt: 
         text_in = prompt
 
     if text_in:
         st.session_state.historial_chat.append({"role": "user", "content": text_in})
-        
-        # Generación de respuesta
         hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-6:]]
-        res = client.chat.completions.create(
-            model=modelo_texto, 
-            messages=[{"role": "system", "content": PERSONALIDAD}] + hist
-        )
+        res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + hist)
         ans = res.choices[0].message.content
         st.session_state.historial_chat.append({"role": "assistant", "content": ans})
         
-        # 5. Voz y Scroll Automático
+        # Voz y Auto-Scroll
         import hashlib
         msg_hash = hashlib.md5(ans.encode()).hexdigest()
         js_voice = f"""
             <script>
             (function() {{
                 if (window.last_speech_hash === "{msg_hash}") return;
-                
-                // Forzar scroll al fondo para ver la respuesta
                 const main = window.parent.document.querySelector('.main');
                 if (main) {{ main.scrollTo({{top: main.scrollHeight, behavior: 'smooth'}}); }}
-
                 window.speechSynthesis.cancel();
                 var msg = new SpeechSynthesisUtterance({repr(ans)});
                 msg.lang = 'es-ES';
                 msg.onstart = function() {{ window.last_speech_hash = "{msg_hash}"; }};
-                
-                // Si el modo fluido está activo, reactivar el micro al terminar de hablar
-                msg.onend = function() {{
-                    if({str(st.session_state.modo_fluido).lower()}) {{
-                        setTimeout(() => {{
-                            const b = window.parent.document.querySelector('button[aria-label="🎙️"]');
-                            if(b) b.click();
-                        }}, 1000);
-                    }}
-                }};
                 window.speechSynthesis.speak(msg);
             }})();
             </script>
