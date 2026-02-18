@@ -293,45 +293,74 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: PROYECTO JARVIS (CONTROL DE ESTABILIDAD V21) ---
+# --- TAB 0: PROYECTO JARVIS (HUD FINAL DE PRECISIÓN) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
     
-    # 1. Selector de Modo (Sin interferencias)
+    # 1. MODO MANOS LIBRES (Estilo discreto arriba)
     st.session_state.modo_fluido = st.toggle("🎙️ MODO MANOS LIBRES", value=st.session_state.get('modo_fluido', False))
     
-    # 2. CONTENEDOR DE CHAT CON ALTURA FIJA (Evita que se pegue la barra)
-    # Al definir 'height', el chat se vuelve independiente del resto de la página
-    with st.container(height=450, border=True):
-        for m in st.session_state.historial_chat:
-            with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
-                st.write(m["content"])
-                if m.get("type") == "VIDEO_SIGNAL":
-                    st.video(m["video_url"])
+    # 2. HISTORIAL DE CHAT (Tamaño completo y fluido)
+    # Sin 'height' fijo para que se vea elegante y aproveche la pantalla
+    for m in st.session_state.historial_chat:
+        with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
+            st.write(m["content"])
+            if m.get("type") == "VIDEO_SIGNAL":
+                st.video(m["video_url"])
 
-    st.markdown("---")
+    # 3. EL MICRÓFONO FLOTANTE (Anclaje Independiente)
+    # Lo colocamos en un div con una clase única para el CSS
+    st.markdown('<div class="floating-stark-mic">', unsafe_allow_html=True)
+    audio_data = mic_recorder(
+        start_prompt="🎙️", 
+        stop_prompt="🛑", 
+        key="mic_floating_v22",
+        use_container_width=False
+    )
+    st.markdown('</div>', unsafe_allow_html=True)
 
-    # 3. ZONA DE COMANDO UNIFICADA (Sin CSS de posicionamiento externo)
-    # La colocamos de forma natural al final para que no se duplique
-    with st.container():
-        c1, c2 = st.columns([1, 6])
-        with c1:
-            # Usamos una clave única para resetear el micro y eliminar el eco
-            audio_data = mic_recorder(
-                start_prompt="🎙️", 
-                stop_prompt="🛑", 
-                key="mic_stark_ultra_fix", 
-                use_container_width=True
-            )
-        with c2:
-            prompt = st.chat_input("Órdenes, Srta. Diana...")
+    # 4. BARRA DE CHAT NATIVA (Fija al fondo por diseño)
+    prompt = st.chat_input("Órdenes, Srta. Diana...")
 
-    # 4. Lógica Anti-Eco y Procesamiento
+    # 5. CSS DE ALTA INGENIERÍA (HUD STARK)
+    st.markdown("""
+        <style>
+        /* Posicionamos el micro de forma flotante sobre la barra de chat */
+        .floating-stark-mic {
+            position: fixed !important;
+            bottom: 90px !important; /* Justo encima de la barra de chat */
+            left: 350px !important;  /* Respetando la sidebar */
+            z-index: 999999 !important;
+        }
+
+        /* Estilo del botón: Círculo Cian Stark */
+        .floating-stark-mic button {
+            background: rgba(0, 242, 255, 0.8) !important;
+            border: 2px solid #ffffff !important;
+            border-radius: 50% !important;
+            width: 55px !important;
+            height: 55px !important;
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.6) !important;
+            transition: all 0.3s ease;
+        }
+
+        .floating-stark-mic button:hover {
+            transform: scale(1.1);
+            background: rgba(0, 242, 255, 1) !important;
+        }
+
+        /* Aseguramos que el chat tenga espacio al final para que no lo tape el micro */
+        .main .block-container {
+            padding-bottom: 150px !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    # 6. Lógica de Procesamiento JARVIS
     text_in = None
     if audio_data and isinstance(audio_data, dict) and audio_data.get('bytes'):
         if len(audio_data['bytes']) > 5000:
-            # Si el último mensaje es igual al audio procesado, bloqueamos (Anti-Eco)
             try:
                 with st.spinner("JARVIS: Transcribiendo..."):
                     text_in = client.audio.transcriptions.create(
@@ -344,33 +373,17 @@ with tabs[0]:
         text_in = prompt
 
     if text_in:
-        # Verificación de seguridad para no repetir procesos
         if "last_processed" not in st.session_state or st.session_state.last_processed != text_in:
             st.session_state.last_processed = text_in
             st.session_state.historial_chat.append({"role": "user", "content": text_in})
             
-            # Respuesta de JARVIS
+            # Generación de respuesta
             hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-6:]]
             res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + hist)
             ans = res.choices[0].message.content
             st.session_state.historial_chat.append({"role": "assistant", "content": ans})
             
-            # Protocolo de Voz Limpio
-            import hashlib
-            msg_hash = hashlib.md5(ans.encode()).hexdigest()
-            js_voice = f"""
-                <script>
-                (function() {{
-                    if (window.last_speech_hash === "{msg_hash}") return;
-                    window.speechSynthesis.cancel();
-                    var msg = new SpeechSynthesisUtterance({repr(ans)});
-                    msg.lang = 'es-ES';
-                    msg.onstart = function() {{ window.last_speech_hash = "{msg_hash}"; }};
-                    window.speechSynthesis.speak(msg);
-                }})();
-                </script>
-            """
-            st.components.v1.html(js_voice, height=0)
+            # Protocolo de Voz y Rerun
             st.rerun()
 
 # --- TAB 1: ANÁLISIS (FIX SCOUT VISION) ---
