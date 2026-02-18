@@ -293,112 +293,82 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: COMANDO CENTRAL (SOLUCIÓN ARQUITECTÓNICA FINAL) ---
+# 1. PANEL DE CONTROL LATERAL (FIJO POR DISEÑO)
+with st.sidebar:
+    st.title("SISTEMAS JARVIS")
+    st.markdown("---")
+    
+    # Aquí vive el micrófono y el input, siempre visibles y fijos
+    st.subheader("🎙️ COMANDO DE VOZ")
+    audio_data = mic_recorder(
+        start_prompt="INICIAR ESCUCHA", 
+        stop_prompt="PROCESAR", 
+        key="mic_sidebar_final",
+        use_container_width=True
+    )
+    
+    st.markdown("---")
+    st.subheader("⌨️ COMANDO MANUAL")
+    prompt = st.text_input("Órdenes directas:", placeholder="Escriba aquí...", key="input_sidebar_final")
+    
+    st.session_state.modo_fluido = st.toggle("MODO MANOS LIBRES", value=st.session_state.get('modo_fluido', False))
+
+# 2. TAB 0: HUD DE VISUALIZACIÓN
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
     
-    st.session_state.modo_fluido = st.toggle("🎙️ MODO MANOS LIBRES", value=st.session_state.get('modo_fluido', False))
-    
-    # 1. ESPACIO DEL HISTORIAL
-    # Usamos un contenedor con altura ajustable para que no choque con la barra
-    chat_holder = st.container()
-    with chat_holder:
-        for m in st.session_state.historial_chat:
-            with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
-                st.write(m["content"])
-                if m.get("type") == "VIDEO_SIGNAL":
-                    st.video(m["video_url"])
+    # Contenedor para los mensajes (Ocupa el centro de la pantalla)
+    for m in st.session_state.historial_chat:
+        with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
+            st.write(m["content"])
+            if m.get("type") == "VIDEO_SIGNAL":
+                st.video(m["video_url"])
 
-    # 2. ZONA DE COMANDO UNIFICADA
-    # Creamos un marco vacío que servirá de imán para el CSS
-    st.markdown('<div id="iron-gate"></div>', unsafe_allow_html=True)
-    
-    # Este bloque DEBE ir al final del 'with tabs[0]'
-    with st.container():
-        # Asignamos una clave única para que Streamlit no duplique el widget
-        c1, c2 = st.columns([1, 8])
-        with c1:
-            audio_data = mic_recorder(
-                start_prompt="🎙️", stop_prompt="🛑", 
-                key="mic_final_v100", use_container_width=True
-            )
-        with c2:
-            prompt = st.text_input(
-                label="cmd", placeholder="Órdenes, Srta. Diana...",
-                label_visibility="collapsed", key="input_final_v100"
-            )
-
-    # 3. CSS DE INYECCIÓN DE CAPA (Ajustado para evitar duplicados)
-    st.markdown("""
-        <style>
-        /* Localizamos el contenedor que contiene nuestro 'iron-gate' */
-        /* El selector de adyacencia '+' asegura que solo fijamos la barra de comandos real */
-        div:has(> div > div > #iron-gate) + div {
-            position: fixed !important;
-            bottom: 30px !important;
-            left: 330px !important; 
-            width: calc(100% - 380px) !important;
-            z-index: 999999 !important;
-            background: rgba(1, 4, 9, 0.95) !important;
-            padding: 15px !important;
-            border-radius: 15px !important;
-            border: 2px solid #00f2ff !important;
-            box-shadow: 0 0 20px rgba(0, 242, 255, 0.5) !important;
-        }
-
-        /* Ajuste de scroll para que el historial sea funcional y no se oculte */
-        .main .block-container {
-            padding-bottom: 180px !important;
-        }
-        
-        /* Ocultar cualquier barra duplicada que Streamlit intente crear por error */
-        div[data-testid="stVerticalBlock"] > div:empty {
-            display: none !important;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-
-    # 4. LÓGICA DE PROCESAMIENTO
+    # 3. LÓGICA DE PROCESAMIENTO (Centralizada)
     text_in = None
     if audio_data and isinstance(audio_data, dict) and audio_data.get('bytes'):
         if len(audio_data['bytes']) > 5000:
             try:
                 with st.spinner("JARVIS: Transcribiendo..."):
                     text_in = client.audio.transcriptions.create(
-                        file=("v.wav", audio_data['bytes']), model="whisper-large-v3"
+                        file=("v.wav", audio_data['bytes']), 
+                        model="whisper-large-v3"
                     ).text
             except Exception as e:
-                st.error(f"Error: {e}")
+                st.error(f"Error de audio: {e}")
     elif prompt: 
         text_in = prompt
 
     if text_in:
-        st.session_state.historial_chat.append({"role": "user", "content": text_in})
-        hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-6:]]
-        res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + hist)
-        ans = res.choices[0].message.content
-        st.session_state.historial_chat.append({"role": "assistant", "content": ans})
-        
-        # Voz y Auto-Scroll
-        import hashlib
-        msg_hash = hashlib.md5(ans.encode()).hexdigest()
-        js_voice = f"""
-            <script>
-            (function() {{
-                if (window.last_speech_hash === "{msg_hash}") return;
-                const main = window.parent.document.querySelector('.main');
-                if (main) {{ main.scrollTo({{top: main.scrollHeight, behavior: 'smooth'}}); }}
-                window.speechSynthesis.cancel();
-                var msg = new SpeechSynthesisUtterance({repr(ans)});
-                msg.lang = 'es-ES';
-                msg.onstart = function() {{ window.last_speech_hash = "{msg_hash}"; }};
-                window.speechSynthesis.speak(msg);
-            }})();
-            </script>
-        """
-        st.components.v1.html(js_voice, height=0)
-        st.rerun()
+        # Evitar duplicados si el prompt se queda en el cache
+        if "last_input" not in st.session_state or st.session_state.last_input != text_in:
+            st.session_state.last_input = text_in
+            st.session_state.historial_chat.append({"role": "user", "content": text_in})
+            
+            # Respuesta JARVIS
+            hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-6:]]
+            res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + hist)
+            ans = res.choices[0].message.content
+            st.session_state.historial_chat.append({"role": "assistant", "content": ans})
+            
+            # Voz y Rerun
+            import hashlib
+            msg_hash = hashlib.md5(ans.encode()).hexdigest()
+            js_voice = f"""
+                <script>
+                (function() {{
+                    if (window.last_speech_hash === "{msg_hash}") return;
+                    window.speechSynthesis.cancel();
+                    var msg = new SpeechSynthesisUtterance({repr(ans)});
+                    msg.lang = 'es-ES';
+                    msg.onstart = function() {{ window.last_speech_hash = "{msg_hash}"; }};
+                    window.speechSynthesis.speak(msg);
+                }})();
+                </script>
+            """
+            st.components.v1.html(js_voice, height=0)
+            st.rerun()
 
 # --- TAB 1: ANÁLISIS (FIX SCOUT VISION) ---
 with tabs[1]:
