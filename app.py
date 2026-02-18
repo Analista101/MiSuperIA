@@ -293,111 +293,105 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: CONSOLA JARVIS (REPARACIÓN DE ECO Y SCROLL) ---
+# --- TAB 0: CENTRO DE MANDO MINIMALISTA ---
 with tabs[0]:
-    # Inicialización de sensores de estado
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
     if "procesando" not in st.session_state:
         st.session_state.procesando = False
 
-    # --- 1. CABECERA FIJA ---
-    st.markdown("### 🖥️ CENTRO DE MANDO STARK")
+    # --- 1. CABECERA COMPACTA (UNA SOLA LÍNEA DE CONTROL) ---
+    # Unificamos limpieza, manos libres y entrada en un bloque reducido
+    c_purga, c_toggle, c_mic, c_input = st.columns([1, 1.5, 0.8, 6])
     
-    col_clean, col_mode = st.columns([1, 1])
-    with col_clean:
-        if st.button("🗑️ PURGAR MEMORIA", use_container_width=True):
+    with c_purga:
+        if st.button("🗑️", help="Limpiar registros", use_container_width=True):
             st.session_state.historial_chat = []
-            st.session_state.last_cmd = None
             st.rerun()
-    with col_mode:
-        st.session_state.modo_fluido = st.toggle("🎙️ MANOS LIBRES", value=st.session_state.get('modo_fluido', False))
-
-    # --- 2. BARRA DE COMANDOS (LIMPIEZA AUTOMÁTICA) ---
-    with st.form(key="stark_v30", clear_on_submit=True):
-        c_mic, c_input = st.columns([1, 9])
-        with c_mic:
-            audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v30", use_container_width=True)
-        with c_input:
-            prompt = st.text_input(label="cmd", placeholder="Escriba aquí y presione Enter...", label_visibility="collapsed")
-        
-        # Envío invisible para evitar el botón "Siri"
-        submit_btn = st.form_submit_button("enviar", type="primary")
-
-    st.markdown("---")
-
-    # --- 3. CONTENEDOR DE CHAT (ÁREA DINÁMICA) ---
-    chat_box = st.container(height=500, border=False)
+    with c_toggle:
+        st.session_state.modo_fluido = st.toggle("ML", value=st.session_state.get('modo_fluido', False), help="Modo Manos Libres")
     
+    # Formulario para entrada limpia y auto-scroll
+    with st.form(key="stark_minimal", clear_on_submit=True):
+        f_col_mic, f_col_in = st.columns([1, 9])
+        with f_col_mic:
+            audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_mini", use_container_width=True)
+        with f_col_in:
+            prompt = st.text_input(label="cmd", placeholder="Órdenes...", label_visibility="collapsed")
+        st.form_submit_button("enviar", type="primary") # Invisible por CSS
+
+    # --- 2. ÁREA DE DESPLIEGUE (AUTO-SCROLL) ---
+    chat_box = st.container(height=550, border=False)
     with chat_box:
         for m in st.session_state.historial_chat:
             with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
                 st.write(m["content"])
-                if m.get("type") == "VIDEO_SIGNAL":
-                    st.video(m["video_url"])
+        st.markdown('<div id="stark-end"></div>', unsafe_allow_html=True)
 
-    # --- 4. LÓGICA DE PROCESAMIENTO ANTI-DUPLICADOS ---
+    # --- 3. LÓGICA ANTI-BUCLE ---
     text_in = None
-    
-    # Captura de audio o texto
     if audio_data and isinstance(audio_data, dict) and audio_data.get('bytes'):
         if len(audio_data['bytes']) > 5000:
             try:
                 text_in = client.audio.transcriptions.create(file=("v.wav", audio_data['bytes']), model="whisper-large-v3").text
-            except Exception as e: st.error(f"Error: {e}")
-    elif submit_btn and prompt: 
+            except Exception: pass
+    elif prompt: 
         text_in = prompt
 
-    # Si hay una nueva orden y no es igual a la última procesada
-    if text_in and (not st.session_state.procesando):
+    if text_in and not st.session_state.procesando:
         if "last_cmd" not in st.session_state or st.session_state.last_cmd != text_in:
             st.session_state.procesando = True
             st.session_state.last_cmd = text_in
-            
-            # Registro en el historial
             st.session_state.historial_chat.append({"role": "user", "content": text_in})
             
-            # Respuesta JARVIS
-            hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-6:]]
+            # IA Response
+            hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
             res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + hist)
             ans = res.choices[0].message.content
             st.session_state.historial_chat.append({"role": "assistant", "content": ans})
             
-            # Resetear estado de procesamiento
             st.session_state.procesando = False
             
-            # JAVASCRIPT: Scroll forzado al final
+            # Scroll Script
             st.components.v1.html("""
                 <script>
-                function scrollToBottom() {
-                    const containers = window.parent.document.querySelectorAll('div[data-testid="stVBC"]');
-                    containers.forEach(el => { el.scrollTop = el.scrollHeight; });
+                const scroll = () => {
+                    const el = window.parent.document.querySelector('div[data-testid="stVBC"]');
+                    if(el) el.scrollTop = el.scrollHeight;
                 }
-                setTimeout(scrollToBottom, 100);
-                setTimeout(scrollToBottom, 500);
+                scroll(); setTimeout(scroll, 400);
                 </script>
             """, height=0)
-            
             st.rerun()
 
-# --- CSS: PESTAÑAS LARGAS Y UI LIMPIA ---
+# --- CSS: ESTILO MINIMALISTA Y PESTAÑAS LARGAS ---
 st.markdown("""
     <style>
-    /* Ocultar botón de formulario */
+    /* Ocultar botones innecesarios */
     button[kind="primaryFormSubmit"] { display: none !important; }
-
-    /* Pestañas expandidas y estilizadas */
+    
+    /* Pestañas largas y delgadas (Minimalistas) */
     div[data-testid="stTabs"] button {
         flex-grow: 1 !important;
         width: 100% !important;
-        min-width: 250px !important;
-        background-color: rgba(0, 242, 255, 0.05) !important;
-        border: 1px solid #00f2ff !important;
+        min-width: 220px !important;
+        background-color: transparent !important;
+        border: none !important;
+        border-bottom: 2px solid rgba(0, 242, 255, 0.2) !important;
         color: #00f2ff !important;
-        font-size: 16px !important;
+        padding: 0px !important;
+        height: 40px !important;
+    }
+    
+    div[data-testid="stTabs"] button[aria-selected="true"] {
+        border-bottom: 2px solid #00f2ff !important;
+        background-color: rgba(0, 242, 255, 0.1) !important;
     }
 
-    /* Fijar pestañas arriba */
+    /* Compactar espacio superior */
+    .main .block-container { padding-top: 2rem !important; }
+    
+    /* Sticky header */
     [data-testid="stTabs"] {
         position: sticky !important;
         top: 0;
