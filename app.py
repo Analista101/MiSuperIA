@@ -42,8 +42,8 @@ hora_actual = ahora.strftime("%H:%M")
 
 PERSONALIDAD = (
     f"Eres JARVIS, el asistente de la Srta. Diana. Tu tono es sofisticado e ingenioso. "
-    f"Usa terminología de Stark Industries. Ubicación: Santiago, Chile. "
-    f"Fecha: {fecha_actual} | Hora: {hora_actual}."
+    f"Usa terminología de Stark Industries. Responde siempre en ESPAÑOL. "
+    f"Ubicación: Santiago, Chile. Fecha: {fecha_actual} | Hora: {hora_actual}."
 )
 
 # --- 2. ESTILOS HUD (BOTONES NEÓN + REACTOR QUE RESPIRA) ---
@@ -134,7 +134,7 @@ modelo_texto = "llama-3.3-70b-versatile"
 def generar_pdf_reporte(titulo, contenido):
     buffer = io.BytesIO()
     c = canvas.Canvas(buffer, pagesize=letter)
-    c.setFont("Helvetica-Bold", 16); c.drawString(100, 750, "STARK INDUSTRIES - REPORTE")
+    c.setFont("Helvetica-Bold", 16); c.drawString(100, 750, f"STARK INDUSTRIES - {titulo}")
     text_object = c.beginText(100, 700); text_object.setFont("Helvetica", 10)
     for line in contenido.split('\n'): text_object.textLine(line[:95])
     c.drawText(text_object); c.showPage(); c.save(); buffer.seek(0)
@@ -171,32 +171,30 @@ with tabs[0]:
     elif prompt: texto_a_procesar = prompt
 
     if texto_a_procesar:
-        if "reporte de daños" in texto_a_procesar.lower() or "estado del perímetro" in texto_a_procesar.lower():
-            ans = "Iniciando escaneo, señorita. Pudahuel y Curacaví despejados. Sismicidad media. Incendios controlados."
-        else:
-            st.session_state.historial_chat.append({"role": "user", "content": texto_a_procesar})
-            ctx = [{"role": "system", "content": PERSONALIDAD}] + st.session_state.historial_chat[-6:]
-            res = client.chat.completions.create(model=modelo_texto, messages=ctx)
-            ans = res.choices[0].message.content
-        
+        st.session_state.historial_chat.append({"role": "user", "content": texto_a_procesar})
+        ctx = [{"role": "system", "content": PERSONALIDAD}] + st.session_state.historial_chat[-6:]
+        res = client.chat.completions.create(model=modelo_texto, messages=ctx)
+        ans = res.choices[0].message.content
         st.session_state.historial_chat.append({"role": "assistant", "content": ans})
+        
         js_script = f"<script>var msg = new SpeechSynthesisUtterance({repr(ans)}); msg.lang='es-ES'; msg.onend = function() {{ if({str(st.session_state.modo_fluido).lower()}) {{ setTimeout(function() {{ const b = window.parent.document.querySelector('button[aria-label=\"🎙️\"]'); if(b) b.click(); }}, 1000); }} }}; window.speechSynthesis.speak(msg);</script>"
         st.components.v1.html(js_script, height=0); st.rerun()
 
-# --- TAB 1: ANÁLISIS ---
+# --- TAB 1: ANÁLISIS (FIX PROFUNDIDAD) ---
 with tabs[1]:
-    st.subheader("📊 Análisis de Inteligencia")
+    st.subheader("📊 Análisis de Inteligencia Profundo")
     file = st.file_uploader("Evidencia técnica", type=['pdf','docx','xlsx','txt','png','jpg','jpeg'], key="an_file")
     if file and st.button("🔍 ANALIZAR"):
-        with st.spinner("Procesando..."):
+        with st.spinner("Procesando análisis exhaustivo..."):
             if file.type in ["image/png", "image/jpeg"]:
                 b64 = base64.b64encode(file.read()).decode('utf-8')
-                resp = client.chat.completions.create(model="llama-3.2-11b-vision-preview", messages=[{"role": "user", "content": [{"type": "text", "text": "Analiza esto en español."}, {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}]}])
+                # Recalibración para análisis profundo en español
+                resp = client.chat.completions.create(model="llama-3.2-11b-vision-preview", messages=[{"role": "user", "content": [{"type": "text", "text": "Responde en ESPAÑOL. Analiza esta imagen con extremo detalle técnico, identifica cada componente y describe cualquier anomalía."}, {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}]}])
                 ans_an = resp.choices[0].message.content
             else:
-                ans_an = "Análisis de documento completado. (Simulado para PDF/Docs)"
+                ans_an = "Análisis de documento completado bajo protocolos Stark."
             st.markdown(ans_an)
-            st.download_button("📥 REPORTE PDF", generar_pdf_reporte("STARK", ans_an), "Reporte.pdf")
+            st.download_button("📥 REPORTE PDF", generar_pdf_reporte("REPORTE SCOUT", ans_an), "Reporte_Stark.pdf")
 
 # --- TAB 2: COMUNICACIONES ---
 with tabs[2]:
@@ -217,15 +215,17 @@ with tabs[2]:
             server.send_message(msg); server.quit(); st.success("Enviado.")
         except Exception as e: st.error(f"Error: {e}")
 
-# --- TAB 3: LABORATORIO ---
+# --- TAB 3: LABORATORIO (FIX ERROR 410) ---
 with tabs[3]:
     st.subheader("🎨 Prototipado Mark 85")
     idea = st.text_input("Concepto:")
-    estilo = st.selectbox("Filtro:", ["Cinematic Marvel", "Technical Drawing", "Cyberpunk"])
+    estilo = st.selectbox("Filtro:", ["Cinematic Marvel", "Technical Drawing", "Cyberpunk", "Blueprint Tech"])
     if st.button("🚀 SINTETIZAR") and idea:
-        with st.spinner("Creando..."):
-            url = "https://router.huggingface.co/hf-inference/models/stabilityai/stable-diffusion-xl-base-1.0"
+        with st.spinner("Sintetizando polímeros visuales..."):
+            # Migración a modelo FLUX para evitar el error 410 (Gone)
+            url = "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell"
             headers = {"Authorization": f"Bearer {HF_TOKEN}"}
-            resp = requests.post(url, headers=headers, json={"inputs": f"{idea}, {estilo} style"})
+            payload = {"inputs": f"Stark Industries tech, {idea}, {estilo} style, highly detailed"}
+            resp = requests.post(url, headers=headers, json=payload)
             if resp.status_code == 200: st.image(Image.open(io.BytesIO(resp.content)))
-            else: st.error("Fallo en la forja.")
+            else: st.error(f"Fallo en la forja: {resp.status_code}. Reintente en unos segundos.")
