@@ -244,45 +244,42 @@ with tabs[2]:
                         st.error(f"❌ Error en el enlace: {str(e)}")
                         st.info("Sugerencia: Verifique que la 'Contraseña de Aplicación' de Google esté activa en los secretos.")
 
-# --- TAB 3: LABORATORIO (CONTROL DE CONCEPTO RECALIBRADO) ---
+# --- TAB 3: LABORATORIO (RAZONAMIENTO APLICADO) ---
 with tabs[3]:
-    st.subheader("🎨 Prototipado Mark 85")
-    idea = st.text_input("Concepto:")
+    st.subheader("🎨 Prototipado Mark 85 - Motor de Razonamiento")
+    idea_simple = st.text_input("Concepto (ej. Un león con armadura):")
     estilo = st.selectbox("Filtro:", ["Cinematic Marvel", "Technical Drawing", "Cyberpunk", "Blueprint Tech"])
     
-    if st.button("🚀 SINTETIZAR") and idea:
-        with st.spinner("Ajustando parámetros de síntesis para máxima coherencia..."):
+    if st.button("🚀 SINTETIZAR") and idea_simple:
+        with st.spinner("JARVIS analizando y razonando el concepto..."):
             try:
+                # PASO 1: EL RAZONAMIENTO (Usamos Llama para mejorar el prompt)
+                razonamiento_ctx = [
+                    {"role": "system", "content": "Eres el módulo de diseño de JARVIS. Tu tarea es expandir una idea simple en un prompt detallado para generación de imágenes. Evita edificios si no se piden. Enfócate en el sujeto central."},
+                    {"role": "user", "content": f"Convierte esta idea: '{idea_simple}' en un prompt detallado con estilo {estilo}. Asegúrate de que el sujeto principal sea claramente visible."}
+                ]
+                res_razonada = client.chat.completions.create(model=modelo_texto, messages=razonamiento_ctx)
+                prompt_final = res_razonada.choices[0].message.content
+
+                # PASO 2: LA SÍNTESIS (Enviamos el prompt razonado a la forja)
                 url = "https://router.huggingface.co/hf-inference/models/stabilityai/stable-diffusion-xl-base-1.0"
                 headers = {"Authorization": f"Bearer {HF_TOKEN}"}
                 
-                # RECALIBRACIÓN CRÍTICA DEL PROMPT PARA MEJOR COHERENCIA
-                # Añadimos más descriptores para guiar al modelo
-                full_prompt = (
-                    f"Stark Industries advanced conceptual design, "
-                    f"highly detailed, photorealistic, {idea}, "
-                    f"in a distinct {estilo} style, "
-                    f"futuristic aesthetics, intricate composition, "
-                    f"8k, ultra HD, cinematic quality."
-                )
-                
                 payload = {
-                    "inputs": full_prompt,
+                    "inputs": prompt_final,
                     "parameters": {
-                        "num_inference_steps": 40,  # Aumentamos los pasos para mayor detalle
-                        "guidance_scale": 9.0,      # Aumentamos la escala para mayor adherencia al prompt
-                        "negative_prompt": "blurry, low quality, deformed, ugly, bad anatomy, grayscale, noise" # Filtro de calidad
+                        "num_inference_steps": 35,
+                        "guidance_scale": 8.5
                     }
                 }
                 
-                resp = requests.post(url, headers=headers, json=payload, timeout=90) # Aumentamos timeout por pasos adicionales
+                resp = requests.post(url, headers=headers, json=payload, timeout=90)
                 
                 if resp.status_code == 200:
-                    st.image(Image.open(io.BytesIO(resp.content)), caption=f"Prototipo: {idea}")
-                elif resp.status_code == 503:
-                    st.warning("⚠️ La forja está saturada con otras tareas. JARVIS está en espera, por favor, reintente en 10-20 segundos.")
+                    st.write(f"**JARVIS razonó el siguiente diseño:** {prompt_final}")
+                    st.image(Image.open(io.BytesIO(resp.content)))
                 else:
-                    st.error(f"Fallo en la forja: Código {resp.status_code}. Mensaje del Servidor: {resp.text}")
+                    st.error(f"Fallo en la forja: {resp.status_code}")
                     
             except Exception as e:
-                st.error(f"Error en la transmisión de conceptos a la forja: {str(e)}")
+                st.error(f"Error en los sistemas de pensamiento: {str(e)}")
