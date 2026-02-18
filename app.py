@@ -175,10 +175,10 @@ if not st.session_state["autenticado"]:
             if pass_in == ACCESS_PASSWORD: st.session_state["autenticado"] = True; st.rerun()
     st.stop()
 
-# --- 4. CONEXIONES IA ---
+# --- 4. CONEXIONES IA (RECALIBRADO DE MODELO) ---
 client = Groq(api_key=GROQ_API_KEY)
-modelo_texto = "llama-3.3-70b-versatile"
-# ACTUALIZACIÓN: Modelo Scout de Visión
+# Cambiamos a un modelo más ligero para evitar el Rate Limit
+modelo_texto = "llama-3.1-8b-instant" 
 modelo_vision_scout = "meta-llama/llama-4-scout-17b-16e-instruct"
 
 def generar_pdf_reporte(titulo, contenido):
