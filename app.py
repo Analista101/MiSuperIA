@@ -166,43 +166,42 @@ st.markdown("""
 
 st.markdown("""
     <style>
-    /* AJUSTE DE LA BARRA DE COMANDOS CENTRAL */
+    /* 1. ESTABILIZAR EL ÁREA DE COMANDOS */
     div[data-testid="stChatInput"] {
         position: fixed;
-        bottom: 30px;
+        bottom: 30px !important;
         left: 330px !important; 
-        width: calc(90% - 350px) !important;
-        z-index: 1000;
+        width: calc(85% - 350px) !important;
+        z-index: 1000 !important;
         background: rgba(1, 4, 9, 0.9) !important;
         border-radius: 15px;
         border: 1px solid #00f2ff;
-        padding-right: 50px; /* Espacio para que el texto no tape al micro */
     }
 
-    /* POSICIONAMIENTO DEL MICRÓFONO DENTRO DE LA BARRA */
+    /* 2. FORZAR LA APARICIÓN DEL MICRÓFONO */
+    /* Lo moveremos al lado IZQUIERDO de la barra para que no choque con el botón de enviar */
     .stMicRecorder {
         position: fixed;
-        bottom: 38px;
-        /* Se alinea al final de la barra de texto */
-        left: calc(90% - 85px) !important; 
-        z-index: 2000 !important; /* Prioridad máxima sobre el input */
+        bottom: 37px !important;
+        left: 340px !important; /* Justo al inicio de la barra */
+        z-index: 99999 !important; /* Prioridad absoluta sobre todo el HUD */
     }
 
-    /* ESTILO STARK PARA EL BOTÓN DE MICRO */
+    /* 3. ESTILO DEL BOTÓN (Círculo Cian para visibilidad total) */
     .stMicRecorder button {
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-        color: #00f2ff !important;
-        font-size: 22px !important;
-    }
-    
-    .stMicRecorder button:hover {
-        color: #ff0000 !important; /* Brillo rojo al pasar el cursor */
-        text-shadow: 0 0 10px #ff0000;
+        background: #00f2ff !important;
+        color: #000 !important;
+        border-radius: 50% !important;
+        width: 38px !important;
+        height: 38px !important;
+        border: 2px solid #fff !important;
     }
 
-    /* CORRECCIÓN DE MARGENES DEL HUD */
+    /* 4. AJUSTE DE TEXTO PARA NO TAPAR EL MICRO */
+    div[data-testid="stChatInput"] textarea {
+        padding-left: 50px !important;
+    }
+
     .main .block-container {
         padding-bottom: 180px !important;
     }
@@ -294,70 +293,114 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: COMANDO CENTRAL (INTERFAZ UNIFICADA) ---
+# --- TAB 0: COMANDO CENTRAL (HUD UNIFICADO + ANTI-ECO + AUTO-SCROLL) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
     
+    # Interruptor de modo manos libres
     st.session_state.modo_fluido = st.toggle("🎙️ MODO MANOS LIBRES", value=st.session_state.get('modo_fluido', False))
     
-    # Visualización del Historial
+    # 1. Visualización del Historial
     for m in st.session_state.historial_chat:
         with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
             st.write(m["content"])
             if m.get("type") == "VIDEO_SIGNAL":
                 st.video(m["video_url"])
 
-    # --- ZONA DE COMANDO UNIFICADA ---
-    # El micrófono se declara primero para que el CSS lo posicione sobre la barra
+    # 2. Zona de Entrada Unificada (Micro y Texto)
+    # El CSS posicionará este micro sobre el lado izquierdo de la barra
     audio_data = mic_recorder(
         start_prompt="🎙️", 
         stop_prompt="🛑", 
-        key="mic_unified_v1",
+        key="mic_v_final_stark",
         use_container_width=False
     )
     
-    # La barra de texto servirá de base visual
     prompt = st.chat_input("Órdenes, Srta. Diana...")
 
-    # Procesamiento de Entrada
+    # 3. Lógica de Procesamiento de Entrada
     text_in = None
+    
+    # Failsafe para audio (mínimo 5000 bytes para evitar errores de Groq)
     if audio_data and isinstance(audio_data, dict) and audio_data.get('bytes'):
         if len(audio_data['bytes']) > 5000:
             try:
-                with st.spinner("JARVIS: Transcribiendo..."):
+                with st.spinner("JARVIS: Transcribiendo frecuencia de voz..."):
                     text_in = client.audio.transcriptions.create(
                         file=("v.wav", audio_data['bytes']), 
                         model="whisper-large-v3"
                     ).text
             except Exception as e:
-                st.error(f"Error: {e}")
+                st.error(f"Error de audio: {e}")
+        else:
+            st.warning("Audio demasiado corto para procesar.")
+
     elif prompt: 
         text_in = prompt
 
+    # 4. Generación de Respuesta y Acciones
     if text_in:
+        # Registro del usuario
         st.session_state.historial_chat.append({"role": "user", "content": text_in})
         
-        # Generación de Respuesta JARVIS
-        historial_limpio = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-6:]]
-        res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + historial_limpio)
+        # Análisis de Intención de Video
+        url_final = None
+        try:
+            prompt_intencion = f"Analiza si el usuario quiere ver un video. Si es así, responde únicamente 'BUSCAR: [nombre del video]'. Si no, responde 'NORMAL'. Usuario dice: {text_in}"
+            check = client.chat.completions.create(model=modelo_texto, messages=[{"role": "user", "content": prompt_intencion}])
+            intencion = check.choices[0].message.content
+
+            if "BUSCAR:" in intencion:
+                termino = intencion.split("BUSCAR:")[1].strip()
+                with st.spinner(f"JARVIS: Localizando video: {termino}..."):
+                    url_final = buscar_video_youtube(termino)
+        except:
+            pass # Failsafe silencioso
+
+        # Generación de respuesta de JARVIS
+        historial_limpio = [
+            {"role": m["role"], "content": m["content"]} 
+            for m in st.session_state.historial_chat[-6:]
+        ]
+
+        res = client.chat.completions.create(
+            model=modelo_texto, 
+            messages=[{"role": "system", "content": PERSONALIDAD}] + historial_limpio
+        )
         ans = res.choices[0].message.content
-        st.session_state.historial_chat.append({"role": "assistant", "content": ans})
         
-        # Protocolo Anti-Eco y Anclaje
+        # Empaquetado de Datos
+        msg_data = {"role": "assistant", "content": ans}
+        if url_final:
+            msg_data["type"] = "VIDEO_SIGNAL"
+            msg_data["video_url"] = url_final
+        
+        st.session_state.historial_chat.append(msg_data)
+        
+        # 5. Protocolo de Voz Anti-Eco y Auto-Scroll
         import hashlib
         msg_hash = hashlib.md5(ans.encode()).hexdigest()
         
         js_voice = f"""
             <script>
             (function() {{
+                // Bloqueo de Eco
                 if (window.last_speech_hash === "{msg_hash}") return;
+
+                // Auto-Scroll al fondo
                 const main = window.parent.document.querySelector('.main');
                 if (main) {{ main.scrollTo({{top: main.scrollHeight, behavior: 'smooth'}}); }}
+
                 window.speechSynthesis.cancel();
                 var msg = new SpeechSynthesisUtterance({repr(ans)});
                 msg.lang = 'es-ES';
-                msg.onstart = function() {{ window.last_speech_hash = "{msg_hash}"; }};
+                msg.pitch = 0.9;
+                
+                msg.onstart = function() {{ 
+                    window.last_speech_hash = "{msg_hash}"; 
+                }};
+
                 msg.onend = function() {{
                     if({str(st.session_state.modo_fluido).lower()}) {{
                         setTimeout(() => {{
@@ -372,7 +415,7 @@ with tabs[0]:
         """
         st.components.v1.html(js_voice, height=0)
         st.rerun()
-        
+
 # --- TAB 1: ANÁLISIS (FIX SCOUT VISION) ---
 with tabs[1]:
     st.subheader("📊 Análisis Scout v4")
