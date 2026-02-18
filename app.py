@@ -293,10 +293,13 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: CONSOLA JARVIS (REPARACIÓN DE FLUJO Y SCROLL) ---
+# --- TAB 0: CONSOLA JARVIS (REPARACIÓN DE ECO Y SCROLL) ---
 with tabs[0]:
+    # Inicialización de sensores de estado
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
+    if "procesando" not in st.session_state:
+        st.session_state.procesando = False
 
     # --- 1. CABECERA FIJA ---
     st.markdown("### 🖥️ CENTRO DE MANDO STARK")
@@ -305,25 +308,25 @@ with tabs[0]:
     with col_clean:
         if st.button("🗑️ PURGAR MEMORIA", use_container_width=True):
             st.session_state.historial_chat = []
+            st.session_state.last_cmd = None
             st.rerun()
     with col_mode:
         st.session_state.modo_fluido = st.toggle("🎙️ MANOS LIBRES", value=st.session_state.get('modo_fluido', False))
 
-    # --- 2. BARRA DE COMANDOS (SIN BOTÓN VISIBLE) ---
-    with st.form(key="stark_form_v29", clear_on_submit=True):
+    # --- 2. BARRA DE COMANDOS (LIMPIEZA AUTOMÁTICA) ---
+    with st.form(key="stark_v30", clear_on_submit=True):
         c_mic, c_input = st.columns([1, 9])
         with c_mic:
-            audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v29", use_container_width=True)
+            audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v30", use_container_width=True)
         with c_input:
             prompt = st.text_input(label="cmd", placeholder="Escriba aquí y presione Enter...", label_visibility="collapsed")
         
-        # Botón invisible necesario para st.form
-        st.form_submit_button("enviar", help=None, on_click=None, args=None, kwargs=None, type="primary", disabled=False, use_container_width=False)
+        # Envío invisible para evitar el botón "Siri"
+        submit_btn = st.form_submit_button("enviar", type="primary")
 
     st.markdown("---")
 
-    # --- 3. CONTENEDOR DE CHAT (AUTO-SCROLL) ---
-    # Usamos un contenedor con scroll interno y una clave para rastrearlo
+    # --- 3. CONTENEDOR DE CHAT (ÁREA DINÁMICA) ---
     chat_box = st.container(height=500, border=False)
     
     with chat_box:
@@ -332,62 +335,69 @@ with tabs[0]:
                 st.write(m["content"])
                 if m.get("type") == "VIDEO_SIGNAL":
                     st.video(m["video_url"])
-        
-        # Ancla visual para el final del chat
-        st.markdown('<div id="stark-bottom"></div>', unsafe_allow_html=True)
 
-    # --- 4. PROCESAMIENTO JARVIS ---
+    # --- 4. LÓGICA DE PROCESAMIENTO ANTI-DUPLICADOS ---
     text_in = None
+    
+    # Captura de audio o texto
     if audio_data and isinstance(audio_data, dict) and audio_data.get('bytes'):
         if len(audio_data['bytes']) > 5000:
             try:
                 text_in = client.audio.transcriptions.create(file=("v.wav", audio_data['bytes']), model="whisper-large-v3").text
             except Exception as e: st.error(f"Error: {e}")
-    elif prompt: 
+    elif submit_btn and prompt: 
         text_in = prompt
 
-    if text_in:
-        st.session_state.historial_chat.append({"role": "user", "content": text_in})
-        hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-6:]]
-        res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + hist)
-        ans = res.choices[0].message.content
-        st.session_state.historial_chat.append({"role": "assistant", "content": ans})
-        
-        # SCRIPT DE AUTO-SCROLL MEJORADO
-        # Mueve la vista al ancla 'stark-bottom'
-        st.components.v1.html("""
-            <script>
-            function forceScroll() {
-                const chatBox = window.parent.document.querySelector('div[data-testid="stVBC"]');
-                if (chatBox) {
-                    chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
+    # Si hay una nueva orden y no es igual a la última procesada
+    if text_in and (not st.session_state.procesando):
+        if "last_cmd" not in st.session_state or st.session_state.last_cmd != text_in:
+            st.session_state.procesando = True
+            st.session_state.last_cmd = text_in
+            
+            # Registro en el historial
+            st.session_state.historial_chat.append({"role": "user", "content": text_in})
+            
+            # Respuesta JARVIS
+            hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-6:]]
+            res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + hist)
+            ans = res.choices[0].message.content
+            st.session_state.historial_chat.append({"role": "assistant", "content": ans})
+            
+            # Resetear estado de procesamiento
+            st.session_state.procesando = False
+            
+            # JAVASCRIPT: Scroll forzado al final
+            st.components.v1.html("""
+                <script>
+                function scrollToBottom() {
+                    const containers = window.parent.document.querySelectorAll('div[data-testid="stVBC"]');
+                    containers.forEach(el => { el.scrollTop = el.scrollHeight; });
                 }
-            }
-            forceScroll();
-            setTimeout(forceScroll, 500); // Refuerzo para asegurar que cargue la respuesta
-            </script>
-        """, height=0)
-        st.rerun()
+                setTimeout(scrollToBottom, 100);
+                setTimeout(scrollToBottom, 500);
+                </script>
+            """, height=0)
+            
+            st.rerun()
 
-# --- CSS: ESTÉTICA STARK Y PESTAÑAS ---
+# --- CSS: PESTAÑAS LARGAS Y UI LIMPIA ---
 st.markdown("""
     <style>
-    /* OCULTAR EL BOTÓN DE ENVÍO DEL FORMULARIO */
-    button[kind="primaryFormSubmit"] {
-        display: none !important;
-    }
+    /* Ocultar botón de formulario */
+    button[kind="primaryFormSubmit"] { display: none !important; }
 
-    /* PESTAÑAS LARGAS Y DISTRIBUIDAS */
+    /* Pestañas expandidas y estilizadas */
     div[data-testid="stTabs"] button {
         flex-grow: 1 !important;
         width: 100% !important;
-        min-width: 200px !important;
+        min-width: 250px !important;
         background-color: rgba(0, 242, 255, 0.05) !important;
         border: 1px solid #00f2ff !important;
         color: #00f2ff !important;
+        font-size: 16px !important;
     }
 
-    /* Fijar cabecera */
+    /* Fijar pestañas arriba */
     [data-testid="stTabs"] {
         position: sticky !important;
         top: 0;
