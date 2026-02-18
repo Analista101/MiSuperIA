@@ -293,88 +293,103 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: CONSOLA JARVIS (BOTONES COMPACTOS V34) ---
+# --- TAB 0: PROYECTO JARVIS (AJUSTE DE PRECISIÓN V35) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
 
-    # --- 1. CABECERA TÉCNICA (DISTRIBUCIÓN DE PRECISIÓN) ---
-    # Reducimos drásticamente el ancho de la primera columna para el botón de borrar
-    c_limpiar, c_manos, c_micro, c_texto = st.columns([0.3, 0.8, 0.5, 7.4])
+    # --- 1. FILA DE COMANDOS ULTRA-COMPACTA ---
+    # Usamos contenedores vacíos para forzar el espaciado correcto
+    c_btn, c_toggle, c_mic, c_input = st.columns([0.4, 0.8, 0.5, 7.5])
     
-    with c_limpiar:
-        # Botón ultra-compacto
-        if st.button("🗑️", key="btn_purgar_compact", help="Limpiar"):
+    with c_btn:
+        # Botón con ID específico para control total por CSS
+        if st.button("🗑️", key="btn_clear_final_v35"):
             st.session_state.historial_chat = []
             st.rerun()
             
-    with c_manos:
-        st.session_state.modo_fluido = st.toggle("ML", value=st.session_state.get('modo_fluido', False), key="toggle_v34")
+    with c_toggle:
+        st.session_state.modo_fluido = st.toggle("ML", value=st.session_state.get('modo_fluido', False), key="ml_v35")
         
-    with c_micro:
-        audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v34")
+    with c_mic:
+        audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v35")
         
-    with c_texto:
-        def protocolo_envio():
-            orden = st.session_state.stark_input_v34
-            if orden:
-                st.session_state.historial_chat.append({"role": "user", "content": orden})
+    with c_input:
+        def protocolo_jarvis():
+            query = st.session_state.input_stark_final
+            if query:
+                st.session_state.historial_chat.append({"role": "user", "content": query})
                 hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
                 res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + hist)
                 st.session_state.historial_chat.append({"role": "assistant", "content": res.choices[0].message.content})
-                st.session_state.stark_input_v34 = "" 
+                st.session_state.input_stark_final = "" # Limpieza inmediata
 
-        st.text_input("cmd", placeholder="Órdenes...", label_visibility="collapsed", key="stark_input_v34", on_change=protocolo_envio)
+        st.text_input("cmd", placeholder="Órdenes, Srta. Diana...", label_visibility="collapsed", key="input_stark_final", on_change=protocolo_jarvis)
 
     st.markdown("---")
 
-    # --- 2. ÁREA DE DATOS (AUTO-SCROLL) ---
+    # --- 2. REGISTRO DE DATOS (AUTO-SCROLL) ---
     chat_box = st.container(height=530, border=False)
     with chat_box:
         for m in st.session_state.historial_chat:
             with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
                 st.write(m["content"])
         
+        # Script de desplazamiento automático
         st.components.v1.html("""
             <script>
-            function JARVIS_Sync() {
-                const el = window.parent.document.querySelector('div[data-testid="stVBC"]');
-                if (el) { el.scrollTop = el.scrollHeight; }
+            function ScrollJARVIS() {
+                const chat = window.parent.document.querySelector('div[data-testid="stVBC"]');
+                if (chat) { chat.scrollTop = chat.scrollHeight; }
             }
-            JARVIS_Sync(); setTimeout(JARVIS_Sync, 400);
+            ScrollJARVIS(); setTimeout(ScrollJARVIS, 300);
             </script>
         """, height=0)
 
-# --- CSS: COMPACTACIÓN DE BOTONES Y ALINEACIÓN ---
+# --- CSS: CALIBRACIÓN DE COMPONENTES ---
 st.markdown("""
     <style>
-    /* 1. BOTÓN DE BORRAR: Reducción de escala y eliminación de márgenes */
+    /* 1. BOTÓN DE BORRAR: Forzamos tamaño cuadrado pequeño */
     div[data-testid="column"]:nth-of-type(1) button {
-        width: 40px !important;
-        height: 40px !important;
+        width: 38px !important;
+        height: 38px !important;
+        min-width: 38px !important;
+        max-width: 38px !important;
         padding: 0 !important;
-        margin: 0 !important;
-        min-width: 40px !important;
-        border: 1px solid rgba(0, 242, 255, 0.3) !important;
+        border-radius: 5px !important;
+        border: 1px solid rgba(0, 242, 255, 0.4) !important;
+        background: rgba(0, 242, 255, 0.05) !important;
     }
 
-    /* 2. ALINEACIÓN VERTICAL TOTAL */
+    /* 2. ALINEACIÓN DE COLUMNAS (Evita superposición) */
     div[data-testid="column"] {
         display: flex !important;
         align-items: center !important;
         justify-content: flex-start !important;
+        gap: 0 !important;
     }
 
-    /* 3. PESTAÑAS: Mantener longitud sin descuadre */
+    /* 3. PESTAÑAS: Largas y Minimalistas */
     div[data-testid="stTabs"] button {
         flex: 1 !important;
-        min-width: 200px !important;
+        min-width: 220px !important;
+        background: transparent !important;
+        border: none !important;
+        border-bottom: 2px solid rgba(0, 242, 255, 0.1) !important;
         color: #00f2ff !important;
+        font-size: 14px !important;
+        padding-bottom: 8px !important;
+    }
+    
+    div[data-testid="stTabs"] button[aria-selected="true"] {
+        border-bottom: 2px solid #00f2ff !important;
+        background: rgba(0, 242, 255, 0.05) !important;
     }
 
-    /* Evitar que el toggle ML se pegue a la papelera */
+    /* 4. AJUSTE DE MARGENES DEL TOGGLE */
     div[data-testid="stCheckbox"] {
-        margin-left: 5px !important;
+        margin-left: 0px !important;
+        padding-left: 5px !important;
     }
     </style>
 """, unsafe_allow_html=True)
