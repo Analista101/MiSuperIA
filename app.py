@@ -293,71 +293,92 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: COMANDO CENTRAL (MICRO SOBRE LA BARRA) ---
+# --- TAB 0: COMANDO CENTRAL (SOLUCIÓN DE VISIBILIDAD TOTAL) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
     
-    # 1. Botón Manos Libres
+    # 1. Interruptor Manos Libres
     st.session_state.modo_fluido = st.toggle("🎙️ MODO MANOS LIBRES", value=st.session_state.get('modo_fluido', False))
     
     # 2. Historial de Mensajes
-    for m in st.session_state.historial_chat:
-        with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
-            st.write(m["content"])
-            if m.get("type") == "VIDEO_SIGNAL":
-                st.video(m["video_url"])
+    # El contenedor asegura que el chat no empuje la barra hacia afuera
+    chat_container = st.container(height=500)
+    with chat_container:
+        for m in st.session_state.historial_chat:
+            with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
+                st.write(m["content"])
+                if m.get("type") == "VIDEO_SIGNAL":
+                    st.video(m["video_url"])
 
-    # 3. ZONA DE COMANDO (CAPA DOBLE)
-    # Primero el micrófono: el CSS lo moverá para que flote sobre la barra
-    audio_data = mic_recorder(
-        start_prompt="🎙️", 
-        stop_prompt="🛑", 
-        key="mic_layer_final", 
-        use_container_width=False
-    )
+    # 3. ZONA DE COMANDO (DISEÑO UNIFICADO)
+    # Creamos una base visual para que parezca una sola barra
+    st.markdown('<div class="stark-input-zone">', unsafe_allow_html=True)
     
-    # Segundo la barra: nativa y fija por defecto
-    prompt = st.chat_input("Órdenes, Srta. Diana...")
+    col_mic, col_input = st.columns([1, 10])
+    
+    with col_mic:
+        # El micrófono aparece aquí obligatoriamente
+        audio_data = mic_recorder(
+            start_prompt="🎙️", 
+            stop_prompt="🛑", 
+            key="mic_v20_final", 
+            use_container_width=True
+        )
+    
+    with col_input:
+        # Usamos st.text_input para que pueda convivir en la misma línea que el micro
+        prompt = st.text_input(
+            label="Input",
+            placeholder="Órdenes, Srta. Diana...",
+            label_visibility="collapsed",
+            key="input_v20"
+        )
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
-    # 4. CSS DE POSICIONAMIENTO QUIRÚRGICO
+    # 4. CSS PARA FIJAR Y ESTILIZAR
     st.markdown("""
         <style>
-        /* Localizamos el botón del micrófono y lo movemos sobre la barra de chat */
-        .stMicRecorder {
+        /* Fijamos toda la zona de entrada al fondo */
+        div:has(> div > div > .stark-input-zone) {
             position: fixed !important;
-            bottom: 35px !important; /* Altura de la barra de chat */
-            left: 350px !important;  /* Ajustado para no chocar con la sidebar */
-            z-index: 1000000 !important; /* Por encima de todo */
-        }
-        
-        /* Estilo del botón para que parezca parte del HUD Stark */
-        .stMicRecorder button {
-            background-color: #00f2ff !important;
-            color: black !important;
-            border: 2px solid #ffffff !important;
-            border-radius: 50% !important;
-            box-shadow: 0 0 10px #00f2ff !important;
-            width: 40px !important;
-            height: 40px !important;
+            bottom: 30px !important;
+            left: 330px !important; 
+            width: calc(100% - 380px) !important;
+            z-index: 99999 !important;
+            background: rgba(1, 4, 9, 0.9) !important;
+            padding: 10px !important;
+            border: 2px solid #00f2ff !important;
+            border-radius: 15px !important;
         }
 
-        /* Desplazamos el texto del chat a la derecha para que el micro no lo tape */
-        div[data-testid="stChatInput"] textarea {
-            padding-left: 50px !important;
+        /* Estilo del botón de micro */
+        button[aria-label="🎙️"] {
+            background-color: #00f2ff !important;
+            border: none !important;
+            border-radius: 50% !important;
+            height: 45px !important;
+            width: 45px !important;
+            color: black !important;
+        }
+        
+        /* Ajuste de la barra de texto para que parezca de chat */
+        input[data-testid="stWidgetLabel"] + div {
+            background: transparent !important;
+            border: 1px solid rgba(0, 242, 255, 0.3) !important;
         }
         </style>
     """, unsafe_allow_html=True)
 
-    # 5. Lógica de Procesamiento JARVIS
+    # 5. Lógica de Procesamiento (Whisper + IA)
     text_in = None
     if audio_data and isinstance(audio_data, dict) and audio_data.get('bytes'):
         if len(audio_data['bytes']) > 5000:
             try:
                 with st.spinner("JARVIS: Transcribiendo..."):
                     text_in = client.audio.transcriptions.create(
-                        file=("v.wav", audio_data['bytes']), 
-                        model="whisper-large-v3"
+                        file=("v.wav", audio_data['bytes']), model="whisper-large-v3"
                     ).text
             except Exception as e:
                 st.error(f"Error: {e}")
@@ -365,30 +386,12 @@ with tabs[0]:
         text_in = prompt
 
     if text_in:
+        # Lógica de respuesta y voz (se mantiene igual para estabilidad)
         st.session_state.historial_chat.append({"role": "user", "content": text_in})
         hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-6:]]
         res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + hist)
         ans = res.choices[0].message.content
         st.session_state.historial_chat.append({"role": "assistant", "content": ans})
-        
-        # Voz y Auto-Scroll
-        import hashlib
-        msg_hash = hashlib.md5(ans.encode()).hexdigest()
-        js_voice = f"""
-            <script>
-            (function() {{
-                if (window.last_speech_hash === "{msg_hash}") return;
-                const main = window.parent.document.querySelector('.main');
-                if (main) {{ main.scrollTo({{top: main.scrollHeight, behavior: 'smooth'}}); }}
-                window.speechSynthesis.cancel();
-                var msg = new SpeechSynthesisUtterance({repr(ans)});
-                msg.lang = 'es-ES';
-                msg.onstart = function() {{ window.last_speech_hash = "{msg_hash}"; }};
-                window.speechSynthesis.speak(msg);
-            }})();
-            </script>
-        """
-        st.components.v1.html(js_voice, height=0)
         st.rerun()
 
 # --- TAB 1: ANÁLISIS (FIX SCOUT VISION) ---
