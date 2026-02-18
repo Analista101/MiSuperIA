@@ -293,85 +293,97 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: CONSOLA JARVIS (RESTAURACIÓN Y AUTO-SCROLL) ---
+# --- TAB 0: CONSOLA JARVIS (FLUIDEZ TOTAL Y ALINEACIÓN) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
-    
-    # --- 1. CONTROLES COMPACTOS (UNA SOLA LÍNEA SIMÉTRICA) ---
-    c1, c2, c3, c4 = st.columns([0.5, 1, 1, 6])
-    
-    with c1:
-        if st.button("🗑️", help="Limpiar"):
-            st.session_state.historial_chat = []
-            st.rerun()
-    with c2:
-        st.session_state.modo_fluido = st.toggle("ML", value=st.session_state.get('modo_fluido', False))
-    with c3:
-        # Micro compacto que no desplaza el fondo
-        audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_fix_final", use_container_width=True)
-    with c4:
-        # Usamos on_change para limpiar el texto y procesar sin formularios que descuadren
-        def procesar_entrada():
-            query = st.session_state.user_input
-            if query:
-                st.session_state.historial_chat.append({"role": "user", "content": query})
-                # Respuesta JARVIS
-                hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
-                res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + hist)
-                st.session_state.historial_chat.append({"role": "assistant", "content": res.choices[0].message.content})
-                st.session_state.user_input = "" # Limpia el cuadro
 
-        st.text_input(label="cmd", placeholder="Órdenes...", label_visibility="collapsed", key="user_input", on_change=procesar_entrada)
+    # --- 1. CABECERA TÉCNICA (PANTALLA COMPLETA) ---
+    # Usamos un solo contenedor para evitar que Streamlit cree espacios extra
+    st.markdown('<div class="stark-controls-container">', unsafe_allow_html=True)
+    
+    # Fila de control integrada
+    col_main = st.columns([1]) # Una sola columna para control total
+    with col_main[0]:
+        # Contenedor de comandos
+        c1, c2, c3, c4 = st.columns([0.4, 0.8, 0.6, 6])
+        
+        with c1:
+            if st.button("🗑️", key="purgar_mini"):
+                st.session_state.historial_chat = []
+                st.rerun()
+        with c2:
+            st.session_state.modo_fluido = st.toggle("ML", value=st.session_state.get('modo_fluido', False))
+        with c3:
+            audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v31")
+        with c4:
+            def procesar():
+                cmd = st.session_state.mini_input
+                if cmd:
+                    st.session_state.historial_chat.append({"role": "user", "content": cmd})
+                    hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
+                    res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + hist)
+                    st.session_state.historial_chat.append({"role": "assistant", "content": res.choices[0].message.content})
+                    st.session_state.mini_input = "" # Limpieza inmediata
+            
+            st.text_input("cmd", placeholder="Órdenes...", label_visibility="collapsed", key="mini_input", on_change=procesar)
 
-    # --- 2. ÁREA DE CHAT CON AUTO-SCROLL ---
-    # Contenedor con ID específico para el script de movimiento
-    chat_container = st.container(height=500, border=False)
-    with chat_container:
+    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("---")
+
+    # --- 2. ÁREA DE CHAT (AUTO-SCROLL) ---
+    chat_holder = st.container(height=520, border=False)
+    with chat_holder:
         for m in st.session_state.historial_chat:
             with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
                 st.write(m["content"])
         
-        # Script inyectado para que el chat 'camine' solo
+        # Script de movimiento automático mejorado
         st.components.v1.html("""
             <script>
-            var chat = window.parent.document.querySelector('div[data-testid="stVBC"]');
-            if (chat) { chat.scrollTop = chat.scrollHeight; }
-            setTimeout(() => { if(chat) chat.scrollTop = chat.scrollHeight; }, 300);
+            function autoScroll() {
+                const chat = window.parent.document.querySelector('div[data-testid="stVBC"]');
+                if (chat) { chat.scrollTop = chat.scrollHeight; }
+            }
+            autoScroll();
+            setTimeout(autoScroll, 400);
             </script>
         """, height=0)
 
-# --- CSS: PESTAÑAS LARGAS SIN ROMPER EL FONDO ---
+# --- CSS: REPARACIÓN DE ALINEACIÓN Y PESTAÑAS ---
 st.markdown("""
     <style>
-    /* Ajuste de pestañas para que sean largas pero no descuadren el centro */
+    /* 1. AJUSTE DE PESTAÑAS (Simétricas y Largas) */
     div[data-testid="stTabs"] {
-        display: flex !important;
-        justify-content: center !important;
         width: 100% !important;
+        display: flex !important;
     }
-    
     div[data-testid="stTabs"] button {
         flex: 1 !important;
-        min-width: 180px !important; /* Pestañas largas pero controladas */
-        max-width: 300px !important;
+        min-width: 150px !important;
         background-color: transparent !important;
         border: none !important;
-        border-bottom: 2px solid rgba(0, 242, 255, 0.2) !important;
+        border-bottom: 2px solid rgba(0, 242, 255, 0.1) !important;
         color: #00f2ff !important;
-        transition: 0.3s;
     }
-    
     div[data-testid="stTabs"] button[aria-selected="true"] {
         border-bottom: 2px solid #00f2ff !important;
-        background-color: rgba(0, 242, 255, 0.1) !important;
+        background-color: rgba(0, 242, 255, 0.05) !important;
     }
 
-    /* Mantener el Reactor centrado */
-    .stMarkdown img {
-        display: block;
-        margin-left: auto;
-        margin-right: auto;
+    /* 2. COMPACTAR CONTROLES (Evita el descuadre) */
+    .stMarkdown div[data-testid="stVerticalBlock"] > div {
+        padding: 0 !important;
+        gap: 0.5rem !important;
+    }
+    
+    /* Alinear Verticalmente el Toggle y el Botón */
+    div[data-testid="stCheckbox"] { margin-top: 10px !important; }
+    button[data-testid="baseButton-secondary"] { margin-top: 5px !important; }
+
+    /* 3. MANTENER EL REACTOR CENTRADO */
+    [data-testid="stAppViewContainer"] {
+        background-position: center top !important;
     }
     </style>
 """, unsafe_allow_html=True)
