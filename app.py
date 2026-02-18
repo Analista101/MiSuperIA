@@ -293,94 +293,73 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: CENTRO DE MANDO MINIMALISTA ---
+# --- TAB 0: CONSOLA JARVIS (RESTAURACIÓN Y AUTO-SCROLL) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
-    if "procesando" not in st.session_state:
-        st.session_state.procesando = False
-
-    # --- 1. CABECERA COMPACTA (UNA SOLA LÍNEA DE CONTROL) ---
-    # Unificamos limpieza, manos libres y entrada en un bloque reducido
-    c_purga, c_toggle, c_mic, c_input = st.columns([1, 1.5, 0.8, 6])
     
-    with c_purga:
-        if st.button("🗑️", help="Limpiar registros", use_container_width=True):
+    # --- 1. CONTROLES COMPACTOS (UNA SOLA LÍNEA SIMÉTRICA) ---
+    c1, c2, c3, c4 = st.columns([0.5, 1, 1, 6])
+    
+    with c1:
+        if st.button("🗑️", help="Limpiar"):
             st.session_state.historial_chat = []
             st.rerun()
-    with c_toggle:
-        st.session_state.modo_fluido = st.toggle("ML", value=st.session_state.get('modo_fluido', False), help="Modo Manos Libres")
-    
-    # Formulario para entrada limpia y auto-scroll
-    with st.form(key="stark_minimal", clear_on_submit=True):
-        f_col_mic, f_col_in = st.columns([1, 9])
-        with f_col_mic:
-            audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_mini", use_container_width=True)
-        with f_col_in:
-            prompt = st.text_input(label="cmd", placeholder="Órdenes...", label_visibility="collapsed")
-        st.form_submit_button("enviar", type="primary") # Invisible por CSS
+    with c2:
+        st.session_state.modo_fluido = st.toggle("ML", value=st.session_state.get('modo_fluido', False))
+    with c3:
+        # Micro compacto que no desplaza el fondo
+        audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_fix_final", use_container_width=True)
+    with c4:
+        # Usamos on_change para limpiar el texto y procesar sin formularios que descuadren
+        def procesar_entrada():
+            query = st.session_state.user_input
+            if query:
+                st.session_state.historial_chat.append({"role": "user", "content": query})
+                # Respuesta JARVIS
+                hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
+                res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + hist)
+                st.session_state.historial_chat.append({"role": "assistant", "content": res.choices[0].message.content})
+                st.session_state.user_input = "" # Limpia el cuadro
 
-    # --- 2. ÁREA DE DESPLIEGUE (AUTO-SCROLL) ---
-    chat_box = st.container(height=550, border=False)
-    with chat_box:
+        st.text_input(label="cmd", placeholder="Órdenes...", label_visibility="collapsed", key="user_input", on_change=procesar_entrada)
+
+    # --- 2. ÁREA DE CHAT CON AUTO-SCROLL ---
+    # Contenedor con ID específico para el script de movimiento
+    chat_container = st.container(height=500, border=False)
+    with chat_container:
         for m in st.session_state.historial_chat:
             with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
                 st.write(m["content"])
-        st.markdown('<div id="stark-end"></div>', unsafe_allow_html=True)
+        
+        # Script inyectado para que el chat 'camine' solo
+        st.components.v1.html("""
+            <script>
+            var chat = window.parent.document.querySelector('div[data-testid="stVBC"]');
+            if (chat) { chat.scrollTop = chat.scrollHeight; }
+            setTimeout(() => { if(chat) chat.scrollTop = chat.scrollHeight; }, 300);
+            </script>
+        """, height=0)
 
-    # --- 3. LÓGICA ANTI-BUCLE ---
-    text_in = None
-    if audio_data and isinstance(audio_data, dict) and audio_data.get('bytes'):
-        if len(audio_data['bytes']) > 5000:
-            try:
-                text_in = client.audio.transcriptions.create(file=("v.wav", audio_data['bytes']), model="whisper-large-v3").text
-            except Exception: pass
-    elif prompt: 
-        text_in = prompt
-
-    if text_in and not st.session_state.procesando:
-        if "last_cmd" not in st.session_state or st.session_state.last_cmd != text_in:
-            st.session_state.procesando = True
-            st.session_state.last_cmd = text_in
-            st.session_state.historial_chat.append({"role": "user", "content": text_in})
-            
-            # IA Response
-            hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
-            res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + hist)
-            ans = res.choices[0].message.content
-            st.session_state.historial_chat.append({"role": "assistant", "content": ans})
-            
-            st.session_state.procesando = False
-            
-            # Scroll Script
-            st.components.v1.html("""
-                <script>
-                const scroll = () => {
-                    const el = window.parent.document.querySelector('div[data-testid="stVBC"]');
-                    if(el) el.scrollTop = el.scrollHeight;
-                }
-                scroll(); setTimeout(scroll, 400);
-                </script>
-            """, height=0)
-            st.rerun()
-
-# --- CSS: ESTILO MINIMALISTA Y PESTAÑAS LARGAS ---
+# --- CSS: PESTAÑAS LARGAS SIN ROMPER EL FONDO ---
 st.markdown("""
     <style>
-    /* Ocultar botones innecesarios */
-    button[kind="primaryFormSubmit"] { display: none !important; }
-    
-    /* Pestañas largas y delgadas (Minimalistas) */
-    div[data-testid="stTabs"] button {
-        flex-grow: 1 !important;
+    /* Ajuste de pestañas para que sean largas pero no descuadren el centro */
+    div[data-testid="stTabs"] {
+        display: flex !important;
+        justify-content: center !important;
         width: 100% !important;
-        min-width: 220px !important;
+    }
+    
+    div[data-testid="stTabs"] button {
+        flex: 1 !important;
+        min-width: 180px !important; /* Pestañas largas pero controladas */
+        max-width: 300px !important;
         background-color: transparent !important;
         border: none !important;
         border-bottom: 2px solid rgba(0, 242, 255, 0.2) !important;
         color: #00f2ff !important;
-        padding: 0px !important;
-        height: 40px !important;
+        transition: 0.3s;
     }
     
     div[data-testid="stTabs"] button[aria-selected="true"] {
@@ -388,15 +367,11 @@ st.markdown("""
         background-color: rgba(0, 242, 255, 0.1) !important;
     }
 
-    /* Compactar espacio superior */
-    .main .block-container { padding-top: 2rem !important; }
-    
-    /* Sticky header */
-    [data-testid="stTabs"] {
-        position: sticky !important;
-        top: 0;
-        z-index: 1000;
-        background-color: #0e1117;
+    /* Mantener el Reactor centrado */
+    .stMarkdown img {
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
     }
     </style>
 """, unsafe_allow_html=True)
