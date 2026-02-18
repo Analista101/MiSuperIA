@@ -129,6 +129,7 @@ if not st.session_state["autenticado"]:
 # --- 4. CONEXIONES IA ---
 client = Groq(api_key=GROQ_API_KEY)
 modelo_texto = "llama-3.3-70b-versatile"
+modelo_vision = "llama-3.2-11b-vision-preview"
 
 # --- 5. FUNCIONES DE SOPORTE ---
 def generar_pdf_reporte(titulo, contenido):
@@ -180,21 +181,61 @@ with tabs[0]:
         js_script = f"<script>var msg = new SpeechSynthesisUtterance({repr(ans)}); msg.lang='es-ES'; msg.onend = function() {{ if({str(st.session_state.modo_fluido).lower()}) {{ setTimeout(function() {{ const b = window.parent.document.querySelector('button[aria-label=\"🎙️\"]'); if(b) b.click(); }}, 1000); }} }}; window.speechSynthesis.speak(msg);</script>"
         st.components.v1.html(js_script, height=0); st.rerun()
 
-# --- TAB 1: ANÁLISIS (FIX PROFUNDIDAD) ---
+# --- TAB 1: ANÁLISIS (REPARADO: VISIÓN Y DOCUMENTOS) ---
 with tabs[1]:
     st.subheader("📊 Análisis de Inteligencia Profundo")
     file = st.file_uploader("Evidencia técnica", type=['pdf','docx','xlsx','txt','png','jpg','jpeg'], key="an_file")
     if file and st.button("🔍 ANALIZAR"):
         with st.spinner("Procesando análisis exhaustivo..."):
-            if file.type in ["image/png", "image/jpeg"]:
-                b64 = base64.b64encode(file.read()).decode('utf-8')
-                # Recalibración para análisis profundo en español
-                resp = client.chat.completions.create(model="llama-3.2-11b-vision-preview", messages=[{"role": "user", "content": [{"type": "text", "text": "Responde en ESPAÑOL. Analiza esta imagen con extremo detalle técnico, identifica cada componente y describe cualquier anomalía."}, {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}]}])
-                ans_an = resp.choices[0].message.content
-            else:
-                ans_an = "Análisis de documento completado bajo protocolos Stark."
-            st.markdown(ans_an)
-            st.download_button("📥 REPORTE PDF", generar_pdf_reporte("REPORTE SCOUT", ans_an), "Reporte_Stark.pdf")
+            try:
+                # CASO 1: IMÁGENES (REPARADO)
+                if file.type in ["image/png", "image/jpeg"]:
+                    # Redimensionar para evitar BadRequestError por tamaño
+                    img = Image.open(file).convert("RGB")
+                    img.thumbnail((800, 800))
+                    buf = io.BytesIO()
+                    img.save(buf, format="JPEG")
+                    b64 = base64.b64encode(buf.getvalue()).decode('utf-8')
+                    
+                    resp = client.chat.completions.create(
+                        model=modelo_vision, 
+                        messages=[{"role": "user", "content": [
+                            {"type": "text", "text": "Actúa como el sistema de visión JARVIS. Analiza esta imagen en ESPAÑOL con máximo detalle técnico e identifica anomalías."}, 
+                            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
+                        ]}]
+                    )
+                    ans_an = resp.choices[0].message.content
+
+                # CASO 2: DOCUMENTOS (AÑADIDO ANÁLISIS REAL)
+                else:
+                    texto_extraido = ""
+                    if file.name.endswith('.pdf'):
+                        reader = PyPDF2.PdfReader(file)
+                        texto_extraido = "\n".join([page.extract_text() for page in reader.pages[:5]]) # Analiza primeras 5 páginas
+                    elif file.name.endswith('.docx'):
+                        doc = docx.Document(file)
+                        texto_extraido = "\n".join([para.text for para in doc.paragraphs])
+                    elif file.name.endswith('.xlsx'):
+                        df = pd.read_excel(file)
+                        texto_extraido = df.head(20).to_string() # Analiza cabecera de datos
+                    else:
+                        texto_extraido = file.read().decode('utf-8')
+
+                    # Enviar texto extraído a la IA para análisis real
+                    resp = client.chat.completions.create(
+                        model=modelo_texto,
+                        messages=[
+                            {"role": "system", "content": "Eres el módulo de análisis de datos de JARVIS. Analiza el siguiente contenido técnico en ESPAÑOL y genera un reporte."},
+                            {"role": "user", "content": f"Contenido del archivo {file.name}:\n\n{texto_extraido}"}
+                        ]
+                    )
+                    ans_an = resp.choices[0].message.content
+
+                st.markdown(ans_an)
+                st.download_button("📥 REPORTE PDF", generar_pdf_reporte("REPORTE SCOUT", ans_an), "Reporte_Stark.pdf")
+            
+            except Exception as e:
+                st.error(f"Fallo en los sensores de análisis: {str(e)}")
 
 # --- TAB 2: COMUNICACIONES ---
 with tabs[2]:
@@ -222,7 +263,6 @@ with tabs[3]:
     estilo = st.selectbox("Filtro:", ["Cinematic Marvel", "Technical Drawing", "Cyberpunk", "Blueprint Tech"])
     if st.button("🚀 SINTETIZAR") and idea:
         with st.spinner("Sintetizando polímeros visuales..."):
-            # Migración a modelo FLUX para evitar el error 410 (Gone)
             url = "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell"
             headers = {"Authorization": f"Bearer {HF_TOKEN}"}
             payload = {"inputs": f"Stark Industries tech, {idea}, {estilo} style, highly detailed"}
