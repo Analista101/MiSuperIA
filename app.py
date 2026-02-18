@@ -164,21 +164,32 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# --- BUSQUE ESTA SECCIÓN EN SU CÓDIGO Y ASEGÚRESE DE QUE SE VEA ASÍ ---
 st.markdown("""
     <style>
-    /* FIJAR BARRA DE COMANDOS AL FONDO */
+    /* FIJAR Y ALARGAR BARRA DE COMANDOS */
     div[data-testid="stChatInput"] {
         position: fixed;
-        bottom: 20px;
+        bottom: 30px;
+        left: 10%; /* Centra la barra en pantallas anchas */
+        width: 80% !important; /* Cuadro mucho más largo */
         z-index: 1000;
-        padding-bottom: 10px;
-        background: transparent !important;
+        background: rgba(0, 0, 0, 0.7) !important;
+        border-radius: 15px;
+        border: 1px solid #00f2ff;
+        box-shadow: 0 0 20px rgba(0, 242, 255, 0.3);
     }
 
-    /* CREAR ESPACIO PARA QUE EL CHAT NO SE SOLAPE CON LA BARRA */
+    /* POSICIONAMIENTO DEL MICRÓFONO FLOTANTE */
+    .stMicRecorder {
+        position: fixed;
+        bottom: 35px;
+        right: 12%; /* Lo coloca justo al final de la barra de texto */
+        z-index: 1001;
+    }
+
+    /* AJUSTE DE MARGEN PARA EL CONTENIDO */
     .main .block-container {
-        padding-bottom: 150px !important;
+        padding-bottom: 180px !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -268,7 +279,7 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: COMANDO CENTRAL (PROYECCIÓN + VOZ ANTI-ECO) ---
+# --- TAB 0: COMANDO CENTRAL (HUD EXPANDIDO + VOZ ANTI-ECO) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: st.session_state.historial_chat = []
     
@@ -281,9 +292,16 @@ with tabs[0]:
             if m.get("type") == "VIDEO_SIGNAL":
                 st.video(m["video_url"])
 
-    col_mic, col_chat = st.columns([1, 12])
-    with col_mic: audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v1")
-    with col_chat: prompt = st.chat_input("Órdenes, Srta. Diana...")
+    # Interfaz de Entrada: El micrófono ahora se posiciona vía CSS flotante
+    audio_data = mic_recorder(
+        start_prompt="🎙️", 
+        stop_prompt="🛑", 
+        key="mic_v2",
+        use_container_width=False
+    )
+    
+    # El cuadro de texto ahora es el elemento principal
+    prompt = st.chat_input("Órdenes, Srta. Diana...")
 
     text_in = None
     if audio_data and 'bytes' in audio_data:
@@ -307,8 +325,7 @@ with tabs[0]:
         else:
             url_final = extraer_url_video(text_in)
 
-    # 3. Generación de respuesta de JARVIS
-        # PROTOCOLO DE LIMPIEZA: Solo enviamos 'role' y 'content' a Groq
+        # 3. Generación de respuesta de JARVIS
         historial_limpio = [
             {"role": m["role"], "content": m["content"]} 
             for m in st.session_state.historial_chat[-6:]
@@ -328,12 +345,19 @@ with tabs[0]:
         
         st.session_state.historial_chat.append(msg_data)
         
-        # 5. Protocolo de Voz Anti-Eco (Ejecución única antes del Rerun)
+        # 5. Protocolo de Voz Anti-Eco y Anclaje Visual
         msg_id = f"speech_{len(st.session_state.historial_chat)}"
         js_voice = f"""
             <script>
             (function() {{
                 if (window.last_msg_id === "{msg_id}") return;
+
+                // Protocolo de Anclaje: Scroll suave al fondo para mantener el HUD a la vista
+                window.parent.document.querySelector('.main').scrollTo({{
+                    top: window.parent.document.querySelector('.main').scrollHeight,
+                    behavior: 'smooth'
+                }});
+
                 window.speechSynthesis.cancel();
                 var msg = new SpeechSynthesisUtterance({repr(ans)});
                 msg.lang = 'es-ES';
@@ -353,7 +377,6 @@ with tabs[0]:
         """
         st.components.v1.html(js_voice, height=0)
         st.rerun()
-
 # --- TAB 1: ANÁLISIS (FIX SCOUT VISION) ---
 with tabs[1]:
     st.subheader("📊 Análisis Scout v4")
