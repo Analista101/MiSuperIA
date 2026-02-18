@@ -293,12 +293,11 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: COMANDO CENTRAL (HUD UNIFICADO + ANTI-ECO + AUTO-SCROLL) ---
+# --- TAB 0: COMANDO CENTRAL (DISEÑO DE COLUMNAS INTEGRADAS) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
     
-    # Interruptor de modo manos libres
     st.session_state.modo_fluido = st.toggle("🎙️ MODO MANOS LIBRES", value=st.session_state.get('modo_fluido', False))
     
     # 1. Visualización del Historial
@@ -308,69 +307,55 @@ with tabs[0]:
             if m.get("type") == "VIDEO_SIGNAL":
                 st.video(m["video_url"])
 
-    # 2. Zona de Entrada Unificada (Micro y Texto)
-    # El CSS posicionará este micro sobre el lado izquierdo de la barra
-    audio_data = mic_recorder(
-        start_prompt="🎙️", 
-        stop_prompt="🛑", 
-        key="mic_v_final_stark",
-        use_container_width=False
-    )
+    # --- NUEVA ZONA DE COMANDO (Failsafe) ---
+    # Creamos una fila dedicada justo encima del input nativo
+    # Esto asegura que el micro SIEMPRE se vea, pegado a la barra
+    c1, c2 = st.columns([1, 10])
     
-    prompt = st.chat_input("Órdenes, Srta. Diana...")
+    with c1:
+        audio_data = mic_recorder(
+            start_prompt="🎙️", 
+            stop_prompt="🛑", 
+            key="mic_v5_final",
+            use_container_width=True
+        )
+    
+    with c2:
+        prompt = st.chat_input("Escriba o use el micro a la izquierda...")
 
     # 3. Lógica de Procesamiento de Entrada
     text_in = None
-    
-    # Failsafe para audio (mínimo 5000 bytes para evitar errores de Groq)
     if audio_data and isinstance(audio_data, dict) and audio_data.get('bytes'):
         if len(audio_data['bytes']) > 5000:
             try:
-                with st.spinner("JARVIS: Transcribiendo frecuencia de voz..."):
+                with st.spinner("JARVIS: Procesando audio..."):
                     text_in = client.audio.transcriptions.create(
                         file=("v.wav", audio_data['bytes']), 
                         model="whisper-large-v3"
                     ).text
             except Exception as e:
                 st.error(f"Error de audio: {e}")
-        else:
-            st.warning("Audio demasiado corto para procesar.")
-
     elif prompt: 
         text_in = prompt
 
-    # 4. Generación de Respuesta y Acciones
+    # 4. Generación de Respuesta
     if text_in:
-        # Registro del usuario
         st.session_state.historial_chat.append({"role": "user", "content": text_in})
         
-        # Análisis de Intención de Video
+        # Análisis de Intención
         url_final = None
         try:
-            prompt_intencion = f"Analiza si el usuario quiere ver un video. Si es así, responde únicamente 'BUSCAR: [nombre del video]'. Si no, responde 'NORMAL'. Usuario dice: {text_in}"
-            check = client.chat.completions.create(model=modelo_texto, messages=[{"role": "user", "content": prompt_intencion}])
-            intencion = check.choices[0].message.content
+            p_int = f"Analiza si el usuario quiere ver un video. Si es así, responde 'BUSCAR: [video]'. Si no, 'NORMAL'. Usuario: {text_in}"
+            check = client.chat.completions.create(model=modelo_texto, messages=[{"role": "user", "content": p_int}])
+            if "BUSCAR:" in check.choices[0].message.content:
+                url_final = buscar_video_youtube(check.choices[0].message.content.split("BUSCAR:")[1].strip())
+        except: pass
 
-            if "BUSCAR:" in intencion:
-                termino = intencion.split("BUSCAR:")[1].strip()
-                with st.spinner(f"JARVIS: Localizando video: {termino}..."):
-                    url_final = buscar_video_youtube(termino)
-        except:
-            pass # Failsafe silencioso
-
-        # Generación de respuesta de JARVIS
-        historial_limpio = [
-            {"role": m["role"], "content": m["content"]} 
-            for m in st.session_state.historial_chat[-6:]
-        ]
-
-        res = client.chat.completions.create(
-            model=modelo_texto, 
-            messages=[{"role": "system", "content": PERSONALIDAD}] + historial_limpio
-        )
+        # Respuesta de JARVIS
+        hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-6:]]
+        res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + hist)
         ans = res.choices[0].message.content
         
-        # Empaquetado de Datos
         msg_data = {"role": "assistant", "content": ans}
         if url_final:
             msg_data["type"] = "VIDEO_SIGNAL"
@@ -378,29 +363,18 @@ with tabs[0]:
         
         st.session_state.historial_chat.append(msg_data)
         
-        # 5. Protocolo de Voz Anti-Eco y Auto-Scroll
+        # 5. Voz y Scroll (Filtro Anti-Eco)
         import hashlib
         msg_hash = hashlib.md5(ans.encode()).hexdigest()
-        
         js_voice = f"""
             <script>
             (function() {{
-                // Bloqueo de Eco
                 if (window.last_speech_hash === "{msg_hash}") return;
-
-                // Auto-Scroll al fondo
-                const main = window.parent.document.querySelector('.main');
-                if (main) {{ main.scrollTo({{top: main.scrollHeight, behavior: 'smooth'}}); }}
-
+                window.parent.document.querySelector('.main').scrollTo({{top: 99999, behavior: 'smooth'}});
                 window.speechSynthesis.cancel();
                 var msg = new SpeechSynthesisUtterance({repr(ans)});
                 msg.lang = 'es-ES';
-                msg.pitch = 0.9;
-                
-                msg.onstart = function() {{ 
-                    window.last_speech_hash = "{msg_hash}"; 
-                }};
-
+                msg.onstart = function() {{ window.last_speech_hash = "{msg_hash}"; }};
                 msg.onend = function() {{
                     if({str(st.session_state.modo_fluido).lower()}) {{
                         setTimeout(() => {{
