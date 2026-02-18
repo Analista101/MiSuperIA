@@ -184,6 +184,66 @@ with tabs[1]:
             except Exception as e:
                 st.error(f"Fallo en los sensores: {str(e)}")
 
+# --- TAB 2: COMUNICACIONES (RESTAURADO Y OPERATIVO) ---
+with tabs[2]:
+    st.subheader("✉️ Despacho Stark - Protocolo de Enlace")
+    
+    # Contenedor de interfaz de despacho
+    with st.container():
+        col1, col2 = st.columns(2)
+        with col1:
+            destinatario = st.text_input("📩 Destinatario:", value=GMAIL_USER, help="Dirección de correo de destino")
+            asunto = st.text_input("📌 Asunto:", value="INFORME DE SITUACIÓN - STARK INDUSTRIES")
+        
+        with col2:
+            st.markdown("<br>", unsafe_allow_html=True) # Espaciado visual
+            prioridad = st.select_slider("Nivel de Prioridad:", options=["Baja", "Normal", "Urgente", "Cifra Roja"], value="Normal")
+            
+        cuerpo_mensaje = st.text_area("📝 Mensaje del Sistema:", height=200, placeholder="Escriba el informe aquí, señorita Diana...")
+        
+        # Sistema de Adjuntos (Solicitado)
+        archivo_adjunto = st.file_uploader("📎 Cargar Archivos para Encriptación:", type=['pdf', 'png', 'jpg', 'jpeg', 'docx', 'xlsx'], key="mail_adj_v2")
+        
+        st.markdown("---")
+        
+        if st.button("🚀 TRANSMITIR MENSAJE"):
+            if not cuerpo_mensaje:
+                st.warning("⚠️ El mensaje está vacío. ¿Desea enviar una transmisión en blanco?")
+            else:
+                with st.spinner("Estableciendo conexión segura con el satélite..."):
+                    try:
+                        # Configuración del servidor
+                        server = smtplib.SMTP('smtp.gmail.com', 587)
+                        server.starttls()
+                        server.login(GMAIL_USER, GMAIL_PASS)
+                        
+                        # Creación del objeto de mensaje
+                        msg = MIMEMultipart()
+                        msg['From'] = GMAIL_USER
+                        msg['To'] = destinatario
+                        msg['Subject'] = f"[{prioridad}] {asunto}"
+                        
+                        msg.attach(MIMEText(cuerpo_mensaje, 'plain'))
+                        
+                        # Procesamiento de adjuntos si existen
+                        if archivo_adjunto:
+                            part = MIMEBase('application', 'octet-stream')
+                            part.set_payload(archivo_adjunto.read())
+                            encoders.encode_base64(part)
+                            part.add_header('Content-Disposition', f'attachment; filename={archivo_adjunto.name}')
+                            msg.attach(part)
+                        
+                        # Envío
+                        server.send_message(msg)
+                        server.quit()
+                        
+                        st.success("✅ Transmisión completada con éxito. El mensaje ha sido enviado.")
+                        st.balloons()
+                        
+                    except Exception as e:
+                        st.error(f"❌ Error en el enlace: {str(e)}")
+                        st.info("Sugerencia: Verifique que la 'Contraseña de Aplicación' de Google esté activa en los secretos.")
+
 # --- TAB 3: LABORATORIO (FLUX STABLE) ---
 with tabs[3]:
     st.subheader("🎨 Prototipado Mark 85")
