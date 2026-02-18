@@ -166,41 +166,45 @@ st.markdown("""
 
 st.markdown("""
     <style>
-    /* BARRA DE COMANDOS STARK */
+    /* AJUSTE DE LA BARRA DE COMANDOS CENTRAL */
     div[data-testid="stChatInput"] {
         position: fixed;
         bottom: 30px;
         left: 330px !important; 
         width: calc(90% - 350px) !important;
-        z-index: 999; /* Un nivel por debajo del micro */
+        z-index: 1000;
         background: rgba(1, 4, 9, 0.9) !important;
         border-radius: 15px;
         border: 1px solid #00f2ff;
+        padding-right: 50px; /* Espacio para que el texto no tape al micro */
     }
 
-    /* FORZAR VISIBILIDAD DEL MICRÓFONO */
+    /* POSICIONAMIENTO DEL MICRÓFONO DENTRO DE LA BARRA */
     .stMicRecorder {
         position: fixed;
         bottom: 38px;
-        /* Se posiciona dinámicamente al final de la barra */
-        left: calc(90% - 70px) !important; 
-        z-index: 9999 !important; /* Prioridad máxima */
+        /* Se alinea al final de la barra de texto */
+        left: calc(90% - 85px) !important; 
+        z-index: 2000 !important; /* Prioridad máxima sobre el input */
     }
 
-    /* ESTILO DEL BOTÓN DE MICRO */
+    /* ESTILO STARK PARA EL BOTÓN DE MICRO */
     .stMicRecorder button {
-        background: #00f2ff !important; /* Color cian para que lo vea claramente ahora */
-        border-radius: 50% !important;
+        background: transparent !important;
         border: none !important;
-        color: black !important;
-        width: 40px !important;
-        height: 40px !important;
-        transition: transform 0.3s;
+        box-shadow: none !important;
+        color: #00f2ff !important;
+        font-size: 22px !important;
     }
     
     .stMicRecorder button:hover {
-        transform: scale(1.1);
-        box-shadow: 0 0 15px #00f2ff;
+        color: #ff0000 !important; /* Brillo rojo al pasar el cursor */
+        text-shadow: 0 0 10px #ff0000;
+    }
+
+    /* CORRECCIÓN DE MARGENES DEL HUD */
+    .main .block-container {
+        padding-bottom: 180px !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -290,77 +294,70 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: COMANDO CENTRAL (PROTOCOLO ANTI-ECO REFORZADO) ---
+# --- TAB 0: COMANDO CENTRAL (INTERFAZ UNIFICADA) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
     
     st.session_state.modo_fluido = st.toggle("🎙️ MODO MANOS LIBRES", value=st.session_state.get('modo_fluido', False))
     
-    # 1. Visualización del Historial
+    # Visualización del Historial
     for m in st.session_state.historial_chat:
         with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
             st.write(m["content"])
             if m.get("type") == "VIDEO_SIGNAL":
                 st.video(m["video_url"])
 
-    # 2. Interfaz de Entrada
-    with st.container():
-        audio_data = mic_recorder(
-            start_prompt="🎙️", 
-            stop_prompt="🛑", 
-            key="mic_v3_antieco", 
-            use_container_width=False
-        )
+    # --- ZONA DE COMANDO UNIFICADA ---
+    # El micrófono se declara primero para que el CSS lo posicione sobre la barra
+    audio_data = mic_recorder(
+        start_prompt="🎙️", 
+        stop_prompt="🛑", 
+        key="mic_unified_v1",
+        use_container_width=False
+    )
     
+    # La barra de texto servirá de base visual
     prompt = st.chat_input("Órdenes, Srta. Diana...")
 
-    # 3. Procesamiento de Entrada
+    # Procesamiento de Entrada
     text_in = None
     if audio_data and isinstance(audio_data, dict) and audio_data.get('bytes'):
-        if len(audio_data['bytes']) > 5000: 
+        if len(audio_data['bytes']) > 5000:
             try:
-                with st.spinner("JARVIS: Procesando frecuencia de voz..."):
+                with st.spinner("JARVIS: Transcribiendo..."):
                     text_in = client.audio.transcriptions.create(
                         file=("v.wav", audio_data['bytes']), 
                         model="whisper-large-v3"
                     ).text
             except Exception as e:
-                st.error(f"Error de audio: {e}")
-
+                st.error(f"Error: {e}")
     elif prompt: 
         text_in = prompt
 
     if text_in:
         st.session_state.historial_chat.append({"role": "user", "content": text_in})
         
-        # Generación de respuesta
+        # Generación de Respuesta JARVIS
         historial_limpio = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-6:]]
         res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + historial_limpio)
         ans = res.choices[0].message.content
-        
         st.session_state.historial_chat.append({"role": "assistant", "content": ans})
         
-        # 4. JavaScript con Filtro de Memoria (Elimina el Eco)
-        # Usamos un ID único basado en el contenido para que no se repita
+        # Protocolo Anti-Eco y Anclaje
         import hashlib
         msg_hash = hashlib.md5(ans.encode()).hexdigest()
         
         js_voice = f"""
             <script>
             (function() {{
-                // Si este mensaje ya se reprodujo, abortamos la misión
                 if (window.last_speech_hash === "{msg_hash}") return;
-                
+                const main = window.parent.document.querySelector('.main');
+                if (main) {{ main.scrollTo({{top: main.scrollHeight, behavior: 'smooth'}}); }}
                 window.speechSynthesis.cancel();
                 var msg = new SpeechSynthesisUtterance({repr(ans)});
                 msg.lang = 'es-ES';
-                msg.pitch = 0.9;
-                
-                msg.onstart = function() {{ 
-                    window.last_speech_hash = "{msg_hash}"; 
-                }};
-
+                msg.onstart = function() {{ window.last_speech_hash = "{msg_hash}"; }};
                 msg.onend = function() {{
                     if({str(st.session_state.modo_fluido).lower()}) {{
                         setTimeout(() => {{
@@ -375,7 +372,7 @@ with tabs[0]:
         """
         st.components.v1.html(js_voice, height=0)
         st.rerun()
-
+        
 # --- TAB 1: ANÁLISIS (FIX SCOUT VISION) ---
 with tabs[1]:
     st.subheader("📊 Análisis Scout v4")
