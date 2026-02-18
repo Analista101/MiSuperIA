@@ -290,7 +290,7 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: COMANDO CENTRAL (HUD CON FILTRO DE DURACIÓN) ---
+# --- TAB 0: COMANDO CENTRAL (PROTOCOLO ANTI-ECO REFORZADO) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
@@ -309,18 +309,15 @@ with tabs[0]:
         audio_data = mic_recorder(
             start_prompt="🎙️", 
             stop_prompt="🛑", 
-            key="mic_v2_final", 
+            key="mic_v3_antieco", 
             use_container_width=False
         )
     
     prompt = st.chat_input("Órdenes, Srta. Diana...")
 
-    # 3. Procesamiento de Entrada con Failsafe de Duración
+    # 3. Procesamiento de Entrada
     text_in = None
-    
     if audio_data and isinstance(audio_data, dict) and audio_data.get('bytes'):
-        # PROTOCOLO DE SEGURIDAD: Solo procesar si el audio supera los 5000 bytes 
-        # (Aprox. 0.1s de audio, superando el mínimo de 0.01s exigido por Groq)
         if len(audio_data['bytes']) > 5000: 
             try:
                 with st.spinner("JARVIS: Procesando frecuencia de voz..."):
@@ -329,59 +326,41 @@ with tabs[0]:
                         model="whisper-large-v3"
                     ).text
             except Exception as e:
-                # Si Groq vuelve a dar error de duración, lo capturamos sin romper la app
-                if "too short" in str(e):
-                    st.warning("JARVIS: Audio demasiado breve. Por favor, hable un poco más.")
-                else:
-                    st.error(f"Error de conexión con Groq Audio: {e}")
-        else:
-            # Silenciamos el aviso si es un clic accidental muy rápido
-            pass
+                st.error(f"Error de audio: {e}")
 
     elif prompt: 
         text_in = prompt
 
     if text_in:
-        # Registro del usuario
         st.session_state.historial_chat.append({"role": "user", "content": text_in})
         
-        # Análisis de Intención
-        url_final = None
-        try:
-            prompt_intencion = f"Analiza si el usuario quiere ver un video. Si es así, responde únicamente 'BUSCAR: [nombre del video]'. Si no, responde 'NORMAL'. Usuario dice: {text_in}"
-            check = client.chat.completions.create(model=modelo_texto, messages=[{"role": "user", "content": prompt_intencion}])
-            intencion = check.choices[0].message.content
-
-            if "BUSCAR:" in intencion:
-                termino = intencion.split("BUSCAR:")[1].strip()
-                url_final = buscar_video_youtube(termino)
-        except:
-            pass
-
         # Generación de respuesta
         historial_limpio = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-6:]]
         res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + historial_limpio)
         ans = res.choices[0].message.content
         
-        msg_data = {"role": "assistant", "content": ans}
-        if url_final:
-            msg_data["type"] = "VIDEO_SIGNAL"
-            msg_data["video_url"] = url_final
+        st.session_state.historial_chat.append({"role": "assistant", "content": ans})
         
-        st.session_state.historial_chat.append(msg_data)
+        # 4. JavaScript con Filtro de Memoria (Elimina el Eco)
+        # Usamos un ID único basado en el contenido para que no se repita
+        import hashlib
+        msg_hash = hashlib.md5(ans.encode()).hexdigest()
         
-        # 4. Voz y Scroll
-        msg_id = f"speech_{len(st.session_state.historial_chat)}"
         js_voice = f"""
             <script>
             (function() {{
-                if (window.last_msg_id === "{msg_id}") return;
-                const main = window.parent.document.querySelector('.main');
-                if (main) {{ main.scrollTo({{top: main.scrollHeight, behavior: 'smooth'}}); }}
+                // Si este mensaje ya se reprodujo, abortamos la misión
+                if (window.last_speech_hash === "{msg_hash}") return;
+                
                 window.speechSynthesis.cancel();
                 var msg = new SpeechSynthesisUtterance({repr(ans)});
                 msg.lang = 'es-ES';
-                msg.onstart = function() {{ window.last_msg_id = "{msg_id}"; }};
+                msg.pitch = 0.9;
+                
+                msg.onstart = function() {{ 
+                    window.last_speech_hash = "{msg_hash}"; 
+                }};
+
                 msg.onend = function() {{
                     if({str(st.session_state.modo_fluido).lower()}) {{
                         setTimeout(() => {{
