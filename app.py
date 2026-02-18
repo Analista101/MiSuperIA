@@ -293,16 +293,15 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: CONSOLA JARVIS (INTERFAZ DE NAVEGACIÓN FIJA) ---
+# --- TAB 0: CONSOLA JARVIS (AUTO-SCROLL ACTIVO) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
 
-    # --- 1. PANEL DE CONTROL FIJO (ESTÁTICO EN EL HUD) ---
-    # Este bloque no se mueve, es el marco de la consola
+    # --- 1. CABECERA FIJA (REACTOR Y MANDOS) ---
     st.markdown("### 🖥️ CENTRO DE MANDO STARK")
     
-    col_clean, col_space, col_mode = st.columns([1.5, 2, 1.5])
+    col_clean, col_mode = st.columns([1, 1])
     with col_clean:
         if st.button("🗑️ PURGAR MEMORIA", use_container_width=True):
             st.session_state.historial_chat = []
@@ -310,24 +309,18 @@ with tabs[0]:
     with col_mode:
         st.session_state.modo_fluido = st.toggle("🎙️ MANOS LIBRES", value=st.session_state.get('modo_fluido', False))
 
-    # Fila de comandos: Micro y Texto integrados arriba
+    # Input de Comandos
     c_mic, c_input = st.columns([1, 8])
     with c_mic:
-        audio_data = mic_recorder(
-            start_prompt="🎙️", stop_prompt="🛑", 
-            key="mic_superior_v26", use_container_width=True
-        )
+        audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v27", use_container_width=True)
     with c_input:
-        prompt = st.text_input(
-            label="cmd", placeholder="Ingrese comando de voz o texto...", 
-            label_visibility="collapsed", key="input_superior_v26"
-        )
+        prompt = st.text_input(label="cmd", placeholder="Escriba aquí...", label_visibility="collapsed", key="input_v27")
 
     st.markdown("---")
 
-    # --- 2. ÁREA DE DATOS DINÁMICA (ÚNICO ELEMENTO CON SCROLL) ---
-    # Definimos una altura fija para el historial para que el resto del HUD no se mueva
-    chat_box = st.container(height=550, border=False)
+    # --- 2. CONTENEDOR DE CHAT CON ANCLAJE JAVASCRIPT ---
+    # Creamos un contenedor con scroll interno
+    chat_box = st.container(height=500, border=False)
     
     with chat_box:
         for m in st.session_state.historial_chat:
@@ -335,14 +328,17 @@ with tabs[0]:
                 st.write(m["content"])
                 if m.get("type") == "VIDEO_SIGNAL":
                     st.video(m["video_url"])
+        
+        # Este elemento vacío sirve como "faro" para el scroll
+        st.markdown('<div id="ultimo-mensaje"></div>', unsafe_allow_html=True)
 
-    # --- 3. LÓGICA DE PROCESAMIENTO Y AUTO-SCROLL ---
+    # --- 3. LÓGICA DE PROCESAMIENTO ---
     text_in = None
     if audio_data and isinstance(audio_data, dict) and audio_data.get('bytes'):
         if len(audio_data['bytes']) > 5000:
             try:
                 text_in = client.audio.transcriptions.create(file=("v.wav", audio_data['bytes']), model="whisper-large-v3").text
-            except Exception as e: st.error(f"Error de sensores: {e}")
+            except Exception as e: st.error(f"Error: {e}")
     elif prompt: 
         text_in = prompt
 
@@ -351,42 +347,29 @@ with tabs[0]:
             st.session_state.last_cmd = text_in
             st.session_state.historial_chat.append({"role": "user", "content": text_in})
             
-            # Generación de respuesta JARVIS
+            # Respuesta JARVIS
             hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-6:]]
             res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + hist)
             ans = res.choices[0].message.content
             st.session_state.historial_chat.append({"role": "assistant", "content": ans})
             
-            # Auto-Scroll mediante JavaScript al final del contenedor
-            st.components.v1.html("""
+            # --- PROTOCOLO DE AUTO-SCROLL FORZADO ---
+            # Este script busca el contenedor de chat y lo baja al máximo después de la respuesta
+            js_scroll_final = """
                 <script>
-                var chatDiv = window.parent.document.querySelector('div[data-testid="stVBC"]');
-                if (chatDiv) { chatDiv.scrollTop = chatDiv.scrollHeight; }
+                function scrollChat() {
+                    const chatContainers = window.parent.document.querySelectorAll('div[data-testid="stVBC"]');
+                    chatContainers.forEach(container => {
+                        container.scrollTop = container.scrollHeight;
+                    });
+                }
+                // Ejecutar inmediatamente y tras un breve retraso para asegurar el renderizado
+                scrollChat();
+                setTimeout(scrollChat, 300);
                 </script>
-            """, height=0)
+            """
+            st.components.v1.html(js_scroll_final, height=0)
             st.rerun()
-
-# --- CSS DE AJUSTE PARA FIJAR CABECERA Y PESTAÑAS ---
-st.markdown("""
-    <style>
-    /* Fijamos el bloque de pestañas y el reactor para que no se desplacen */
-    [data-testid="stTabs"] {
-        position: sticky !important;
-        top: 0;
-        z-index: 999;
-        background-color: rgba(1, 4, 9, 1);
-    }
-    
-    /* Ocultamos la barra de chat inferior nativa permanentemente */
-    div[data-testid="stChatInput"] { display: none !important; }
-    
-    /* Ajustamos el padding de la página para que la cabecera no se corte */
-    .main .block-container {
-        padding-top: 1rem !important;
-        padding-bottom: 1rem !important;
-    }
-    </style>
-""", unsafe_allow_html=True)
 
 # --- TAB 1: ANÁLISIS (FIX SCOUT VISION) ---
 with tabs[1]:
