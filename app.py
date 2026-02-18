@@ -293,37 +293,40 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: PROYECTO JARVIS (SIMETRÍA TOTAL V46) ---
+# --- TAB 0: PROYECTO JARVIS (SIMETRÍA INDUSTRIAL V47) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
 
-    # --- 1. CABECERA DE BLOQUES SIMÉTRICOS ---
-    # Dividimos el espacio en 4: tres cuadros iguales para controles y uno largo para órdenes
-    c1, c2, c3, c4 = st.columns([1, 1, 1, 7])
+    # --- 1. CABECERA DE BLOQUES ESTÁTICOS ---
+    # Creamos 4 columnas con proporciones fijas. 
+    # Las 3 primeras son los "cuadros simétricos" que usted solicitó.
+    c1, c2, c3, c4 = st.columns([1, 1, 1, 6.5])
 
     with c1:
-        # BLOQUE 1: PURGA
-        if st.button("🗑️", key="purgar_v46", use_container_width=True):
+        # BLOQUE SIMÉTRICO 1: PURGA
+        st.markdown('<div class="stark-block-container">', unsafe_allow_html=True)
+        if st.button("🗑️", key="purgar_v47", use_container_width=True):
             st.session_state.historial_chat = []
             st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
 
     with c2:
-        # BLOQUE 2: MANOS LIBRES (Contenedor visual simétrico)
-        st.markdown('<div class="stark-block">', unsafe_allow_html=True)
-        st.session_state.modo_fluido = st.toggle("ML", value=st.session_state.get('modo_fluido', False), key="ml_v46")
+        # BLOQUE SIMÉTRICO 2: MANOS LIBRES
+        st.markdown('<div class="stark-block-container">', unsafe_allow_html=True)
+        st.session_state.modo_fluido = st.toggle("ML", value=st.session_state.get('modo_fluido', False), key="ml_v47")
         st.markdown('</div>', unsafe_allow_html=True)
 
     with c3:
-        # BLOQUE 3: MICRÓFONO (Ajustado al ancho del cuadro)
-        st.markdown('<div class="stark-mic-wrapper">', unsafe_allow_html=True)
-        audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v46")
+        # BLOQUE SIMÉTRICO 3: MICRÓFONO
+        st.markdown('<div class="stark-block-container mic-fix">', unsafe_allow_html=True)
+        audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v47")
         st.markdown('</div>', unsafe_allow_html=True)
 
     with c4:
-        # BLOQUE 4: COMANDOS (Protocolo Enter + Limpieza)
+        # CUADRO DE COMANDOS (Protocolo Stark: Enter -> Enviar -> Limpiar)
         def protocolo_stark_final():
-            query = st.session_state.input_v46
+            query = st.session_state.input_v47
             if query:
                 st.session_state.historial_chat.append({"role": "user", "content": query})
                 hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
@@ -331,70 +334,71 @@ with tabs[0]:
                     res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + hist)
                     st.session_state.historial_chat.append({"role": "assistant", "content": res.choices[0].message.content})
                 except: pass
-                st.session_state.input_v46 = "" # Auto-limpieza
+                st.session_state.input_v47 = "" # Limpieza automática inmediata
 
-        st.text_input("cmd", placeholder="Órdenes, Srta. Diana...", label_visibility="collapsed", key="input_v46", on_change=protocolo_stark_final)
+        st.text_input("cmd", placeholder="Órdenes, Srta. Diana...", label_visibility="collapsed", key="input_v47", on_change=protocolo_stark_final)
 
     st.markdown("---")
 
-    # --- 2. REGISTRO DE DATOS (AUTO-SCROLL) ---
+    # --- 2. CONTENEDOR DE CHAT (AUTO-SCROLL) ---
     chat_box = st.container(height=540, border=False)
     with chat_box:
         for m in st.session_state.historial_chat:
             with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
                 st.write(m["content"])
         
-        # Script de desplazamiento automático
+        # Inyección de script para mantener la vista en el último mensaje
         st.components.v1.html("""
             <script>
             function JARVIS_Scroll() {
                 const el = window.parent.document.querySelector('div[data-testid="stVBC"]');
                 if (el) { el.scrollTop = el.scrollHeight; }
             }
-            JARVIS_Scroll(); setTimeout(JARVIS_Scroll, 400);
+            JARVIS_Scroll(); setTimeout(JARVIS_Scroll, 500);
             </script>
         """, height=0)
 
-# --- CSS: CALIBRACIÓN DE SIMETRÍA INDUSTRIAL ---
+# --- CSS: BLINDAJE DE SIMETRÍA Y BLOQUEO DE MOVIMIENTO ---
 st.markdown("""
     <style>
-    /* 1. FORZAR CUADROS SIMÉTRICOS (Estilo Pestañas) */
-    button[key="purgar_v46"], .st-emotion-cache-12w0qpk, .stark-mic-wrapper button {
-        height: 45px !important;
-        border: 1px solid rgba(0, 242, 255, 0.3) !important;
-        background: rgba(0, 242, 255, 0.05) !important;
-        border-radius: 5px !important;
+    /* 1. CREAR LOS 3 CUADROS SIMÉTRICOS (Estilo Pestañas) */
+    [data-testid="column"]:nth-child(1) button, 
+    [data-testid="column"]:nth-child(2) .stToggle, 
+    [data-testid="column"]:nth-child(3) button {
+        height: 48px !important;
+        border: 1px solid rgba(0, 242, 255, 0.4) !important;
+        background: rgba(0, 242, 255, 0.08) !important;
+        border-radius: 8px !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
+        width: 100% !important;
     }
 
-    /* 2. ALINEACIÓN VERTICAL DE LOS 4 BLOQUES */
+    /* 2. ELIMINAR EL "ENCIMADO" (Padding y Margen cero) */
     div[data-testid="column"] {
+        padding: 0 5px !important;
         display: flex !important;
         align-items: center !important;
-        justify-content: center !important;
     }
 
-    /* 3. AJUSTE ESPECÍFICO PARA EL TOGGLE ML */
-    div[data-testid="stMarkdownContainer"] .stark-block {
-        display: flex;
-        justify-content: center;
-        width: 100%;
+    /* 3. FIJAR ALTURA DEL CUADRO DE ÓRDENES */
+    .stTextInput input {
+        height: 48px !important;
+        border: 1px solid rgba(0, 242, 255, 0.4) !important;
+        background-color: rgba(0, 0, 0, 0.3) !important;
     }
 
-    /* 4. PESTAÑAS: Largas y estables entre los bordes */
+    /* 4. AJUSTE ESPECÍFICO PARA EL MICRÓFONO (Evita que flote) */
+    .mic-fix button {
+        padding: 0 !important;
+        border: 1px solid rgba(0, 242, 255, 0.4) !important;
+    }
+
+    /* 5. PESTAÑAS: Mantener largas y equilibradas */
     div[data-testid="stTabs"] button {
         flex: 1 !important;
-        min-width: 200px !important;
-        color: #00f2ff !important;
-        border-bottom: 2px solid rgba(0, 242, 255, 0.1) !important;
-    }
-    
-    /* 5. CUADRO DE COMANDOS: Encaje perfecto */
-    .stTextInput input {
-        height: 45px !important;
-        border: 1px solid rgba(0, 242, 255, 0.3) !important;
+        min-width: 220px !important;
     }
     </style>
 """, unsafe_allow_html=True)
