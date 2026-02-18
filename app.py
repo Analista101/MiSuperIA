@@ -293,80 +293,66 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: COMANDO CENTRAL (SOLUCIÓN DE POSICIÓN FIJA DEFINITIVA) ---
+# --- TAB 0: COMANDO CENTRAL (HUD FIJO DE ALTA PRIORIDAD) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
     
     st.session_state.modo_fluido = st.toggle("🎙️ MODO MANOS LIBRES", value=st.session_state.get('modo_fluido', False))
     
-    # 1. Visualización del Historial
-    # Creamos un espacio para que el chat no quede debajo de la barra fija
-    container_chat = st.container()
-    with container_chat:
-        for m in st.session_state.historial_chat:
-            with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
-                st.write(m["content"])
-                if m.get("type") == "VIDEO_SIGNAL":
-                    st.video(m["video_url"])
+    # 1. Área del Historial (con scroll)
+    for m in st.session_state.historial_chat:
+        with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
+            st.write(m["content"])
+            if m.get("type") == "VIDEO_SIGNAL":
+                st.video(m["video_url"])
 
-    # 2. LA BARRA UNIFICADA Y FIJA (Protocolo Stark)
-    # Envolvemos todo en un div con una clase personalizada 'stark-input'
-    st.markdown('<div class="stark-input-container">', unsafe_allow_html=True)
-    
-    with st.container():
+    # 2. EL CONTENEDOR MAESTRO (Fijo y Unificado)
+    # Este bloque CSS fuerza a los elementos internos a quedarse en la base
+    st.markdown("""
+        <style>
+        /* Contenedor que agrupa Micro y Texto */
+        [data-testid="stVerticalBlock"] > div:has(div.st-key-zona_entrada_fija) {
+            position: fixed !important;
+            bottom: 30px !important;
+            left: 330px !important; 
+            width: calc(100% - 380px) !important;
+            z-index: 999999 !important;
+            background: rgba(1, 4, 9, 0.95) !important;
+            padding: 15px !important;
+            border-radius: 15px !important;
+            border: 1px solid #00f2ff !important;
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.3) !important;
+        }
+        
+        /* Ajuste de espacio para que el chat no se oculte al final */
+        .main .block-container {
+            padding-bottom: 200px !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    # Declaramos la zona de entrada con una key específica para que el CSS la encuentre
+    with st.container(key="zona_entrada_fija"):
         col_mic, col_text = st.columns([1, 8])
         
         with col_mic:
             audio_data = mic_recorder(
                 start_prompt="🎙️", 
                 stop_prompt="🛑", 
-                key="mic_v11_fixed", 
+                key="mic_v13_fixed", 
                 use_container_width=True
             )
         
         with col_text:
             prompt = st.text_input(
-                label="Comandos",
-                placeholder="Órdenes, Srta. Diana...",
+                label="Entrada",
+                placeholder="Escriba o hable, Srta. Diana...",
                 label_visibility="collapsed",
-                key="input_stark_final"
+                key="input_text_fixed"
             )
-    
-    st.markdown('</div>', unsafe_allow_html=True)
 
-    # 3. CSS DE ANCLAJE (Sección Crítica)
-    st.markdown("""
-        <style>
-        /* Fijamos el contenedor de la barra al fondo */
-        div.stark-input-container {
-            position: fixed;
-            bottom: 30px;
-            left: 330px; /* Alineado con la sidebar */
-            width: calc(90% - 350px);
-            z-index: 1000;
-            background: rgba(1, 4, 9, 0.95);
-            padding: 15px;
-            border-radius: 15px;
-            border: 1px solid #00f2ff;
-            box-shadow: 0 0 20px rgba(0, 242, 255, 0.2);
-        }
-
-        /* Ajuste para que el historial no se solape con la barra fija */
-        .main .block-container {
-            padding-bottom: 150px !important;
-        }
-
-        /* Estética del botón del micro dentro de la columna */
-        .stark-input-container button {
-            background-color: #00f2ff !important;
-            color: black !important;
-            border-radius: 50% !important;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-
-    # 4. Lógica de Procesamiento (Whisper + JARVIS)
+    # 3. Lógica de Procesamiento (Mantiene la inteligencia de JARVIS)
     text_in = None
     if audio_data and isinstance(audio_data, dict) and audio_data.get('bytes'):
         if len(audio_data['bytes']) > 5000:
@@ -377,20 +363,20 @@ with tabs[0]:
                         model="whisper-large-v3"
                     ).text
             except Exception as e:
-                st.error(f"Error de audio: {e}")
+                st.error(f"Fallo en sensor: {e}")
     elif prompt: 
         text_in = prompt
 
     if text_in:
         st.session_state.historial_chat.append({"role": "user", "content": text_in})
         
-        # Generación de respuesta
+        # Respuesta de la IA
         hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-6:]]
         res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + hist)
         ans = res.choices[0].message.content
         st.session_state.historial_chat.append({"role": "assistant", "content": ans})
         
-        # 5. Voz y Scroll
+        # 4. Protocolo de Voz y Auto-Scroll
         import hashlib
         msg_hash = hashlib.md5(ans.encode()).hexdigest()
         js_voice = f"""
@@ -403,14 +389,6 @@ with tabs[0]:
                 var msg = new SpeechSynthesisUtterance({repr(ans)});
                 msg.lang = 'es-ES';
                 msg.onstart = function() {{ window.last_speech_hash = "{msg_hash}"; }};
-                msg.onend = function() {{
-                    if({str(st.session_state.modo_fluido).lower()}) {{
-                        setTimeout(() => {{
-                            const b = window.parent.document.querySelector('button[aria-label="🎙️"]');
-                            if(b) b.click();
-                        }}, 1000);
-                    }}
-                }};
                 window.speechSynthesis.speak(msg);
             }})();
             </script>
