@@ -187,13 +187,18 @@ def generar_pdf_reporte(titulo, contenido):
     c.drawText(text_object); c.showPage(); c.save(); buffer.seek(0)
     return buffer
 
-def extraer_url_video(texto):
-    """Protocolo de interceptación de enlaces de video"""
-    # Si el usuario pega una URL directamente
-    if "youtube.com/watch?v=" in texto or "youtu.be/" in texto:
-        import re
-        enlace = re.search(r'(https?://\S+)', texto)
-        return enlace.group(0) if enlace else None
+def buscar_video_youtube(busqueda):
+    """Protocolo de búsqueda activa en la red de YouTube"""
+    from youtube_search import YoutubeSearch
+    import json
+    try:
+        results = YoutubeSearch(busqueda, max_results=1).to_json()
+        data = json.loads(results)
+        if data['videos']:
+            video_id = data['videos'][0]['id']
+            return f"https://www.youtube.com/watch?v={video_id}"
+    except Exception as e:
+        return None
     return None
 
 # --- 6. SIDEBAR - TELEMETRÍA AVANZADA ---
@@ -241,55 +246,41 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: COMANDO CENTRAL (UPGRADE: REPRODUCTOR MULTIMEDIA) ---
-with tabs[0]:
-    if "historial_chat" not in st.session_state: st.session_state.historial_chat = []
-    if "video_activo" not in st.session_state: st.session_state.video_activo = None
-
-    st.session_state.modo_fluido = st.toggle("🎙️ MODO MANOS LIBRES", value=st.session_state.get('modo_fluido', False))
+# --- TAB 0: COMANDO CENTRAL (PROYECCIÓN HOLOGRÁFICA) ---
+if text_in:
+    # 1. Registrar entrada
+    st.session_state.historial_chat.append({"role": "user", "content": text_in})
     
-    # Renderizado de la conversación
-    for m in st.session_state.historial_chat:
-        with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
-            st.write(m["content"])
-            # Si el mensaje contiene una señal de video, lo proyectamos
-            if "VIDEO_SIGNAL:" in m.get("type", ""):
-                st.video(m["video_url"])
+    # 2. Análisis de Intención (¿Es una búsqueda?)
+    url_final = None
+    prompt_intencion = f"Analiza si el usuario quiere ver un video. Si es así, responde 'BUSCAR: [nombre del video]'. Si no, responde normal. Usuario dice: {text_in}"
+    
+    check_intencion = client.chat.completions.create(model=modelo_texto, messages=[{"role": "user", "content": prompt_intencion}])
+    respuesta_intencion = check_intencion.choices[0].message.content
 
-    col_mic, col_chat = st.columns([1, 12])
-    with col_mic: audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v1")
-    with col_chat: prompt = st.chat_input("Órdenes, Srta. Diana...")
+    if "BUSCAR:" in respuesta_intencion:
+        termino = respuesta_intencion.split("BUSCAR:")[1].strip()
+        with st.spinner(f"JARVIS: Localizando frecuencias para '{termino}'..."):
+            url_final = buscar_video_youtube(termino)
+    else:
+        # Si pega un link directo, lo extraemos como antes
+        url_final = extraer_url_video(text_in)
 
-    text_in = None
-    if audio_data and 'bytes' in audio_data:
-        text_in = client.audio.transcriptions.create(file=("v.wav", audio_data['bytes']), model="whisper-large-v3").text
-    elif prompt: text_in = prompt
-
-    if text_in:
-        # 1. Registrar entrada del usuario
-        st.session_state.historial_chat.append({"role": "user", "content": text_in})
-        
-        # 2. Verificar si es una petición de video
-        url_detectada = extraer_url_video(text_in)
-        
-        # 3. Respuesta de JARVIS
-        res = client.chat.completions.create(
-            model=modelo_texto, 
-            messages=[{"role": "system", "content": PERSONALIDAD + " Si el usuario envía un link de video, confirma que vas a proyectarlo."}] + st.session_state.historial_chat[-6:]
-        )
-        ans = res.choices[0].message.content
-        
-        # Guardar respuesta con metadatos de video si aplica
-        msg_data = {"role": "assistant", "content": ans}
-        if url_detectada:
-            msg_data["type"] = "VIDEO_SIGNAL"
-            msg_data["video_url"] = url_detectada
-            
-        st.session_state.historial_chat.append(msg_data)
-        
-        # Voz y actualización
-        js = f"<script>var m=new SpeechSynthesisUtterance({repr(ans)}); m.lang='es-ES'; window.speechSynthesis.speak(m);</script>"
-        st.components.v1.html(js, height=0); st.rerun()
+    # 3. Respuesta de JARVIS
+    res = client.chat.completions.create(
+        model=modelo_texto, 
+        messages=[{"role": "system", "content": PERSONALIDAD}] + st.session_state.historial_chat[-6:]
+    )
+    ans = res.choices[0].message.content
+    
+    # Empaquetado de respuesta con Proyección de Video
+    msg_data = {"role": "assistant", "content": ans}
+    if url_final:
+        msg_data["type"] = "VIDEO_SIGNAL"
+        msg_data["video_url"] = url_final
+    
+    st.session_state.historial_chat.append(msg_data)
+    st.rerun()
 
 # --- TAB 1: ANÁLISIS (FIX SCOUT VISION) ---
 with tabs[1]:
