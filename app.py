@@ -293,88 +293,128 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: CONSOLA JARVIS (SIMPLIFICACIÓN TOTAL V37) ---
+# --- TAB 0: PROYECTO JARVIS (CENTRO DE MANDO STARK V40) ---
 with tabs[0]:
+    # Inicialización de estados para evitar fugas de datos o errores de renderizado
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
+    if "procesando" not in st.session_state:
+        st.session_state.procesando = False
 
-    # --- 1. CABECERA ULTRA-MINIMALISTA ---
-    # Solo dos columnas: una mínima para el basurero y el resto para órdenes
-    c_accion, c_orden = st.columns([0.5, 9.5])
+    # --- 1. CABECERA DE PRECISIÓN (AISLAMIENTO DE WIDGETS) ---
+    # Columna 1 (0.5): Botón de Purga rígido
+    # Columna 2 (9.5): Cuadro de Órdenes expansivo
+    c_purga, c_orden = st.columns([0.5, 9.5])
     
-    with c_accion:
-        # Botón único de purga con ID para control estricto
-        if st.button("🗑️", key="purgar_final_v37"):
+    with c_purga:
+        # Protocolo de limpieza de registros
+        if st.button("🗑️", key="btn_purgar_v40", help="Eliminar historial de comandos"):
             st.session_state.historial_chat = []
             st.rerun()
             
     with c_orden:
-        def procesar_orden():
-            query = st.session_state.stark_input_v37
-            if query:
-                st.session_state.historial_chat.append({"role": "user", "content": query})
-                # Lógica de respuesta JARVIS
-                hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
-                res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + hist)
-                st.session_state.historial_chat.append({"role": "assistant", "content": res.choices[0].message.content})
-                st.session_state.stark_input_v37 = "" # Limpieza automática inmediata
+        # PROTOCOLO ANTI-ECO Y AUTO-LIMPIEZA
+        def procesar_protocolo_stark():
+            # Extraemos la orden del estado de la sesión
+            orden_actual = st.session_state.input_stark_v40
+            
+            if orden_actual and not st.session_state.procesando:
+                st.session_state.procesando = True
+                
+                # 1. Registrar entrada del usuario
+                st.session_state.historial_chat.append({"role": "user", "content": orden_actual})
+                
+                # 2. Generar respuesta de JARVIS (Contexto de los últimos 5 mensajes)
+                historial_reducido = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
+                
+                try:
+                    response = client.chat.completions.create(
+                        model=modelo_texto, 
+                        messages=[{"role": "system", "content": PERSONALIDAD}] + historial_reducido
+                    )
+                    respuesta_ia = response.choices[0].message.content
+                    st.session_state.historial_chat.append({"role": "assistant", "content": respuesta_ia})
+                except Exception as e:
+                    st.error(f"Error en el enlace de datos: {e}")
+                
+                # 3. AUTO-LIMPIEZA: Resetear el cuadro de texto inmediatamente
+                st.session_state.input_stark_v40 = ""
+                st.session_state.procesando = False
 
-        st.text_input("cmd", placeholder="Órdenes, Srta. Diana...", label_visibility="collapsed", key="stark_input_v37", on_change=procesar_orden)
+        # Cuadro de mando: Envío solo con ENTER
+        st.text_input(
+            "cmd", 
+            placeholder="Esperando órdenes, Srta. Diana...", 
+            label_visibility="collapsed", 
+            key="input_stark_v40", 
+            on_change=procesar_protocolo_stark
+        )
 
     st.markdown("---")
 
-    # --- 2. REGISTRO DE DATOS CON AUTO-SCROLL ---
-    chat_box = st.container(height=550, border=False)
-    with chat_box:
-        for m in st.session_state.historial_chat:
-            with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
-                st.write(m["content"])
+    # --- 2. REGISTRO VISUAL (AUTO-SCROLL ACTIVO) ---
+    # Contenedor sin bordes para mantener la limpieza del HUD
+    chat_container = st.container(height=540, border=False)
+    with chat_container:
+        for mensaje in st.session_state.historial_chat:
+            # Avatar de JARVIS (Cohete/Robot) vs Usuario (Persona)
+            with st.chat_message(mensaje["role"], avatar="🚀" if mensaje["role"] == "assistant" else "👤"): 
+                st.write(mensaje["content"])
         
-        # Script de movimiento automático para mantener el foco en la última línea
+        # SCRIPT DE SEGUIMIENTO (FUERZA EL SCROLL AL FINAL)
         st.components.v1.html("""
             <script>
-            function JARVIS_Scroll() {
-                const el = window.parent.document.querySelector('div[data-testid="stVBC"]');
-                if (el) { el.scrollTop = el.scrollHeight; }
+            function JARVIS_Sync_Scroll() {
+                const chatWindow = window.parent.document.querySelector('div[data-testid="stVBC"]');
+                if (chatWindow) {
+                    chatWindow.scrollTop = chatWindow.scrollHeight;
+                }
             }
-            JARVIS_Scroll(); setTimeout(JARVIS_Scroll, 400);
+            // Ejecución doble para asegurar el desplazamiento tras el renderizado
+            JARVIS_Sync_Scroll();
+            setTimeout(JARVIS_Sync_Scroll, 400);
             </script>
         """, height=0)
 
-# --- CSS: CALIBRACIÓN FINAL DE PESTAÑAS Y BOTONES ---
+# --- CSS: CALIBRACIÓN DE GEOMÉTRICA Y PESTAÑAS ---
 st.markdown("""
     <style>
-    /* 1. BOTÓN BASURERO: Cuadrado, pequeño y alineado */
-    button[key="purgar_final_v37"] {
-        width: 42px !important;
-        height: 42px !important;
-        min-width: 42px !important;
-        max-width: 42px !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        border: 1px solid rgba(0, 242, 255, 0.4) !important;
-        background: rgba(0, 242, 255, 0.05) !important;
-    }
-
-    /* 2. PESTAÑAS: Largas, distribuidas y estables */
+    /* 1. DISEÑO DE PESTAÑAS (STARK INDUSTRIES) */
     div[data-testid="stTabs"] button {
         flex: 1 !important;
-        min-width: 200px !important;
-        background: transparent !important;
+        min-width: 220px !important;
+        background-color: transparent !important;
         border-bottom: 2px solid rgba(0, 242, 255, 0.1) !important;
         color: #00f2ff !important;
+        font-family: 'Share Tech Mono', monospace !important;
+        transition: 0.3s;
     }
-    
     div[data-testid="stTabs"] button[aria-selected="true"] {
         border-bottom: 2px solid #00f2ff !important;
+        background-color: rgba(0, 242, 255, 0.05) !important;
+        box-shadow: inset 0px 0px 10px rgba(0, 242, 255, 0.1) !important;
+    }
+
+    /* 2. BOTÓN DE PURGA: Cuadrado y alineado */
+    button[key="btn_purgar_v40"] {
+        width: 44px !important;
+        height: 44px !important;
+        min-width: 44px !important;
+        padding: 0 !important;
+        border: 1px solid rgba(0, 242, 255, 0.3) !important;
         background: rgba(0, 242, 255, 0.05) !important;
     }
 
-    /* 3. ALINEACIÓN DE CABECERA */
+    /* 3. ALINEACIÓN DE HORIZONTE */
     div[data-testid="column"] {
         display: flex !important;
         align-items: center !important;
+        justify-content: center !important;
     }
+
+    /* 4. LIMPIEZA DE INTERFAZ */
+    .stChatFloatingInputContainer { background-color: transparent !important; }
+    [data-testid="stVerticalBlock"] { gap: 0.2rem !important; }
     </style>
 """, unsafe_allow_html=True)
 
