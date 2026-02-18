@@ -166,39 +166,41 @@ st.markdown("""
 
 st.markdown("""
     <style>
-    /* AJUSTE DE BARRA DE COMANDOS (CENTRAL) */
+    /* BARRA DE COMANDOS STARK */
     div[data-testid="stChatInput"] {
         position: fixed;
         bottom: 30px;
         left: 330px !important; 
         width: calc(90% - 350px) !important;
-        z-index: 1000;
+        z-index: 999; /* Un nivel por debajo del micro */
         background: rgba(1, 4, 9, 0.9) !important;
         border-radius: 15px;
         border: 1px solid #00f2ff;
-        box-shadow: 0 0 15px rgba(0, 242, 255, 0.2);
     }
 
-    /* INTEGRACIÓN DEL MICRÓFONO DENTRO DE LA BARRA */
+    /* FORZAR VISIBILIDAD DEL MICRÓFONO */
     .stMicRecorder {
         position: fixed;
-        bottom: 38px; /* Ajustado para alinear verticalmente con el texto */
-        /* Calculamos la posición para que quede justo antes del botón de enviar */
-        left: calc(90% - 80px) !important; 
-        z-index: 1005; /* Por encima de la barra de texto */
+        bottom: 38px;
+        /* Se posiciona dinámicamente al final de la barra */
+        left: calc(90% - 70px) !important; 
+        z-index: 9999 !important; /* Prioridad máxima */
     }
 
-    /* ESTILO DEL BOTÓN DE MICRO PARA QUE PAREZCA PARTE DEL HUD */
+    /* ESTILO DEL BOTÓN DE MICRO */
     .stMicRecorder button {
-        background: transparent !important;
+        background: #00f2ff !important; /* Color cian para que lo vea claramente ahora */
+        border-radius: 50% !important;
         border: none !important;
-        color: #00f2ff !important;
-        box-shadow: none !important;
-        font-size: 20px !important;
+        color: black !important;
+        width: 40px !important;
+        height: 40px !important;
+        transition: transform 0.3s;
     }
-
-    .main .block-container {
-        padding-bottom: 200px !important;
+    
+    .stMicRecorder button:hover {
+        transform: scale(1.1);
+        box-shadow: 0 0 15px #00f2ff;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -288,34 +290,37 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: COMANDO CENTRAL (HUD EXPANDIDO + VOZ ANTI-ECO) ---
+# --- TAB 0: COMANDO CENTRAL (HUD STARK INTEGRADO) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
     
     st.session_state.modo_fluido = st.toggle("🎙️ MODO MANOS LIBRES", value=st.session_state.get('modo_fluido', False))
     
-    # 1. Visualización del Historial
+    # 1. Visualización del Historial (Área de Mensajes)
     for m in st.session_state.historial_chat:
         with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
             st.write(m["content"])
             if m.get("type") == "VIDEO_SIGNAL":
                 st.video(m["video_url"])
 
-    # 2. Interfaz de Entrada (El CSS se encarga de posicionarlos)
-    audio_data = mic_recorder(
-        start_prompt="🎙️", 
-        stop_prompt="🛑", 
-        key="mic_v2",
-        use_container_width=False
-    )
+    # 2. Interfaz de Entrada (Micro y Texto integrados por CSS)
+    # Declaramos el contenedor del micro primero para que el CSS lo eleve
+    with st.container():
+        audio_data = mic_recorder(
+            start_prompt="🎙️", 
+            stop_prompt="🛑", 
+            key="mic_v2_final", # Nueva clave para evitar conflictos de caché
+            use_container_width=False
+        )
     
+    # La barra de texto recibirá al micro en su extremo derecho vía CSS
     prompt = st.chat_input("Órdenes, Srta. Diana...")
 
-    # 3. Procesamiento de Entrada
+    # 3. Lógica de Procesamiento
     text_in = None
     if audio_data and 'bytes' in audio_data:
-        with st.spinner("JARVIS: Transcribiendo frecuencia de audio..."):
+        with st.spinner("JARVIS: Transcribiendo audio..."):
             text_in = client.audio.transcriptions.create(
                 file=("v.wav", audio_data['bytes']), 
                 model="whisper-large-v3"
@@ -324,10 +329,10 @@ with tabs[0]:
         text_in = prompt
 
     if text_in:
-        # Registro de entrada del usuario
+        # Registro del usuario
         st.session_state.historial_chat.append({"role": "user", "content": text_in})
         
-        # Análisis de Intención de Video
+        # Análisis de Intención (Video/Normal)
         url_final = None
         prompt_intencion = f"Analiza si el usuario quiere ver un video. Si es así, responde únicamente 'BUSCAR: [nombre del video]'. Si no, responde 'NORMAL'. Usuario dice: {text_in}"
         
@@ -337,13 +342,12 @@ with tabs[0]:
 
             if "BUSCAR:" in intencion:
                 termino = intencion.split("BUSCAR:")[1].strip()
-                with st.spinner(f"JARVIS: Localizando frecuencias para '{termino}'..."):
+                with st.spinner(f"JARVIS: Buscando en YouTube: {termino}..."):
                     url_final = buscar_video_youtube(termino)
-            # Nota: Si no hay intención de búsqueda, omitimos el 'extraer_url_video' a menos que sea necesario
-        except Exception as e:
-            st.error(f"Error en el análisis de intención: {e}")
+        except Exception:
+            pass # Failsafe para mantener el sistema arriba
 
-        # Generación de respuesta de JARVIS
+        # Generación de respuesta JARVIS
         historial_limpio = [
             {"role": m["role"], "content": m["content"]} 
             for m in st.session_state.historial_chat[-6:]
@@ -355,7 +359,7 @@ with tabs[0]:
         )
         ans = res.choices[0].message.content
         
-        # Empaquetado de Datos del Asistente
+        # Guardar respuesta
         msg_data = {"role": "assistant", "content": ans}
         if url_final:
             msg_data["type"] = "VIDEO_SIGNAL"
@@ -363,21 +367,16 @@ with tabs[0]:
         
         st.session_state.historial_chat.append(msg_data)
         
-        # 4. Protocolo de Voz y Scroll Automático
+        # 4. Protocolo de Voz y Scroll Automático (JavaScript)
         msg_id = f"speech_{len(st.session_state.historial_chat)}"
         js_voice = f"""
             <script>
             (function() {{
                 if (window.last_msg_id === "{msg_id}") return;
 
-                // Scroll automático al fondo del contenedor principal
-                const mainContent = window.parent.document.querySelector('.main');
-                if (mainContent) {{
-                    mainContent.scrollTo({{
-                        top: mainContent.scrollHeight,
-                        behavior: 'smooth'
-                    }});
-                }}
+                // Anclaje: Mantiene la vista en el último mensaje
+                const main = window.parent.document.querySelector('.main');
+                if (main) {{ main.scrollTo({{top: main.scrollHeight, behavior: 'smooth'}}); }}
 
                 window.speechSynthesis.cancel();
                 var msg = new SpeechSynthesisUtterance({repr(ans)});
