@@ -293,92 +293,85 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: PROYECTO JARVIS (AJUSTE DE PRECISIÓN V35) ---
+# --- TAB 0: PROYECTO JARVIS (GEOMETRÍA FLEX V36) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
 
-    # --- 1. FILA DE COMANDOS ULTRA-COMPACTA ---
-    # Usamos contenedores vacíos para forzar el espaciado correcto
-    c_btn, c_toggle, c_mic, c_input = st.columns([0.4, 0.8, 0.5, 7.5])
+    # --- 1. CABECERA DE COMANDOS (ALINEACIÓN POR CÓDIGO) ---
+    # Usamos solo dos columnas: una para el grupo de botones y otra para el texto
+    col_iconos, col_input = st.columns([1.8, 6.2])
     
-    with c_btn:
-        # Botón con ID específico para control total por CSS
-        if st.button("🗑️", key="btn_clear_final_v35"):
-            st.session_state.historial_chat = []
-            st.rerun()
+    with col_iconos:
+        # Contenedor interno para forzar la alineación horizontal de los 3 botones
+        c1, c2, c3 = st.columns([1, 1, 1])
+        with c1:
+            if st.button("🗑️", key="purgar_v36"):
+                st.session_state.historial_chat = []
+                st.rerun()
+        with c2:
+            st.session_state.modo_fluido = st.toggle("ML", value=st.session_state.get('modo_fluido', False), key="ml_v36")
+        with c3:
+            audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v36")
             
-    with c_toggle:
-        st.session_state.modo_fluido = st.toggle("ML", value=st.session_state.get('modo_fluido', False), key="ml_v35")
-        
-    with c_mic:
-        audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v35")
-        
-    with c_input:
-        def protocolo_jarvis():
-            query = st.session_state.input_stark_final
-            if query:
-                st.session_state.historial_chat.append({"role": "user", "content": query})
+    with col_input:
+        def protocolo_final():
+            orden = st.session_state.input_v36
+            if orden:
+                st.session_state.historial_chat.append({"role": "user", "content": orden})
                 hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
                 res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + hist)
                 st.session_state.historial_chat.append({"role": "assistant", "content": res.choices[0].message.content})
-                st.session_state.input_stark_final = "" # Limpieza inmediata
+                st.session_state.input_v36 = "" # Limpieza instantánea
 
-        st.text_input("cmd", placeholder="Órdenes, Srta. Diana...", label_visibility="collapsed", key="input_stark_final", on_change=protocolo_jarvis)
+        st.text_input("cmd", placeholder="Órdenes, Srta. Diana...", label_visibility="collapsed", key="input_v36", on_change=protocolo_final)
 
     st.markdown("---")
 
-    # --- 2. REGISTRO DE DATOS (AUTO-SCROLL) ---
-    chat_box = st.container(height=530, border=False)
-    with chat_box:
+    # --- 2. ÁREA DE DATOS CON AUTO-SCROLL ---
+    chat_container = st.container(height=530, border=False)
+    with chat_container:
         for m in st.session_state.historial_chat:
             with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
                 st.write(m["content"])
         
-        # Script de desplazamiento automático
+        # Script de desplazamiento automático forzado
         st.components.v1.html("""
             <script>
-            function ScrollJARVIS() {
+            function AutoScroll() {
                 const chat = window.parent.document.querySelector('div[data-testid="stVBC"]');
                 if (chat) { chat.scrollTop = chat.scrollHeight; }
             }
-            ScrollJARVIS(); setTimeout(ScrollJARVIS, 300);
+            AutoScroll(); setTimeout(AutoScroll, 300);
             </script>
         """, height=0)
 
-# --- CSS: CALIBRACIÓN DE COMPONENTES ---
+# --- CSS: CALIBRACIÓN GEOMÉTRICA STARK ---
 st.markdown("""
     <style>
-    /* 1. BOTÓN DE BORRAR: Forzamos tamaño cuadrado pequeño */
-    div[data-testid="column"]:nth-of-type(1) button {
-        width: 38px !important;
-        height: 38px !important;
-        min-width: 38px !important;
-        max-width: 38px !important;
-        padding: 0 !important;
-        border-radius: 5px !important;
-        border: 1px solid rgba(0, 242, 255, 0.4) !important;
-        background: rgba(0, 242, 255, 0.05) !important;
-    }
-
-    /* 2. ALINEACIÓN DE COLUMNAS (Evita superposición) */
-    div[data-testid="column"] {
+    /* 1. ALINEACIÓN DE LOS 3 BOTONES: Forzamos la fila perfecta */
+    [data-testid="column"]:nth-of-type(1) [data-testid="stVerticalBlock"] > div {
+        flex-direction: row !important;
         display: flex !important;
         align-items: center !important;
         justify-content: flex-start !important;
-        gap: 0 !important;
+        gap: 15px !important; /* Espacio fijo entre botones */
     }
 
-    /* 3. PESTAÑAS: Largas y Minimalistas */
+    /* 2. MINI-BOTÓN PAPELERA */
+    button[key="purgar_v36"] {
+        width: 42px !important;
+        min-width: 42px !important;
+        height: 42px !important;
+        padding: 0 !important;
+    }
+
+    /* 3. PESTAÑAS LARGAS Y SIMÉTRICAS */
     div[data-testid="stTabs"] button {
         flex: 1 !important;
-        min-width: 220px !important;
-        background: transparent !important;
-        border: none !important;
-        border-bottom: 2px solid rgba(0, 242, 255, 0.1) !important;
+        min-width: 200px !important;
         color: #00f2ff !important;
-        font-size: 14px !important;
-        padding-bottom: 8px !important;
+        border-bottom: 2px solid rgba(0, 242, 255, 0.1) !important;
     }
     
     div[data-testid="stTabs"] button[aria-selected="true"] {
@@ -386,11 +379,8 @@ st.markdown("""
         background: rgba(0, 242, 255, 0.05) !important;
     }
 
-    /* 4. AJUSTE DE MARGENES DEL TOGGLE */
-    div[data-testid="stCheckbox"] {
-        margin-left: 0px !important;
-        padding-left: 5px !important;
-    }
+    /* 4. ELIMINAR ESPACIOS MUERTOS */
+    [data-testid="stVerticalBlock"] { gap: 0rem !important; }
     </style>
 """, unsafe_allow_html=True)
 
