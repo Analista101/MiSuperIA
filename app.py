@@ -293,103 +293,99 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: CONSOLA JARVIS (CORRECCIÓN DE COLISIÓN) ---
+# --- TAB 0: PROYECTO JARVIS (CONTROL DE COLISIÓN V33) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
 
-    # --- 1. CABECERA TÉCNICA (FILA ÚNICA ALINEADA) ---
-    # Usamos proporciones fijas para que nada se encime
-    c_purga, c_ml, c_mic, c_input = st.columns([0.6, 1.2, 0.8, 6.4])
+    # --- 1. CABECERA TÉCNICA (DISTRIBUCIÓN ESPACIAL FORZADA) ---
+    # Usamos una sola fila con anchos muy específicos para separar los widgets
+    c_limpiar, c_espacio, c_manos, c_micro, c_texto = st.columns([0.5, 0.1, 1.2, 0.8, 6.4])
     
-    with c_purga:
-        # Botón de basura con clave única
-        if st.button("🗑️", key="btn_clear_stark", use_container_width=True):
+    with c_limpiar:
+        # Botón con clave única para evitar refrescos fantasma
+        if st.button("🗑️", key="cmd_clear_final", help="Purgar Memoria"):
             st.session_state.historial_chat = []
             st.rerun()
             
-    with c_ml:
-        # Interruptor de Manos Libres con espacio suficiente
-        st.session_state.modo_fluido = st.toggle("ML", value=st.session_state.get('modo_fluido', False), key="toggle_ml_stark")
+    # El c_espacio queda vacío como aislante de seguridad
+
+    with c_manos:
+        # Interruptor ML con margen forzado por CSS
+        st.session_state.modo_fluido = st.toggle("ML", value=st.session_state.get('modo_fluido', False), key="ml_v33")
         
-    with c_mic:
-        # Micrófono de Whisper
-        audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v32_final")
+    with c_micro:
+        # Receptor de audio Whisper
+        audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v33_final")
         
-    with c_input:
-        # Entrada de texto con función de limpieza al presionar Enter
-        def enviar_comando():
-            orden = st.session_state.input_cmd
-            if orden:
-                st.session_state.historial_chat.append({"role": "user", "content": orden})
+    with c_texto:
+        # Entrada de órdenes con limpieza automática
+        def ejecutar_protocolo():
+            query = st.session_state.stark_input
+            if query:
+                st.session_state.historial_chat.append({"role": "user", "content": query})
                 # Respuesta de JARVIS
                 hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
                 res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + hist)
                 st.session_state.historial_chat.append({"role": "assistant", "content": res.choices[0].message.content})
-                st.session_state.input_cmd = "" # Limpia el cuadro inmediatamente
+                st.session_state.stark_input = "" # Vaciado instantáneo
 
-        st.text_input("cmd", placeholder="Órdenes, Srta. Diana...", label_visibility="collapsed", key="input_cmd", on_change=enviar_comando)
+        st.text_input("cmd", placeholder="Órdenes, Srta. Diana...", label_visibility="collapsed", key="stark_input", on_change=ejecutar_protocolo)
 
     st.markdown("---")
 
-    # --- 2. ÁREA DE CHAT (AUTO-SCROLL ACTIVO) ---
-    chat_box = st.container(height=520, border=False)
+    # --- 2. ÁREA DE DATOS (AUTO-SCROLL) ---
+    chat_box = st.container(height=530, border=False)
     with chat_box:
         for m in st.session_state.historial_chat:
             with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
                 st.write(m["content"])
         
-        # Script para que el chat 'camine' solo hacia abajo
+        # Script de seguimiento visual (Auto-Scroll)
         st.components.v1.html("""
             <script>
-            function JARVIS_Scroll() {
-                const container = window.parent.document.querySelector('div[data-testid="stVBC"]');
-                if (container) { container.scrollTop = container.scrollHeight; }
+            function JARVIS_Follow() {
+                const el = window.parent.document.querySelector('div[data-testid="stVBC"]');
+                if (el) { el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' }); }
             }
-            JARVIS_Scroll();
-            setTimeout(JARVIS_Scroll, 500);
+            JARVIS_Follow(); setTimeout(JARVIS_Follow, 500);
             </script>
         """, height=0)
 
-# --- CSS: PESTAÑAS LARGAS Y REPARACIÓN DE WIDGETS ---
+# --- CSS: REPARACIÓN DE COLISIONES Y ALINEACIÓN ---
 st.markdown("""
     <style>
-    /* 1. PESTAÑAS: Largas y distribuidas sin descuadrar el fondo */
-    div[data-testid="stTabs"] button {
-        flex: 1 !important;
-        min-width: 200px !important;
-        background-color: transparent !important;
-        border: none !important;
-        border-bottom: 2px solid rgba(0, 242, 255, 0.2) !important;
-        color: #00f2ff !important;
-        font-size: 14px !important;
-    }
-    div[data-testid="stTabs"] button[aria-selected="true"] {
-        border-bottom: 2px solid #00f2ff !important;
-        background-color: rgba(0, 242, 255, 0.05) !important;
-    }
-
-    /* 2. ALINEACIÓN VERTICAL DE LOS BOTONES SUPERIORES */
-    /* Ajustamos el botón de basura y el toggle para que no choquen */
+    /* 1. SEPARACIÓN DE WIDGETS (Anti-sobreposición) */
     div[data-testid="column"] {
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
     }
     
-    /* Margen específico para el toggle de ML para que no pise a la papelera */
+    /* Forzamos que el toggle ML tenga su propio espacio vital */
     div[data-testid="stCheckbox"] {
-        margin-left: 10px !important;
-        margin-top: 5px !important;
+        padding-left: 15px !important;
+        min-width: 80px !important;
     }
 
-    /* 3. FIJAR CABECERA */
-    [data-testid="stTabs"] {
-        position: sticky !important;
-        top: 0;
-        z-index: 1000;
-        background-color: #0e1117;
+    /* 2. PESTAÑAS: Simetría y longitud Industrial */
+    div[data-testid="stTabs"] button {
+        flex: 1 !important;
+        min-width: 200px !important;
+        background-color: transparent !important;
+        border-bottom: 2px solid rgba(0, 242, 255, 0.1) !important;
+        color: #00f2ff !important;
+        font-weight: bold !important;
     }
+    
+    div[data-testid="stTabs"] button[aria-selected="true"] {
+        border-bottom: 2px solid #00f2ff !important;
+        background-color: rgba(0, 242, 255, 0.05) !important;
+    }
+
+    /* 3. LIMPIEZA DE INTERFAZ */
+    [data-testid="stHeader"] { background: rgba(0,0,0,0); }
+    footer { visibility: hidden; }
     </style>
 """, unsafe_allow_html=True)
 
