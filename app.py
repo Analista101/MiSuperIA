@@ -293,50 +293,42 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: PROYECTO JARVIS (PROTOCOLO DE ESTABILIDAD V43) ---
+# --- TAB 0: PROYECTO JARVIS (SIMETRÍA ABSOLUTA V44) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
 
-    # --- 1. CABECERA DE MANDOS (RESTAURACIÓN TOTAL Y MINIATURIZACIÓN) ---
-    # Usamos CSS para forzar que esta fila sea compacta y nada se mueva
-    st.markdown('<div class="stark-inline-controls">', unsafe_allow_html=True)
+    # --- 1. CABECERA TÉCNICA (FILA ÚNICA) ---
+    # Alineación ultra-precisa usando proporciones mínimas
+    c_purgar, c_ml, c_mic, c_input = st.columns([0.4, 0.7, 0.5, 8.4])
     
-    # Creamos columnas con anchos de píxel simulados para evitar el "bote"
-    c1, c2, c3, c4 = st.columns([0.4, 0.7, 0.5, 8.4])
-    
-    with c1:
-        # BOTÓN BASURERO: Ahora con clase CSS de miniatura
-        if st.button("🗑️", key="purgar_v43", help="Limpiar registros"):
+    with c_purgar:
+        # El botón ahora se inyecta con un ID único para la clonación visual
+        if st.button("🗑️", key="purgar_v44_clon"):
             st.session_state.historial_chat = []
             st.rerun()
             
-    with c2:
-        # INTERRUPTOR MANOS LIBRES: Restaurado
-        st.session_state.modo_fluido = st.toggle("ML", value=st.session_state.get('modo_fluido', False), key="ml_v43")
+    with c_ml:
+        st.session_state.modo_fluido = st.toggle("ML", value=st.session_state.get('modo_fluido', False), key="ml_v44")
         
-    with c3:
-        # MICRÓFONO: Restaurado
-        audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v43")
+    with c_mic:
+        # El micrófono es nuestra referencia de tamaño (aprox 35-40px)
+        audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v44")
         
-    with c4:
-        # CUADRO DE TEXTO: Con protocolo Anti-Eco y Auto-Limpieza
-        def enviar_comando_stark():
-            query = st.session_state.input_v43
-            if query:
-                st.session_state.historial_chat.append({"role": "user", "content": query})
-                # Respuesta de JARVIS
+    with c_input:
+        def protocolo_jarvis_v44():
+            orden = st.session_state.input_v44_fix
+            if orden:
+                st.session_state.historial_chat.append({"role": "user", "content": orden})
                 hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
                 try:
                     res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + hist)
                     st.session_state.historial_chat.append({"role": "assistant", "content": res.choices[0].message.content})
                 except: pass
-                # LIMPIEZA INMEDIATA
-                st.session_state.input_v43 = ""
+                st.session_state.input_v44_fix = "" # Limpieza automática
 
-        st.text_input("cmd", placeholder="Órdenes, Srta. Diana...", label_visibility="collapsed", key="input_v43", on_change=enviar_comando_stark)
-    
-    st.markdown('</div>', unsafe_allow_html=True)
+        st.text_input("cmd", placeholder="Órdenes, Srta. Diana...", label_visibility="collapsed", key="input_v44_fix", on_change=protocolo_jarvis_v44)
+
     st.markdown("---")
 
     # --- 2. REGISTRO DE DATOS (AUTO-SCROLL) ---
@@ -346,55 +338,54 @@ with tabs[0]:
             with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
                 st.write(m["content"])
         
-        # Script de seguimiento visual para mantener el foco abajo
         st.components.v1.html("""
             <script>
-            function JARVIS_Scroll() {
+            function JARVIS_Sync() {
                 const el = window.parent.document.querySelector('div[data-testid="stVBC"]');
                 if (el) { el.scrollTop = el.scrollHeight; }
             }
-            JARVIS_Scroll(); setTimeout(JARVIS_Scroll, 400);
+            JARVIS_Sync(); setTimeout(JARVIS_Sync, 400);
             </script>
         """, height=0)
 
-# --- CSS DEFINITIVO: BLOQUEO DE "BOTES" Y TAMAÑOS FIJOS ---
+# --- CSS: CLONACIÓN DEL BOTÓN DE MICRÓFONO ---
 st.markdown("""
     <style>
-    /* 1. MINIATURIZAR EL BASURERO Y ELIMINAR SU MARGEN ELÁSTICO */
-    button[key="purgar_v43"] {
-        width: 35px !important;
-        height: 35px !important;
-        min-width: 35px !important;
-        max-width: 35px !important;
+    /* 1. FORZAR AL BASURERO A SER UN CLON DEL MICRO */
+    button[key="purgar_v44_clon"] {
+        height: 38px !important;
+        width: 38px !important;
+        min-width: 38px !important;
+        max-width: 38px !important;
         padding: 0 !important;
-        margin: 0 !important;
-        border: 1px solid rgba(0, 242, 255, 0.4) !important;
-        background: rgba(0, 242, 255, 0.05) !important;
-        display: flex !important;
+        border-radius: 4px !important; /* Igual que el micro */
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        background: rgba(151, 166, 195, 0.1) !important;
+        display: inline-flex !important;
         align-items: center !important;
         justify-content: center !important;
+        margin-top: 2px !important;
     }
 
-    /* 2. ALINEACIÓN FORZADA DE LA FILA DE BOTONES */
+    /* 2. ALINEACIÓN PARA EVITAR EL "BOTE" */
     div[data-testid="column"] {
         display: flex !important;
         align-items: center !important;
         justify-content: flex-start !important;
-        gap: 0px !important;
     }
 
-    /* 3. EVITAR QUE EL TOGGLE "ML" SE DESPLAZE */
-    .stCheckbox { margin-bottom: 0px !important; }
-
-    /* 4. PESTAÑAS: Mantener largas y elegantes sin afectar la Sidebar */
+    /* 3. PESTAÑAS STARK LARGAS (SIN TOCAR SIDEBAR) */
     div[data-testid="stTabs"] button {
         flex: 1 !important;
-        min-width: 180px !important;
+        min-width: 200px !important;
         color: #00f2ff !important;
     }
     
-    /* 5. RESTAURAR LA BARRA LATERAL (MONITOR DE RED) */
-    [data-testid="stSidebar"] { min-width: 300px !important; }
+    /* 4. MANTENER EL FOCO EN EL TEXTO */
+    .stTextInput input {
+        background-color: rgba(0, 242, 255, 0.05) !important;
+        border: 1px solid rgba(0, 242, 255, 0.2) !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
