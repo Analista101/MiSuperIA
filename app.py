@@ -293,97 +293,102 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: CONSOLA JARVIS (FLUIDEZ TOTAL Y ALINEACIÓN) ---
+# --- TAB 0: CONSOLA JARVIS (CORRECCIÓN DE COLISIÓN) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
 
-    # --- 1. CABECERA TÉCNICA (PANTALLA COMPLETA) ---
-    # Usamos un solo contenedor para evitar que Streamlit cree espacios extra
-    st.markdown('<div class="stark-controls-container">', unsafe_allow_html=True)
+    # --- 1. CABECERA TÉCNICA (FILA ÚNICA ALINEADA) ---
+    # Usamos proporciones fijas para que nada se encime
+    c_purga, c_ml, c_mic, c_input = st.columns([0.6, 1.2, 0.8, 6.4])
     
-    # Fila de control integrada
-    col_main = st.columns([1]) # Una sola columna para control total
-    with col_main[0]:
-        # Contenedor de comandos
-        c1, c2, c3, c4 = st.columns([0.4, 0.8, 0.6, 6])
-        
-        with c1:
-            if st.button("🗑️", key="purgar_mini"):
-                st.session_state.historial_chat = []
-                st.rerun()
-        with c2:
-            st.session_state.modo_fluido = st.toggle("ML", value=st.session_state.get('modo_fluido', False))
-        with c3:
-            audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v31")
-        with c4:
-            def procesar():
-                cmd = st.session_state.mini_input
-                if cmd:
-                    st.session_state.historial_chat.append({"role": "user", "content": cmd})
-                    hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
-                    res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + hist)
-                    st.session_state.historial_chat.append({"role": "assistant", "content": res.choices[0].message.content})
-                    st.session_state.mini_input = "" # Limpieza inmediata
+    with c_purga:
+        # Botón de basura con clave única
+        if st.button("🗑️", key="btn_clear_stark", use_container_width=True):
+            st.session_state.historial_chat = []
+            st.rerun()
             
-            st.text_input("cmd", placeholder="Órdenes...", label_visibility="collapsed", key="mini_input", on_change=procesar)
+    with c_ml:
+        # Interruptor de Manos Libres con espacio suficiente
+        st.session_state.modo_fluido = st.toggle("ML", value=st.session_state.get('modo_fluido', False), key="toggle_ml_stark")
+        
+    with c_mic:
+        # Micrófono de Whisper
+        audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v32_final")
+        
+    with c_input:
+        # Entrada de texto con función de limpieza al presionar Enter
+        def enviar_comando():
+            orden = st.session_state.input_cmd
+            if orden:
+                st.session_state.historial_chat.append({"role": "user", "content": orden})
+                # Respuesta de JARVIS
+                hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
+                res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + hist)
+                st.session_state.historial_chat.append({"role": "assistant", "content": res.choices[0].message.content})
+                st.session_state.input_cmd = "" # Limpia el cuadro inmediatamente
 
-    st.markdown('</div>', unsafe_allow_html=True)
+        st.text_input("cmd", placeholder="Órdenes, Srta. Diana...", label_visibility="collapsed", key="input_cmd", on_change=enviar_comando)
+
     st.markdown("---")
 
-    # --- 2. ÁREA DE CHAT (AUTO-SCROLL) ---
-    chat_holder = st.container(height=520, border=False)
-    with chat_holder:
+    # --- 2. ÁREA DE CHAT (AUTO-SCROLL ACTIVO) ---
+    chat_box = st.container(height=520, border=False)
+    with chat_box:
         for m in st.session_state.historial_chat:
             with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
                 st.write(m["content"])
         
-        # Script de movimiento automático mejorado
+        # Script para que el chat 'camine' solo hacia abajo
         st.components.v1.html("""
             <script>
-            function autoScroll() {
-                const chat = window.parent.document.querySelector('div[data-testid="stVBC"]');
-                if (chat) { chat.scrollTop = chat.scrollHeight; }
+            function JARVIS_Scroll() {
+                const container = window.parent.document.querySelector('div[data-testid="stVBC"]');
+                if (container) { container.scrollTop = container.scrollHeight; }
             }
-            autoScroll();
-            setTimeout(autoScroll, 400);
+            JARVIS_Scroll();
+            setTimeout(JARVIS_Scroll, 500);
             </script>
         """, height=0)
 
-# --- CSS: REPARACIÓN DE ALINEACIÓN Y PESTAÑAS ---
+# --- CSS: PESTAÑAS LARGAS Y REPARACIÓN DE WIDGETS ---
 st.markdown("""
     <style>
-    /* 1. AJUSTE DE PESTAÑAS (Simétricas y Largas) */
-    div[data-testid="stTabs"] {
-        width: 100% !important;
-        display: flex !important;
-    }
+    /* 1. PESTAÑAS: Largas y distribuidas sin descuadrar el fondo */
     div[data-testid="stTabs"] button {
         flex: 1 !important;
-        min-width: 150px !important;
+        min-width: 200px !important;
         background-color: transparent !important;
         border: none !important;
-        border-bottom: 2px solid rgba(0, 242, 255, 0.1) !important;
+        border-bottom: 2px solid rgba(0, 242, 255, 0.2) !important;
         color: #00f2ff !important;
+        font-size: 14px !important;
     }
     div[data-testid="stTabs"] button[aria-selected="true"] {
         border-bottom: 2px solid #00f2ff !important;
         background-color: rgba(0, 242, 255, 0.05) !important;
     }
 
-    /* 2. COMPACTAR CONTROLES (Evita el descuadre) */
-    .stMarkdown div[data-testid="stVerticalBlock"] > div {
-        padding: 0 !important;
-        gap: 0.5rem !important;
+    /* 2. ALINEACIÓN VERTICAL DE LOS BOTONES SUPERIORES */
+    /* Ajustamos el botón de basura y el toggle para que no choquen */
+    div[data-testid="column"] {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
     }
     
-    /* Alinear Verticalmente el Toggle y el Botón */
-    div[data-testid="stCheckbox"] { margin-top: 10px !important; }
-    button[data-testid="baseButton-secondary"] { margin-top: 5px !important; }
+    /* Margen específico para el toggle de ML para que no pise a la papelera */
+    div[data-testid="stCheckbox"] {
+        margin-left: 10px !important;
+        margin-top: 5px !important;
+    }
 
-    /* 3. MANTENER EL REACTOR CENTRADO */
-    [data-testid="stAppViewContainer"] {
-        background-position: center top !important;
+    /* 3. FIJAR CABECERA */
+    [data-testid="stTabs"] {
+        position: sticky !important;
+        top: 0;
+        z-index: 1000;
+        background-color: #0e1117;
     }
     </style>
 """, unsafe_allow_html=True)
