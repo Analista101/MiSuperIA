@@ -293,52 +293,58 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: PROYECTO JARVIS (ESTABILIDAD ABSOLUTA V45) ---
+# --- TAB 0: PROYECTO JARVIS (SIMETRÍA TOTAL V46) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
 
-    # --- 1. MÓDULO DE ENTRADA UNIFICADO ---
-    # Usamos una sola fila de columnas, pero bloqueamos sus anchos con CSS
-    c_botones, c_input = st.columns([1.8, 8.2])
+    # --- 1. CABECERA DE BLOQUES SIMÉTRICOS ---
+    # Dividimos el espacio en 4: tres cuadros iguales para controles y uno largo para órdenes
+    c1, c2, c3, c4 = st.columns([1, 1, 1, 7])
 
-    with c_botones:
-        # Sub-columna para agrupar los 3 elementos a la izquierda
-        sub_c1, sub_c2, sub_c3 = st.columns([1, 1, 1])
-        with sub_c1:
-            if st.button("🗑️", key="purgar_v45"):
-                st.session_state.historial_chat = []
-                st.rerun()
-        with sub_c2:
-            st.session_state.modo_fluido = st.toggle("ML", value=st.session_state.get('modo_fluido', False), key="ml_v45")
-        with sub_c3:
-            # El micrófono ahora tiene espacio reservado idéntico al basurero
-            audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v45")
+    with c1:
+        # BLOQUE 1: PURGA
+        if st.button("🗑️", key="purgar_v46", use_container_width=True):
+            st.session_state.historial_chat = []
+            st.rerun()
 
-    with c_input:
-        def protocolo_envio():
-            txt = st.session_state.input_v45
-            if txt:
-                st.session_state.historial_chat.append({"role": "user", "content": txt})
-                # Lógica JARVIS (Eco-Free)
+    with c2:
+        # BLOQUE 2: MANOS LIBRES (Contenedor visual simétrico)
+        st.markdown('<div class="stark-block">', unsafe_allow_html=True)
+        st.session_state.modo_fluido = st.toggle("ML", value=st.session_state.get('modo_fluido', False), key="ml_v46")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    with c3:
+        # BLOQUE 3: MICRÓFONO (Ajustado al ancho del cuadro)
+        st.markdown('<div class="stark-mic-wrapper">', unsafe_allow_html=True)
+        audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v46")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    with c4:
+        # BLOQUE 4: COMANDOS (Protocolo Enter + Limpieza)
+        def protocolo_stark_final():
+            query = st.session_state.input_v46
+            if query:
+                st.session_state.historial_chat.append({"role": "user", "content": query})
                 hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
                 try:
                     res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + hist)
                     st.session_state.historial_chat.append({"role": "assistant", "content": res.choices[0].message.content})
                 except: pass
-                st.session_state.input_v45 = "" # Limpieza instantánea
+                st.session_state.input_v46 = "" # Auto-limpieza
 
-        st.text_input("cmd", placeholder="Órdenes, Srta. Diana...", label_visibility="collapsed", key="input_v45", on_change=protocolo_envio)
+        st.text_input("cmd", placeholder="Órdenes, Srta. Diana...", label_visibility="collapsed", key="input_v46", on_change=protocolo_stark_final)
 
     st.markdown("---")
 
-    # --- 2. REGISTRO VISUAL (AUTO-SCROLL) ---
-    chat_container = st.container(height=540, border=False)
-    with chat_container:
+    # --- 2. REGISTRO DE DATOS (AUTO-SCROLL) ---
+    chat_box = st.container(height=540, border=False)
+    with chat_box:
         for m in st.session_state.historial_chat:
             with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
                 st.write(m["content"])
         
+        # Script de desplazamiento automático
         st.components.v1.html("""
             <script>
             function JARVIS_Scroll() {
@@ -349,47 +355,46 @@ with tabs[0]:
             </script>
         """, height=0)
 
-# --- CSS: PROTOCOLO DE SIMETRÍA TOTAL ---
+# --- CSS: CALIBRACIÓN DE SIMETRÍA INDUSTRIAL ---
 st.markdown("""
     <style>
-    /* 1. CLONACIÓN GEOMÉTRICA: Basurero = Micrófono */
-    button[key="purgar_v45"] {
-        height: 38px !important;
-        width: 38px !important;
-        min-width: 38px !important;
-        max-width: 38px !important;
-        padding: 0 !important;
-        margin-top: 2px !important;
-        border: 1px solid rgba(0, 242, 255, 0.4) !important;
+    /* 1. FORZAR CUADROS SIMÉTRICOS (Estilo Pestañas) */
+    button[key="purgar_v46"], .st-emotion-cache-12w0qpk, .stark-mic-wrapper button {
+        height: 45px !important;
+        border: 1px solid rgba(0, 242, 255, 0.3) !important;
         background: rgba(0, 242, 255, 0.05) !important;
         border-radius: 5px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
     }
 
-    /* 2. ALINEACIÓN DE INTERRUPTOR ML */
-    .stCheckbox {
-        margin-top: 10px !important;
-        margin-left: 5px !important;
-    }
-
-    /* 3. ALINEACIÓN DE COLUMNAS (NO MÁS BOTES) */
+    /* 2. ALINEACIÓN VERTICAL DE LOS 4 BLOQUES */
     div[data-testid="column"] {
         display: flex !important;
         align-items: center !important;
-        justify-content: flex-start !important;
-        gap: 0px !important;
+        justify-content: center !important;
     }
 
-    /* 4. PESTAÑAS STARK: Largas y estables */
+    /* 3. AJUSTE ESPECÍFICO PARA EL TOGGLE ML */
+    div[data-testid="stMarkdownContainer"] .stark-block {
+        display: flex;
+        justify-content: center;
+        width: 100%;
+    }
+
+    /* 4. PESTAÑAS: Largas y estables entre los bordes */
     div[data-testid="stTabs"] button {
         flex: 1 !important;
         min-width: 200px !important;
         color: #00f2ff !important;
+        border-bottom: 2px solid rgba(0, 242, 255, 0.1) !important;
     }
     
-    /* 5. CUADRO DE TEXTO: Color y borde Reactor Arc */
+    /* 5. CUADRO DE COMANDOS: Encaje perfecto */
     .stTextInput input {
+        height: 45px !important;
         border: 1px solid rgba(0, 242, 255, 0.3) !important;
-        background-color: rgba(0, 0, 0, 0.2) !important;
     }
     </style>
 """, unsafe_allow_html=True)
