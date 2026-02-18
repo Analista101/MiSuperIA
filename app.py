@@ -164,6 +164,25 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
+# --- BUSQUE ESTA SECCIÓN EN SU CÓDIGO Y ASEGÚRESE DE QUE SE VEA ASÍ ---
+st.markdown("""
+    <style>
+    /* FIJAR BARRA DE COMANDOS AL FONDO */
+    div[data-testid="stChatInput"] {
+        position: fixed;
+        bottom: 20px;
+        z-index: 1000;
+        padding-bottom: 10px;
+        background: transparent !important;
+    }
+
+    /* CREAR ESPACIO PARA QUE EL CHAT NO SE SOLAPE CON LA BARRA */
+    .main .block-container {
+        padding-bottom: 150px !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 # --- 3. AUTENTICACIÓN ---
 if "autenticado" not in st.session_state: st.session_state["autenticado"] = False
 if not st.session_state["autenticado"]:
