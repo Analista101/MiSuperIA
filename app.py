@@ -293,7 +293,7 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: COMANDO CENTRAL (SOLUCIÓN DEFINITIVA DE VISIBILIDAD) ---
+# --- TAB 0: COMANDO CENTRAL (SOLUCIÓN DE POSICIÓN FIJA DEFINITIVA) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
@@ -301,6 +301,7 @@ with tabs[0]:
     st.session_state.modo_fluido = st.toggle("🎙️ MODO MANOS LIBRES", value=st.session_state.get('modo_fluido', False))
     
     # 1. Visualización del Historial
+    # Creamos un espacio para que el chat no quede debajo de la barra fija
     container_chat = st.container()
     with container_chat:
         for m in st.session_state.historial_chat:
@@ -309,79 +310,95 @@ with tabs[0]:
                 if m.get("type") == "VIDEO_SIGNAL":
                     st.video(m["video_url"])
 
-    st.markdown("---") # Separador visual
-
-    # 2. LA BARRA UNIFICADA (Sin st.chat_input para evitar bloqueos)
-    # Creamos un contenedor fijo para que no se mueva al escribir
+    # 2. LA BARRA UNIFICADA Y FIJA (Protocolo Stark)
+    # Envolvemos todo en un div con una clase personalizada 'stark-input'
+    st.markdown('<div class="stark-input-container">', unsafe_allow_html=True)
+    
     with st.container():
         col_mic, col_text = st.columns([1, 8])
         
         with col_mic:
-            # El micrófono ahora tiene un espacio físico dedicado y garantizado
             audio_data = mic_recorder(
                 start_prompt="🎙️", 
                 stop_prompt="🛑", 
-                key="mic_stark_final_v10", # Nueva clave para resetear caché
+                key="mic_v11_fixed", 
                 use_container_width=True
             )
         
         with col_text:
-            # Usamos text_input con un placeholder para emular el chat_input
             prompt = st.text_input(
                 label="Comandos",
                 placeholder="Órdenes, Srta. Diana...",
                 label_visibility="collapsed",
-                key="input_stark"
+                key="input_stark_final"
             )
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
-    # 3. Lógica de Procesamiento de Entrada
+    # 3. CSS DE ANCLAJE (Sección Crítica)
+    st.markdown("""
+        <style>
+        /* Fijamos el contenedor de la barra al fondo */
+        div.stark-input-container {
+            position: fixed;
+            bottom: 30px;
+            left: 330px; /* Alineado con la sidebar */
+            width: calc(90% - 350px);
+            z-index: 1000;
+            background: rgba(1, 4, 9, 0.95);
+            padding: 15px;
+            border-radius: 15px;
+            border: 1px solid #00f2ff;
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.2);
+        }
+
+        /* Ajuste para que el historial no se solape con la barra fija */
+        .main .block-container {
+            padding-bottom: 150px !important;
+        }
+
+        /* Estética del botón del micro dentro de la columna */
+        .stark-input-container button {
+            background-color: #00f2ff !important;
+            color: black !important;
+            border-radius: 50% !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    # 4. Lógica de Procesamiento (Whisper + JARVIS)
     text_in = None
     if audio_data and isinstance(audio_data, dict) and audio_data.get('bytes'):
         if len(audio_data['bytes']) > 5000:
             try:
-                with st.spinner("JARVIS: Procesando frecuencia de voz..."):
+                with st.spinner("JARVIS: Transcribiendo..."):
                     text_in = client.audio.transcriptions.create(
                         file=("v.wav", audio_data['bytes']), 
                         model="whisper-large-v3"
                     ).text
             except Exception as e:
-                st.error(f"Fallo en sensores de audio: {e}")
+                st.error(f"Error de audio: {e}")
     elif prompt: 
         text_in = prompt
 
-    # 4. Generación de Respuesta JARVIS
     if text_in:
         st.session_state.historial_chat.append({"role": "user", "content": text_in})
         
-        # Análisis de Intención de Video
-        url_final = None
-        try:
-            p_int = f"Analiza si el usuario quiere ver un video. Si es así, responde 'BUSCAR: [video]'. Si no, 'NORMAL'. Usuario: {text_in}"
-            check = client.chat.completions.create(model=modelo_texto, messages=[{"role": "user", "content": p_int}])
-            if "BUSCAR:" in check.choices[0].message.content:
-                url_final = buscar_video_youtube(check.choices[0].message.content.split("BUSCAR:")[1].strip())
-        except: pass
-
-        # Respuesta de Voz y Texto
+        # Generación de respuesta
         hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-6:]]
         res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + hist)
         ans = res.choices[0].message.content
+        st.session_state.historial_chat.append({"role": "assistant", "content": ans})
         
-        msg_data = {"role": "assistant", "content": ans}
-        if url_final:
-            msg_data["type"] = "VIDEO_SIGNAL"
-            msg_data["video_url"] = url_final
-        
-        st.session_state.historial_chat.append(msg_data)
-        
-        # 5. Protocolo Anti-Eco y Auto-Scroll
+        # 5. Voz y Scroll
         import hashlib
         msg_hash = hashlib.md5(ans.encode()).hexdigest()
         js_voice = f"""
             <script>
             (function() {{
                 if (window.last_speech_hash === "{msg_hash}") return;
-                window.parent.document.querySelector('.main').scrollTo({{top: 99999, behavior: 'smooth'}});
+                const main = window.parent.document.querySelector('.main');
+                if (main) {{ main.scrollTo({{top: main.scrollHeight, behavior: 'smooth'}}); }}
                 window.speechSynthesis.cancel();
                 var msg = new SpeechSynthesisUtterance({repr(ans)});
                 msg.lang = 'es-ES';
