@@ -46,7 +46,7 @@ PERSONALIDAD = (
     f"Ubicación: Santiago, Chile. Fecha: {fecha_actual} | Hora: {hora_actual}."
 )
 
-# --- 2. ESTILOS HUD (BOTONES NEÓN + REACTOR QUE RESPIRA) ---
+# --- 2. ESTILOS HUD ---
 st.markdown("""
     <style>
     .stApp {
@@ -57,7 +57,6 @@ st.markdown("""
         background-size: cover !important;
         background-blend-mode: overlay;
     }
-
     button, div.stButton > button, div.stDownloadButton > button {
         background: rgba(0, 242, 255, 0.05) !important;
         color: #00f2ff !important;
@@ -65,52 +64,17 @@ st.markdown("""
         border-radius: 5px !important;
         text-transform: uppercase !important;
         letter-spacing: 2px !important;
-        transition: all 0.3s ease !important;
         box-shadow: 0 0 8px rgba(0, 242, 255, 0.3) !important;
         width: 100%;
     }
-
-    button:hover {
-        background: rgba(0, 242, 255, 0.2) !important;
-        box-shadow: 0 0 20px rgba(0, 242, 255, 0.6) !important;
-        color: #ffffff !important;
-        border-color: #ffffff !important;
-    }
-
-    button[aria-label="🎙️"], button[aria-label="🟢"], button[aria-label="🛑"] {
-        border-radius: 50% !important;
-        width: 50px !important;
-        height: 50px !important;
-        border: 2px solid #00f2ff !important;
-    }
-
-    .stChatInputContainer {
-        border: 2px solid #00f2ff !important;
-        box-shadow: 0 0 15px rgba(0, 242, 255, 0.4) !important;
-        background: rgba(0, 0, 0, 0.8) !important;
-    }
-
     .reactor-container { position: relative; height: 250px; display: flex; justify-content: center; align-items: center; margin-top: -30px; }
     .reactor-core { 
         width: 80px; height: 80px; background: radial-gradient(circle, #fff 5%, #00f2ff 50%, transparent 80%); 
-        border-radius: 50%; box-shadow: 0 0 60px #00f2ff; z-index: 10; 
-        animation: pulse-breathe 2.5s infinite alternate ease-in-out; 
+        border-radius: 50%; box-shadow: 0 0 60px #00f2ff; animation: pulse-breathe 2.5s infinite alternate ease-in-out; 
     }
-    .hologram-ring { position: absolute; border: 2px solid rgba(0, 242, 255, 0.4); border-radius: 50%; animation: rotate linear infinite; }
-    .ring-outer { width: 220px; height: 220px; border-style: double; animation-duration: 20s; }
-    .ring-inner { width: 140px; height: 140px; border-width: 1px; animation-duration: 10s; }
-    
-    @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-    @keyframes pulse-breathe {
-        0% { transform: scale(1); box-shadow: 0 0 40px rgba(0, 242, 255, 0.6); }
-        100% { transform: scale(1.05); box-shadow: 0 0 80px rgba(0, 242, 255, 1); }
-    }
+    @keyframes pulse-breathe { 0% { transform: scale(1); } 100% { transform: scale(1.05); } }
     </style>
-    <div class="reactor-container">
-        <div class="hologram-ring ring-outer"></div>
-        <div class="hologram-ring ring-inner"></div>
-        <div class="reactor-core"></div>
-    </div>
+    <div class="reactor-container"><div class="reactor-core"></div></div>
 """, unsafe_allow_html=True)
 
 # --- 3. AUTENTICACIÓN ---
@@ -121,17 +85,15 @@ if not st.session_state["autenticado"]:
         st.subheader("🔐 ACCESO RESTRINGIDO")
         pass_in = st.text_input("Código de Identificación:", type="password")
         if st.button("DESBLOQUEAR"):
-            if pass_in == ACCESS_PASSWORD:
-                st.session_state["autenticado"] = True
-                st.rerun()
+            if pass_in == ACCESS_PASSWORD: st.session_state["autenticado"] = True; st.rerun()
     st.stop()
 
 # --- 4. CONEXIONES IA ---
 client = Groq(api_key=GROQ_API_KEY)
 modelo_texto = "llama-3.3-70b-versatile"
-modelo_vision = "llama-3.2-11b-vision-preview"
+# ACTUALIZACIÓN: Modelo Scout de Visión
+modelo_vision_scout = "meta-llama/llama-4-scout-17b-16e-instruct"
 
-# --- 5. FUNCIONES DE SOPORTE ---
 def generar_pdf_reporte(titulo, contenido):
     buffer = io.BytesIO()
     c = canvas.Canvas(buffer, pagesize=letter)
@@ -141,14 +103,12 @@ def generar_pdf_reporte(titulo, contenido):
     c.drawText(text_object); c.showPage(); c.save(); buffer.seek(0)
     return buffer
 
-# --- 6. MÓDULO DE ALERTAS (SIDEBAR) ---
+# --- 6. SIDEBAR ---
 with st.sidebar:
-    st.markdown("""<div style='text-align: center; padding: 10px; border: 1px solid #00f2ff; border-radius: 10px; background: rgba(0, 242, 255, 0.05);'>
-        <h3 style='color: #00f2ff; font-family: "Courier New";'>🛡️ ESTADO DE ALERTA</h3></div>""", unsafe_allow_html=True)
-    st.info("🌦️ **CLIMA**: Despejado (32°C). Sin lluvias en Pudahuel.")
-    st.warning("🌋 **SISMICIDAD**: Actividad media-alta detectada.")
-    st.error("🔥 **INCENDIOS**: Pudahuel: Fuego controlado.")
-    st.markdown("---")
+    st.markdown("<h3 style='color: #00f2ff;'>🛡️ ESTADO DE ALERTA</h3>", unsafe_allow_html=True)
+    st.info("🌦️ **CLIMA**: Despejado (32°C).")
+    st.warning("🌋 **SISMICIDAD**: Actividad media-alta.")
+    st.error("🔥 **INCENDIOS**: Pudahuel controlado.")
 
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
@@ -156,116 +116,83 @@ tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIO
 # --- TAB 0: COMANDO CENTRAL ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: st.session_state.historial_chat = []
-    if "modo_fluido" not in st.session_state: st.session_state.modo_fluido = False
-    st.session_state.modo_fluido = st.toggle("🎙️ MODO MANOS LIBRES", value=st.session_state.modo_fluido)
+    st.session_state.modo_fluido = st.toggle("🎙️ MODO MANOS LIBRES", value=st.session_state.get('modo_fluido', False))
     for m in st.session_state.historial_chat:
         with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): st.write(m["content"])
     
     col_mic, col_chat = st.columns([1, 12])
     with col_mic: audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v1")
-    with col_chat: prompt = st.chat_input("Escriba o hable, Srta. Diana...")
+    with col_chat: prompt = st.chat_input("Órdenes, Srta. Diana...")
 
-    texto_a_procesar = None
+    text_in = None
     if audio_data and 'bytes' in audio_data:
-        trans = client.audio.transcriptions.create(file=("v.wav", audio_data['bytes']), model="whisper-large-v3", language="es")
-        texto_a_procesar = trans.text
-    elif prompt: texto_a_procesar = prompt
+        text_in = client.audio.transcriptions.create(file=("v.wav", audio_data['bytes']), model="whisper-large-v3").text
+    elif prompt: text_in = prompt
 
-    if texto_a_procesar:
-        st.session_state.historial_chat.append({"role": "user", "content": texto_a_procesar})
-        ctx = [{"role": "system", "content": PERSONALIDAD}] + st.session_state.historial_chat[-6:]
-        res = client.chat.completions.create(model=modelo_texto, messages=ctx)
+    if text_in:
+        st.session_state.historial_chat.append({"role": "user", "content": text_in})
+        res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + st.session_state.historial_chat[-6:])
         ans = res.choices[0].message.content
         st.session_state.historial_chat.append({"role": "assistant", "content": ans})
-        
-        js_script = f"<script>var msg = new SpeechSynthesisUtterance({repr(ans)}); msg.lang='es-ES'; msg.onend = function() {{ if({str(st.session_state.modo_fluido).lower()}) {{ setTimeout(function() {{ const b = window.parent.document.querySelector('button[aria-label=\"🎙️\"]'); if(b) b.click(); }}, 1000); }} }}; window.speechSynthesis.speak(msg);</script>"
-        st.components.v1.html(js_script, height=0); st.rerun()
+        js = f"<script>var m=new SpeechSynthesisUtterance({repr(ans)}); m.lang='es-ES'; m.onend=function(){{ if({str(st.session_state.modo_fluido).lower()}){{ setTimeout(()=>{{const b=window.parent.document.querySelector('button[aria-label=\"🎙️\"]'); if(b) b.click();}}, 1000); }} }}; window.speechSynthesis.speak(m);</script>"
+        st.components.v1.html(js, height=0); st.rerun()
 
-# --- TAB 1: ANÁLISIS (REPARADO: VISIÓN Y DOCUMENTOS) ---
+# --- TAB 1: ANÁLISIS (FIX SCOUT VISION) ---
 with tabs[1]:
-    st.subheader("📊 Análisis de Inteligencia Profundo")
-    file = st.file_uploader("Evidencia técnica", type=['pdf','docx','xlsx','txt','png','jpg','jpeg'], key="an_file")
+    st.subheader("📊 Análisis Scout v4")
+    file = st.file_uploader("Evidencia", type=['pdf','docx','xlsx','txt','png','jpg','jpeg'], key="an_file")
     if file and st.button("🔍 ANALIZAR"):
-        with st.spinner("Procesando análisis exhaustivo..."):
+        with st.spinner("Escaneando con protocolos Scout..."):
             try:
-                # CASO 1: IMÁGENES (REPARADO)
                 if file.type in ["image/png", "image/jpeg"]:
-                    # Redimensionar para evitar BadRequestError por tamaño
                     img = Image.open(file).convert("RGB")
-                    img.thumbnail((800, 800))
-                    buf = io.BytesIO()
-                    img.save(buf, format="JPEG")
+                    img.thumbnail((1024, 1024))
+                    buf = io.BytesIO(); img.save(buf, format="JPEG")
                     b64 = base64.b64encode(buf.getvalue()).decode('utf-8')
                     
+                    # FORMATO JSON REPARADO PARA LLAMA-4-SCOUT
                     resp = client.chat.completions.create(
-                        model=modelo_vision, 
-                        messages=[{"role": "user", "content": [
-                            {"type": "text", "text": "Actúa como el sistema de visión JARVIS. Analiza esta imagen en ESPAÑOL con máximo detalle técnico e identifica anomalías."}, 
-                            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
-                        ]}]
+                        model=modelo_vision_scout,
+                        messages=[{
+                            "role": "user",
+                            "content": [
+                                {"type": "text", "text": "Responde en ESPAÑOL. Realiza un análisis técnico profundo de esta imagen, identifica componentes y detecta anomalías."},
+                                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
+                            ]
+                        }],
+                        temperature=0.2,
+                        max_completion_tokens=1024
                     )
                     ans_an = resp.choices[0].message.content
-
-                # CASO 2: DOCUMENTOS (AÑADIDO ANÁLISIS REAL)
                 else:
-                    texto_extraido = ""
+                    # Lógica de documentos (Texto)
+                    texto = ""
                     if file.name.endswith('.pdf'):
-                        reader = PyPDF2.PdfReader(file)
-                        texto_extraido = "\n".join([page.extract_text() for page in reader.pages[:5]]) # Analiza primeras 5 páginas
+                        texto = "\n".join([p.extract_text() for p in PyPDF2.PdfReader(file).pages[:5]])
                     elif file.name.endswith('.docx'):
-                        doc = docx.Document(file)
-                        texto_extraido = "\n".join([para.text for para in doc.paragraphs])
-                    elif file.name.endswith('.xlsx'):
-                        df = pd.read_excel(file)
-                        texto_extraido = df.head(20).to_string() # Analiza cabecera de datos
-                    else:
-                        texto_extraido = file.read().decode('utf-8')
-
-                    # Enviar texto extraído a la IA para análisis real
+                        texto = "\n".join([p.text for p in docx.Document(file).paragraphs])
+                    
                     resp = client.chat.completions.create(
                         model=modelo_texto,
-                        messages=[
-                            {"role": "system", "content": "Eres el módulo de análisis de datos de JARVIS. Analiza el siguiente contenido técnico en ESPAÑOL y genera un reporte."},
-                            {"role": "user", "content": f"Contenido del archivo {file.name}:\n\n{texto_extraido}"}
-                        ]
+                        messages=[{"role": "system", "content": "Analista JARVIS. Responde en ESPAÑOL."},
+                                  {"role": "user", "content": f"Analiza este contenido técnico:\n{texto}"}]
                     )
                     ans_an = resp.choices[0].message.content
 
                 st.markdown(ans_an)
-                st.download_button("📥 REPORTE PDF", generar_pdf_reporte("REPORTE SCOUT", ans_an), "Reporte_Stark.pdf")
-            
+                st.download_button("📥 DESCARGAR REPORTE", generar_pdf_reporte("REPORTE SCOUT", ans_an), "Reporte.pdf")
             except Exception as e:
-                st.error(f"Fallo en los sensores de análisis: {str(e)}")
+                st.error(f"Fallo en los sensores: {str(e)}")
 
-# --- TAB 2: COMUNICACIONES ---
-with tabs[2]:
-    st.subheader("✉️ Despacho Stark")
-    c1, c2 = st.columns(2)
-    dest = c1.text_input("Para:", value=GMAIL_USER)
-    asun = c2.text_input("Asunto:", value="Confidencial")
-    cuer = st.text_area("Mensaje:")
-    adj = st.file_uploader("📎 Adjunto:", key="mail_adj")
-    if st.button("🚀 ENVIAR"):
-        try:
-            server = smtplib.SMTP('smtp.gmail.com', 587); server.starttls(); server.login(GMAIL_USER, GMAIL_PASS)
-            msg = MIMEMultipart(); msg['From'] = GMAIL_USER; msg['To'] = dest; msg['Subject'] = asun
-            msg.attach(MIMEText(cuer, 'plain'))
-            if adj:
-                part = MIMEBase('application', 'octet-stream'); part.set_payload(adj.read()); encoders.encode_base64(part)
-                part.add_header('Content-Disposition', f'attachment; filename={adj.name}'); msg.attach(part)
-            server.send_message(msg); server.quit(); st.success("Enviado.")
-        except Exception as e: st.error(f"Error: {e}")
-
-# --- TAB 3: LABORATORIO (FIX ERROR 410) ---
+# --- TAB 3: LABORATORIO (FLUX STABLE) ---
 with tabs[3]:
     st.subheader("🎨 Prototipado Mark 85")
     idea = st.text_input("Concepto:")
-    estilo = st.selectbox("Filtro:", ["Cinematic Marvel", "Technical Drawing", "Cyberpunk", "Blueprint Tech"])
+    estilo = st.selectbox("Filtro:", ["Cinematic Marvel", "Technical Drawing", "Cyberpunk"])
     if st.button("🚀 SINTETIZAR") and idea:
-        with st.spinner("Sintetizando polímeros visuales..."):
+        with st.spinner("Creando..."):
             url = "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell"
             headers = {"Authorization": f"Bearer {HF_TOKEN}"}
-            payload = {"inputs": f"Stark Industries tech, {idea}, {estilo} style, highly detailed"}
-            resp = requests.post(url, headers=headers, json=payload)
+            resp = requests.post(url, headers=headers, json={"inputs": f"Stark Industries tech, {idea}, {estilo} style"})
             if resp.status_code == 200: st.image(Image.open(io.BytesIO(resp.content)))
-            else: st.error(f"Fallo en la forja: {resp.status_code}. Reintente en unos segundos.")
+            else: st.error(f"Fallo: {resp.status_code}")
