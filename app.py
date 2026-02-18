@@ -293,40 +293,43 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# 1. PANEL DE CONTROL LATERAL (FIJO POR DISEÑO)
-with st.sidebar:
-    st.title("SISTEMAS JARVIS")
-    st.markdown("---")
-    
-    # Aquí vive el micrófono y el input, siempre visibles y fijos
-    st.subheader("🎙️ COMANDO DE VOZ")
-    audio_data = mic_recorder(
-        start_prompt="INICIAR ESCUCHA", 
-        stop_prompt="PROCESAR", 
-        key="mic_sidebar_final",
-        use_container_width=True
-    )
-    
-    st.markdown("---")
-    st.subheader("⌨️ COMANDO MANUAL")
-    prompt = st.text_input("Órdenes directas:", placeholder="Escriba aquí...", key="input_sidebar_final")
-    
-    st.session_state.modo_fluido = st.toggle("MODO MANOS LIBRES", value=st.session_state.get('modo_fluido', False))
-
-# 2. TAB 0: HUD DE VISUALIZACIÓN
+# --- TAB 0: COMANDO CENTRAL (RESTAURADO Y FUNCIONAL) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
     
-    # Contenedor para los mensajes (Ocupa el centro de la pantalla)
+    # 1. Interruptor Manos Libres (Visible arriba)
+    st.session_state.modo_fluido = st.toggle("🎙️ MODO MANOS LIBRES", value=st.session_state.get('modo_fluido', False))
+    
+    # 2. Área de Mensajes (Historial)
+    # Usamos un contenedor con scroll natural
     for m in st.session_state.historial_chat:
         with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
             st.write(m["content"])
             if m.get("type") == "VIDEO_SIGNAL":
                 st.video(m["video_url"])
 
-    # 3. LÓGICA DE PROCESAMIENTO (Centralizada)
+    st.markdown("---") # Separador para que no se pegue al historial
+
+    # 3. ZONA DE COMANDOS (Visibilidad Garantizada)
+    # Usamos columnas estándar de Streamlit sin posicionamiento fijo para que NO desaparezcan
+    col_mic, col_text = st.columns([1, 5])
+    
+    with col_mic:
+        audio_data = mic_recorder(
+            start_prompt="🎙️", 
+            stop_prompt="🛑", 
+            key="mic_final_v100", 
+            use_container_width=True
+        )
+    
+    with col_text:
+        prompt = st.chat_input("Órdenes, Srta. Diana...")
+
+    # 4. Lógica de Procesamiento JARVIS
     text_in = None
+    
+    # Prioridad al audio si se detecta grabación
     if audio_data and isinstance(audio_data, dict) and audio_data.get('bytes'):
         if len(audio_data['bytes']) > 5000:
             try:
@@ -336,39 +339,54 @@ with tabs[0]:
                         model="whisper-large-v3"
                     ).text
             except Exception as e:
-                st.error(f"Error de audio: {e}")
+                st.error(f"Fallo en sensor: {e}")
     elif prompt: 
         text_in = prompt
 
     if text_in:
-        # Evitar duplicados si el prompt se queda en el cache
-        if "last_input" not in st.session_state or st.session_state.last_input != text_in:
-            st.session_state.last_input = text_in
-            st.session_state.historial_chat.append({"role": "user", "content": text_in})
-            
-            # Respuesta JARVIS
-            hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-6:]]
-            res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + hist)
-            ans = res.choices[0].message.content
-            st.session_state.historial_chat.append({"role": "assistant", "content": ans})
-            
-            # Voz y Rerun
-            import hashlib
-            msg_hash = hashlib.md5(ans.encode()).hexdigest()
-            js_voice = f"""
-                <script>
-                (function() {{
-                    if (window.last_speech_hash === "{msg_hash}") return;
-                    window.speechSynthesis.cancel();
-                    var msg = new SpeechSynthesisUtterance({repr(ans)});
-                    msg.lang = 'es-ES';
-                    msg.onstart = function() {{ window.last_speech_hash = "{msg_hash}"; }};
-                    window.speechSynthesis.speak(msg);
-                }})();
-                </script>
-            """
-            st.components.v1.html(js_voice, height=0)
-            st.rerun()
+        st.session_state.historial_chat.append({"role": "user", "content": text_in})
+        
+        # Generación de respuesta
+        hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-6:]]
+        res = client.chat.completions.create(
+            model=modelo_texto, 
+            messages=[{"role": "system", "content": PERSONALIDAD}] + hist
+        )
+        ans = res.choices[0].message.content
+        st.session_state.historial_chat.append({"role": "assistant", "content": ans})
+        
+        # 5. Voz y Scroll Automático
+        import hashlib
+        msg_hash = hashlib.md5(ans.encode()).hexdigest()
+        js_voice = f"""
+            <script>
+            (function() {{
+                if (window.last_speech_hash === "{msg_hash}") return;
+                
+                // Forzar scroll al fondo para ver la respuesta
+                const main = window.parent.document.querySelector('.main');
+                if (main) {{ main.scrollTo({{top: main.scrollHeight, behavior: 'smooth'}}); }}
+
+                window.speechSynthesis.cancel();
+                var msg = new SpeechSynthesisUtterance({repr(ans)});
+                msg.lang = 'es-ES';
+                msg.onstart = function() {{ window.last_speech_hash = "{msg_hash}"; }};
+                
+                // Si el modo fluido está activo, reactivar el micro al terminar de hablar
+                msg.onend = function() {{
+                    if({str(st.session_state.modo_fluido).lower()}) {{
+                        setTimeout(() => {{
+                            const b = window.parent.document.querySelector('button[aria-label="🎙️"]');
+                            if(b) b.click();
+                        }}, 1000);
+                    }}
+                }};
+                window.speechSynthesis.speak(msg);
+            }})();
+            </script>
+        """
+        st.components.v1.html(js_voice, height=0)
+        st.rerun()
 
 # --- TAB 1: ANÁLISIS (FIX SCOUT VISION) ---
 with tabs[1]:
