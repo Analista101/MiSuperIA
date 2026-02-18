@@ -244,23 +244,21 @@ with tabs[2]:
                         st.error(f"❌ Error en el enlace: {str(e)}")
                         st.info("Sugerencia: Verifique que la 'Contraseña de Aplicación' de Google esté activa en los secretos.")
 
-# --- TAB 3: LABORATORIO (CORRECCIÓN ERROR 410) ---
+# --- TAB 3: LABORATORIO (CORRECCIÓN DE ENRUTADOR 2026) ---
 with tabs[3]:
     st.subheader("🎨 Prototipado Mark 85")
     idea = st.text_input("Concepto:")
     estilo = st.selectbox("Filtro:", ["Cinematic Marvel", "Technical Drawing", "Cyberpunk", "Blueprint Tech"])
     
     if st.button("🚀 SINTETIZAR") and idea:
-        with st.spinner("Sintetizando polímeros visuales en la forja..."):
+        with st.spinner("Sintetizando polímeros visuales en el nuevo enrutador..."):
             try:
-                # Actualización de Endpoint para evitar el Error 410 (Modelo actualizado)
-                url = "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-dev"
+                # CAMBIO CRÍTICO: Nueva URL del enrutador de Hugging Face
+                url = "https://router.huggingface.co/hf-inference/models/stabilityai/stable-diffusion-xl-base-1.0"
                 headers = {"Authorization": f"Bearer {HF_TOKEN}"}
                 
-                # Optimizamos el prompt para el nuevo motor
                 payload = {
-                    "inputs": f"Stark Industries highly detailed prototype, {idea}, {estilo} style, 8k resolution, cinematic lighting",
-                    "parameters": {"num_inference_steps": 30}
+                    "inputs": f"Stark Industries tech, {idea}, {estilo} style, masterpiece, high quality",
                 }
                 
                 resp = requests.post(url, headers=headers, json=payload, timeout=60)
@@ -268,9 +266,9 @@ with tabs[3]:
                 if resp.status_code == 200:
                     st.image(Image.open(io.BytesIO(resp.content)), caption=f"Prototipo: {idea}")
                 elif resp.status_code == 503:
-                    st.warning("⚠️ Los servidores de la forja están cargando. JARVIS está reintentando, espere 10 segundos...")
+                    st.warning("⚠️ La forja se está calentando. JARVIS reintentará en breve... espere unos segundos.")
                 else:
-                    st.error(f"Fallo en la forja: Código {resp.status_code}. Mensaje: {resp.text}")
+                    st.error(f"Fallo en la forja: Código {resp.status_code}. Mensaje del Servidor: {resp.text}")
                     
             except Exception as e:
-                st.error(f"Error crítico en el Laboratorio: {str(e)}")
+                st.error(f"Error de conexión en los servidores: {str(e)}")
