@@ -290,7 +290,7 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: COMANDO CENTRAL (HUD REFORZADO + FILTRO DE ERRORES) ---
+# --- TAB 0: COMANDO CENTRAL (HUD CON FILTRO DE DURACIÓN) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
@@ -315,12 +315,13 @@ with tabs[0]:
     
     prompt = st.chat_input("Órdenes, Srta. Diana...")
 
-    # 3. Procesamiento de Entrada con Failsafe
+    # 3. Procesamiento de Entrada con Failsafe de Duración
     text_in = None
     
-    # Validamos que audio_data no solo exista, sino que contenga bytes reales
     if audio_data and isinstance(audio_data, dict) and audio_data.get('bytes'):
-        if len(audio_data['bytes']) > 1000:  # Filtro para evitar archivos vacíos
+        # PROTOCOLO DE SEGURIDAD: Solo procesar si el audio supera los 5000 bytes 
+        # (Aprox. 0.1s de audio, superando el mínimo de 0.01s exigido por Groq)
+        if len(audio_data['bytes']) > 5000: 
             try:
                 with st.spinner("JARVIS: Procesando frecuencia de voz..."):
                     text_in = client.audio.transcriptions.create(
@@ -328,9 +329,14 @@ with tabs[0]:
                         model="whisper-large-v3"
                     ).text
             except Exception as e:
-                st.error(f"Error de conexión con Groq Audio: {e}")
+                # Si Groq vuelve a dar error de duración, lo capturamos sin romper la app
+                if "too short" in str(e):
+                    st.warning("JARVIS: Audio demasiado breve. Por favor, hable un poco más.")
+                else:
+                    st.error(f"Error de conexión con Groq Audio: {e}")
         else:
-            st.warning("JARVIS: Audio demasiado corto o vacío. Inténtelo de nuevo.")
+            # Silenciamos el aviso si es un clic accidental muy rápido
+            pass
 
     elif prompt: 
         text_in = prompt
