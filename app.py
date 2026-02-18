@@ -166,30 +166,42 @@ st.markdown("""
 
 st.markdown("""
     <style>
-    /* FIJAR Y ALARGAR BARRA DE COMANDOS */
+    /* AJUSTE INTELIGENTE DE BARRA DE COMANDOS */
     div[data-testid="stChatInput"] {
         position: fixed;
         bottom: 30px;
-        left: 10%; /* Centra la barra en pantallas anchas */
-        width: 80% !important; /* Cuadro mucho más largo */
+        /* Deja espacio para la Sidebar y se centra en el área visible */
+        left: 330px !important; 
+        width: calc(90% - 350px) !important;
         z-index: 1000;
-        background: rgba(0, 0, 0, 0.7) !important;
+        background: rgba(1, 4, 9, 0.8) !important;
         border-radius: 15px;
         border: 1px solid #00f2ff;
         box-shadow: 0 0 20px rgba(0, 242, 255, 0.3);
     }
 
-    /* POSICIONAMIENTO DEL MICRÓFONO FLOTANTE */
+    /* POSICIONAMIENTO DEL MICRÓFONO */
+    /* Lo movemos a la derecha del cuadro de texto para que no se tape */
     .stMicRecorder {
         position: fixed;
         bottom: 35px;
-        right: 12%; /* Lo coloca justo al final de la barra de texto */
+        right: 5% !important;
         z-index: 1001;
     }
 
-    /* AJUSTE DE MARGEN PARA EL CONTENIDO */
+    /* PREVENIR CORTE DE CONTENIDO AL FINAL */
     .main .block-container {
-        padding-bottom: 180px !important;
+        padding-bottom: 200px !important;
+        padding-left: 20px !important;
+        padding-right: 20px !important;
+    }
+
+    /* ESTILO ADICIONAL PARA EL BOTÓN DEL MICRO */
+    .stMicRecorder button {
+        border-radius: 50% !important;
+        width: 45px !important;
+        height: 45px !important;
+        background: rgba(0, 242, 255, 0.2) !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -377,6 +389,7 @@ with tabs[0]:
         """
         st.components.v1.html(js_voice, height=0)
         st.rerun()
+
 # --- TAB 1: ANÁLISIS (FIX SCOUT VISION) ---
 with tabs[1]:
     st.subheader("📊 Análisis Scout v4")
