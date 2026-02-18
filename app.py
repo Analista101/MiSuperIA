@@ -293,12 +293,12 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: CONSOLA JARVIS (REFINAMIENTO VISUAL Y FLUJO) ---
+# --- TAB 0: CONSOLA JARVIS (REPARACIÓN DE FLUJO Y SCROLL) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
 
-    # --- 1. CABECERA Y CONTROLES ---
+    # --- 1. CABECERA FIJA ---
     st.markdown("### 🖥️ CENTRO DE MANDO STARK")
     
     col_clean, col_mode = st.columns([1, 1])
@@ -309,20 +309,21 @@ with tabs[0]:
     with col_mode:
         st.session_state.modo_fluido = st.toggle("🎙️ MANOS LIBRES", value=st.session_state.get('modo_fluido', False))
 
-    # --- 2. BARRA DE COMANDOS FUNCIONAL ---
-    # Usamos un formulario para limpiar el texto automáticamente al enviar
-    with st.form(key="stark_form", clear_on_submit=True):
-        c_mic, c_input, c_btn = st.columns([1, 8, 1])
+    # --- 2. BARRA DE COMANDOS (SIN BOTÓN VISIBLE) ---
+    with st.form(key="stark_form_v29", clear_on_submit=True):
+        c_mic, c_input = st.columns([1, 9])
         with c_mic:
-            audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v28", use_container_width=True)
+            audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v29", use_container_width=True)
         with c_input:
             prompt = st.text_input(label="cmd", placeholder="Escriba aquí y presione Enter...", label_visibility="collapsed")
-        with c_btn:
-            submit = st.form_submit_button("SIRI") # Botón oculto o de respaldo
+        
+        # Botón invisible necesario para st.form
+        st.form_submit_button("enviar", help=None, on_click=None, args=None, kwargs=None, type="primary", disabled=False, use_container_width=False)
 
     st.markdown("---")
 
-    # --- 3. CONTENEDOR DE CHAT (AUTO-SCROLL ACTIVO) ---
+    # --- 3. CONTENEDOR DE CHAT (AUTO-SCROLL) ---
+    # Usamos un contenedor con scroll interno y una clave para rastrearlo
     chat_box = st.container(height=500, border=False)
     
     with chat_box:
@@ -331,6 +332,9 @@ with tabs[0]:
                 st.write(m["content"])
                 if m.get("type") == "VIDEO_SIGNAL":
                     st.video(m["video_url"])
+        
+        # Ancla visual para el final del chat
+        st.markdown('<div id="stark-bottom"></div>', unsafe_allow_html=True)
 
     # --- 4. PROCESAMIENTO JARVIS ---
     text_in = None
@@ -339,47 +343,51 @@ with tabs[0]:
             try:
                 text_in = client.audio.transcriptions.create(file=("v.wav", audio_data['bytes']), model="whisper-large-v3").text
             except Exception as e: st.error(f"Error: {e}")
-    elif submit and prompt: 
+    elif prompt: 
         text_in = prompt
 
     if text_in:
         st.session_state.historial_chat.append({"role": "user", "content": text_in})
-        
-        # Respuesta JARVIS
         hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-6:]]
         res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + hist)
         ans = res.choices[0].message.content
         st.session_state.historial_chat.append({"role": "assistant", "content": ans})
         
-        # SCRIPT PARA AUTO-SCROLL (Baja el chat solo)
+        # SCRIPT DE AUTO-SCROLL MEJORADO
+        # Mueve la vista al ancla 'stark-bottom'
         st.components.v1.html("""
             <script>
-            var chatDiv = window.parent.document.querySelector('div[data-testid="stVBC"]');
-            if (chatDiv) { chatDiv.scrollTop = chatDiv.scrollHeight; }
-            setTimeout(() => { if (chatDiv) chatDiv.scrollTop = chatDiv.scrollHeight; }, 500);
+            function forceScroll() {
+                const chatBox = window.parent.document.querySelector('div[data-testid="stVBC"]');
+                if (chatBox) {
+                    chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
+                }
+            }
+            forceScroll();
+            setTimeout(forceScroll, 500); // Refuerzo para asegurar que cargue la respuesta
             </script>
         """, height=0)
         st.rerun()
 
-# --- CSS: PESTAÑAS LARGAS Y DISEÑO EXPANDIDO ---
+# --- CSS: ESTÉTICA STARK Y PESTAÑAS ---
 st.markdown("""
     <style>
-    /* PESTAÑAS: Ocupar el 100% del ancho y distribuir equitativamente */
-    button[data-testid="stMarker"] {
-        display: none !important; /* Oculta la línea roja de selección si lo desea */
+    /* OCULTAR EL BOTÓN DE ENVÍO DEL FORMULARIO */
+    button[kind="primaryFormSubmit"] {
+        display: none !important;
     }
-    
+
+    /* PESTAÑAS LARGAS Y DISTRIBUIDAS */
     div[data-testid="stTabs"] button {
         flex-grow: 1 !important;
         width: 100% !important;
-        min-width: 200px !important; /* Pestañas más largas */
-        font-weight: bold !important;
-        border: 1px solid #00f2ff !important;
-        margin: 0 5px !important;
+        min-width: 200px !important;
         background-color: rgba(0, 242, 255, 0.05) !important;
+        border: 1px solid #00f2ff !important;
+        color: #00f2ff !important;
     }
 
-    /* Fijar la cabecera (Pestañas y Reactor) */
+    /* Fijar cabecera */
     [data-testid="stTabs"] {
         position: sticky !important;
         top: 0;
