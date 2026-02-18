@@ -293,54 +293,56 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: COMANDO CENTRAL (AUTO-SCROLL Y LIMPIEZA) ---
+# --- TAB 0: CONSOLA JARVIS (INTERFAZ DE NAVEGACIÓN FIJA) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
 
-    # --- 1. CABECERA DE CONTROL (ESTÁTICA) ---
-    col_t1, col_t2 = st.columns([3, 1])
-    with col_t1:
-        st.markdown("### 🖥️ CONSOLA JARVIS")
-    with col_t2:
-        # BOTÓN DE LIMPIAR CHAT (ARRIBA)
-        if st.button("🗑️ LIMPIAR REGISTROS", use_container_width=True):
+    # --- 1. PANEL DE CONTROL FIJO (ESTÁTICO EN EL HUD) ---
+    # Este bloque no se mueve, es el marco de la consola
+    st.markdown("### 🖥️ CENTRO DE MANDO STARK")
+    
+    col_clean, col_space, col_mode = st.columns([1.5, 2, 1.5])
+    with col_clean:
+        if st.button("🗑️ PURGAR MEMORIA", use_container_width=True):
             st.session_state.historial_chat = []
-            st.session_state.last_cmd = None
             st.rerun()
+    with col_mode:
+        st.session_state.modo_fluido = st.toggle("🎙️ MANOS LIBRES", value=st.session_state.get('modo_fluido', False))
 
-    # Panel de mandos superior
-    with st.container():
-        c_toggle, c_mic = st.columns([2, 1])
-        with c_toggle:
-            st.session_state.modo_fluido = st.toggle("🎙️ MODO MANOS LIBRES", value=st.session_state.get('modo_fluido', False))
-        with c_mic:
-            audio_data = mic_recorder(start_prompt="HABLAR", stop_prompt="ENVIAR", key="mic_v25", use_container_width=True)
-        
-        # Barra de entrada funcional con Enter
-        prompt = st.text_input(label="cmd", placeholder="Ingrese orden...", label_visibility="collapsed", key="input_v25")
+    # Fila de comandos: Micro y Texto integrados arriba
+    c_mic, c_input = st.columns([1, 8])
+    with c_mic:
+        audio_data = mic_recorder(
+            start_prompt="🎙️", stop_prompt="🛑", 
+            key="mic_superior_v26", use_container_width=True
+        )
+    with c_input:
+        prompt = st.text_input(
+            label="cmd", placeholder="Ingrese comando de voz o texto...", 
+            label_visibility="collapsed", key="input_superior_v26"
+        )
 
     st.markdown("---")
 
-    # --- 2. ÁREA DE CHAT DINÁMICA (AUTO-SCROLL) ---
-    # Usamos un ID específico para que el JavaScript sepa dónde hacer scroll
-    st.markdown('<div id="chat-stark-anchor"></div>', unsafe_allow_html=True)
+    # --- 2. ÁREA DE DATOS DINÁMICA (ÚNICO ELEMENTO CON SCROLL) ---
+    # Definimos una altura fija para el historial para que el resto del HUD no se mueva
+    chat_box = st.container(height=550, border=False)
     
-    chat_placeholder = st.container(height=500, border=False)
-    with chat_placeholder:
+    with chat_box:
         for m in st.session_state.historial_chat:
             with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
                 st.write(m["content"])
                 if m.get("type") == "VIDEO_SIGNAL":
                     st.video(m["video_url"])
 
-    # --- 3. LÓGICA Y PROTOCOLO DE AUTO-MOVIMIENTO ---
+    # --- 3. LÓGICA DE PROCESAMIENTO Y AUTO-SCROLL ---
     text_in = None
     if audio_data and isinstance(audio_data, dict) and audio_data.get('bytes'):
         if len(audio_data['bytes']) > 5000:
             try:
                 text_in = client.audio.transcriptions.create(file=("v.wav", audio_data['bytes']), model="whisper-large-v3").text
-            except Exception as e: st.error(f"Error: {e}")
+            except Exception as e: st.error(f"Error de sensores: {e}")
     elif prompt: 
         text_in = prompt
 
@@ -349,50 +351,40 @@ with tabs[0]:
             st.session_state.last_cmd = text_in
             st.session_state.historial_chat.append({"role": "user", "content": text_in})
             
-            # Respuesta JARVIS
+            # Generación de respuesta JARVIS
             hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-6:]]
             res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + hist)
             ans = res.choices[0].message.content
             st.session_state.historial_chat.append({"role": "assistant", "content": ans})
             
-            # JAVASCRIPT PARA AUTO-SCROLL AL ÚLTIMO MENSAJE
-            # Esto mueve el chat automáticamente hacia abajo al procesar la orden
-            js_scroll = """
+            # Auto-Scroll mediante JavaScript al final del contenedor
+            st.components.v1.html("""
                 <script>
-                setTimeout(function() {
-                    var chatDiv = window.parent.document.querySelector('div[data-testid="stVBC"]');
-                    if (chatDiv) {
-                        chatDiv.scrollTop = chatDiv.scrollHeight;
-                    }
-                }, 100);
+                var chatDiv = window.parent.document.querySelector('div[data-testid="stVBC"]');
+                if (chatDiv) { chatDiv.scrollTop = chatDiv.scrollHeight; }
                 </script>
-            """
-            st.components.v1.html(js_scroll, height=0)
+            """, height=0)
             st.rerun()
 
-# --- CSS DE AJUSTE FINALES ---
+# --- CSS DE AJUSTE PARA FIJAR CABECERA Y PESTAÑAS ---
 st.markdown("""
     <style>
-    /* Ocultamos la barra nativa del fondo para evitar confusiones */
-    div[data-testid="stChatInput"] { display: none; }
-    
-    /* Mejoramos el estilo de la caja de mensajes */
-    .stChatMessage {
-        border-bottom: 1px solid rgba(0, 242, 255, 0.1);
-        padding: 10px;
+    /* Fijamos el bloque de pestañas y el reactor para que no se desplacen */
+    [data-testid="stTabs"] {
+        position: sticky !important;
+        top: 0;
+        z-index: 999;
+        background-color: rgba(1, 4, 9, 1);
     }
-    </style>
-""", unsafe_allow_html=True)
-
-# --- CSS DE LIMPIEZA INTERFACE ---
-st.markdown("""
-    <style>
-    /* Eliminamos cualquier residuo de la barra de chat nativa al fondo */
-    footer {visibility: hidden;}
-    div[data-testid="stChatInput"] {display: none;}
     
-    /* Estilizamos el contenedor de mensajes para que el scroll sea fluido */
-    [data-testid="stExpander"] { border: none !important; }
+    /* Ocultamos la barra de chat inferior nativa permanentemente */
+    div[data-testid="stChatInput"] { display: none !important; }
+    
+    /* Ajustamos el padding de la página para que la cabecera no se corte */
+    .main .block-container {
+        padding-top: 1rem !important;
+        padding-bottom: 1rem !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
