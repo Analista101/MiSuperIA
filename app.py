@@ -293,98 +293,103 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: PROYECTO JARVIS (SIMETRÍA ABSOLUTA V44) ---
+# --- TAB 0: PROYECTO JARVIS (ESTABILIDAD ABSOLUTA V45) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
 
-    # --- 1. CABECERA TÉCNICA (FILA ÚNICA) ---
-    # Alineación ultra-precisa usando proporciones mínimas
-    c_purgar, c_ml, c_mic, c_input = st.columns([0.4, 0.7, 0.5, 8.4])
-    
-    with c_purgar:
-        # El botón ahora se inyecta con un ID único para la clonación visual
-        if st.button("🗑️", key="purgar_v44_clon"):
-            st.session_state.historial_chat = []
-            st.rerun()
-            
-    with c_ml:
-        st.session_state.modo_fluido = st.toggle("ML", value=st.session_state.get('modo_fluido', False), key="ml_v44")
-        
-    with c_mic:
-        # El micrófono es nuestra referencia de tamaño (aprox 35-40px)
-        audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v44")
-        
+    # --- 1. MÓDULO DE ENTRADA UNIFICADO ---
+    # Usamos una sola fila de columnas, pero bloqueamos sus anchos con CSS
+    c_botones, c_input = st.columns([1.8, 8.2])
+
+    with c_botones:
+        # Sub-columna para agrupar los 3 elementos a la izquierda
+        sub_c1, sub_c2, sub_c3 = st.columns([1, 1, 1])
+        with sub_c1:
+            if st.button("🗑️", key="purgar_v45"):
+                st.session_state.historial_chat = []
+                st.rerun()
+        with sub_c2:
+            st.session_state.modo_fluido = st.toggle("ML", value=st.session_state.get('modo_fluido', False), key="ml_v45")
+        with sub_c3:
+            # El micrófono ahora tiene espacio reservado idéntico al basurero
+            audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v45")
+
     with c_input:
-        def protocolo_jarvis_v44():
-            orden = st.session_state.input_v44_fix
-            if orden:
-                st.session_state.historial_chat.append({"role": "user", "content": orden})
+        def protocolo_envio():
+            txt = st.session_state.input_v45
+            if txt:
+                st.session_state.historial_chat.append({"role": "user", "content": txt})
+                # Lógica JARVIS (Eco-Free)
                 hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
                 try:
                     res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + hist)
                     st.session_state.historial_chat.append({"role": "assistant", "content": res.choices[0].message.content})
                 except: pass
-                st.session_state.input_v44_fix = "" # Limpieza automática
+                st.session_state.input_v45 = "" # Limpieza instantánea
 
-        st.text_input("cmd", placeholder="Órdenes, Srta. Diana...", label_visibility="collapsed", key="input_v44_fix", on_change=protocolo_jarvis_v44)
+        st.text_input("cmd", placeholder="Órdenes, Srta. Diana...", label_visibility="collapsed", key="input_v45", on_change=protocolo_envio)
 
     st.markdown("---")
 
-    # --- 2. REGISTRO DE DATOS (AUTO-SCROLL) ---
-    chat_box = st.container(height=540, border=False)
-    with chat_box:
+    # --- 2. REGISTRO VISUAL (AUTO-SCROLL) ---
+    chat_container = st.container(height=540, border=False)
+    with chat_container:
         for m in st.session_state.historial_chat:
             with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
                 st.write(m["content"])
         
         st.components.v1.html("""
             <script>
-            function JARVIS_Sync() {
+            function JARVIS_Scroll() {
                 const el = window.parent.document.querySelector('div[data-testid="stVBC"]');
                 if (el) { el.scrollTop = el.scrollHeight; }
             }
-            JARVIS_Sync(); setTimeout(JARVIS_Sync, 400);
+            JARVIS_Scroll(); setTimeout(JARVIS_Scroll, 400);
             </script>
         """, height=0)
 
-# --- CSS: CLONACIÓN DEL BOTÓN DE MICRÓFONO ---
+# --- CSS: PROTOCOLO DE SIMETRÍA TOTAL ---
 st.markdown("""
     <style>
-    /* 1. FORZAR AL BASURERO A SER UN CLON DEL MICRO */
-    button[key="purgar_v44_clon"] {
+    /* 1. CLONACIÓN GEOMÉTRICA: Basurero = Micrófono */
+    button[key="purgar_v45"] {
         height: 38px !important;
         width: 38px !important;
         min-width: 38px !important;
         max-width: 38px !important;
         padding: 0 !important;
-        border-radius: 4px !important; /* Igual que el micro */
-        border: 1px solid rgba(255, 255, 255, 0.2) !important;
-        background: rgba(151, 166, 195, 0.1) !important;
-        display: inline-flex !important;
-        align-items: center !important;
-        justify-content: center !important;
         margin-top: 2px !important;
+        border: 1px solid rgba(0, 242, 255, 0.4) !important;
+        background: rgba(0, 242, 255, 0.05) !important;
+        border-radius: 5px !important;
     }
 
-    /* 2. ALINEACIÓN PARA EVITAR EL "BOTE" */
+    /* 2. ALINEACIÓN DE INTERRUPTOR ML */
+    .stCheckbox {
+        margin-top: 10px !important;
+        margin-left: 5px !important;
+    }
+
+    /* 3. ALINEACIÓN DE COLUMNAS (NO MÁS BOTES) */
     div[data-testid="column"] {
         display: flex !important;
         align-items: center !important;
         justify-content: flex-start !important;
+        gap: 0px !important;
     }
 
-    /* 3. PESTAÑAS STARK LARGAS (SIN TOCAR SIDEBAR) */
+    /* 4. PESTAÑAS STARK: Largas y estables */
     div[data-testid="stTabs"] button {
         flex: 1 !important;
         min-width: 200px !important;
         color: #00f2ff !important;
     }
     
-    /* 4. MANTENER EL FOCO EN EL TEXTO */
+    /* 5. CUADRO DE TEXTO: Color y borde Reactor Arc */
     .stTextInput input {
-        background-color: rgba(0, 242, 255, 0.05) !important;
-        border: 1px solid rgba(0, 242, 255, 0.2) !important;
+        border: 1px solid rgba(0, 242, 255, 0.3) !important;
+        background-color: rgba(0, 0, 0, 0.2) !important;
     }
     </style>
 """, unsafe_allow_html=True)
