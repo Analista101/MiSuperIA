@@ -46,9 +46,10 @@ PERSONALIDAD = (
     f"Ubicación: Santiago, Chile. Fecha: {fecha_actual} | Hora: {hora_actual}."
 )
 
-# --- 2. ESTILOS HUD ---
+# --- 2. ESTILOS HUD AVANZADOS (REACTOR V2 + NEON ENHANCEMENT) ---
 st.markdown("""
     <style>
+    /* Fondo General (Se mantiene según protocolo) */
     .stApp {
         background: #010409 !important;
         background-image: 
@@ -57,24 +58,83 @@ st.markdown("""
         background-size: cover !important;
         background-blend-mode: overlay;
     }
+
+    /* BARRA LATERAL - EFECTO CÓDIGO BINARIO */
+    section[data-testid="stSidebar"] {
+        background-image: linear-gradient(rgba(1, 4, 9, 0.9), rgba(1, 4, 9, 0.9)), 
+            url('https://www.transparenttextures.com/patterns/carbon-fibre.png');
+        border-right: 2px solid #00f2ff;
+    }
+    section[data-testid="stSidebar"]::before {
+        content: "01101001 01101110 01110100 01100101 01101100 01101100 01101001 01100111 01100101 01101110 01100011 01100101";
+        font-family: 'Courier New', monospace;
+        font-size: 10px;
+        color: rgba(0, 242, 255, 0.2);
+        position: absolute;
+        width: 100%;
+        padding: 10px;
+        white-space: pre-wrap;
+        z-index: -1;
+    }
+
+    /* INPUTS Y UPLOADERS CON BORDE NEÓN */
+    div[data-baseweb="input"], div[data-baseweb="textarea"], .stFileUploader {
+        border: 1px solid #00f2ff !important;
+        box-shadow: 0 0 10px rgba(0, 242, 255, 0.2) !important;
+        border-radius: 8px !important;
+        background: rgba(0, 0, 0, 0.5) !important;
+    }
+
+    /* BOTONES ESTILO STARK */
     button, div.stButton > button, div.stDownloadButton > button {
-        background: rgba(0, 242, 255, 0.05) !important;
+        background: rgba(0, 242, 255, 0.1) !important;
         color: #00f2ff !important;
         border: 1px solid #00f2ff !important;
-        border-radius: 5px !important;
-        text-transform: uppercase !important;
-        letter-spacing: 2px !important;
-        box-shadow: 0 0 8px rgba(0, 242, 255, 0.3) !important;
-        width: 100%;
+        box-shadow: 0 0 15px rgba(0, 242, 255, 0.4) !important;
+        transition: all 0.3s ease;
     }
-    .reactor-container { position: relative; height: 250px; display: flex; justify-content: center; align-items: center; margin-top: -30px; }
+    button:hover {
+        background: rgba(0, 242, 255, 0.3) !important;
+        box-shadow: 0 0 25px rgba(0, 242, 255, 0.6) !important;
+    }
+
+    /* REACTOR ARC V2 - CORE Y AUREOLA */
+    .reactor-container { 
+        position: relative; 
+        height: 300px; 
+        display: flex; 
+        justify-content: center; 
+        align-items: center; 
+        margin-top: -20px;
+    }
+    .reactor-aureola {
+        position: absolute;
+        width: 180px;
+        height: 180px;
+        border: 2px dashed #00f2ff;
+        border-radius: 50%;
+        animation: rotate-aureola 10s linear infinite;
+        opacity: 0.5;
+        box-shadow: 0 0 20px rgba(0, 242, 255, 0.3);
+    }
     .reactor-core { 
-        width: 80px; height: 80px; background: radial-gradient(circle, #fff 5%, #00f2ff 50%, transparent 80%); 
-        border-radius: 50%; box-shadow: 0 0 60px #00f2ff; animation: pulse-breathe 2.5s infinite alternate ease-in-out; 
+        width: 100px; 
+        height: 100px; 
+        background: radial-gradient(circle, #fff 10%, #00f2ff 40%, transparent 70%); 
+        border-radius: 50%; 
+        box-shadow: 0 0 80px #00f2ff; 
+        animation: pulse-breathe 2s infinite alternate ease-in-out;
+        z-index: 2;
     }
-    @keyframes pulse-breathe { 0% { transform: scale(1); } 100% { transform: scale(1.05); } }
+    
+    @keyframes rotate-aureola { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    @keyframes pulse-breathe { 0% { transform: scale(0.9); opacity: 0.8; } 100% { transform: scale(1.1); opacity: 1; } }
     </style>
-    <div class="reactor-container"><div class="reactor-core"></div></div>
+
+    <div class="reactor-container">
+        <div class="reactor-aureola"></div>
+        <div class="reactor-core"></div>
+    </div>
 """, unsafe_allow_html=True)
 
 # --- 3. AUTENTICACIÓN ---
