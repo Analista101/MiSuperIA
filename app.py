@@ -244,15 +244,33 @@ with tabs[2]:
                         st.error(f"❌ Error en el enlace: {str(e)}")
                         st.info("Sugerencia: Verifique que la 'Contraseña de Aplicación' de Google esté activa en los secretos.")
 
-# --- TAB 3: LABORATORIO (FLUX STABLE) ---
+# --- TAB 3: LABORATORIO (CORRECCIÓN ERROR 410) ---
 with tabs[3]:
     st.subheader("🎨 Prototipado Mark 85")
     idea = st.text_input("Concepto:")
-    estilo = st.selectbox("Filtro:", ["Cinematic Marvel", "Technical Drawing", "Cyberpunk"])
+    estilo = st.selectbox("Filtro:", ["Cinematic Marvel", "Technical Drawing", "Cyberpunk", "Blueprint Tech"])
+    
     if st.button("🚀 SINTETIZAR") and idea:
-        with st.spinner("Creando..."):
-            url = "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell"
-            headers = {"Authorization": f"Bearer {HF_TOKEN}"}
-            resp = requests.post(url, headers=headers, json={"inputs": f"Stark Industries tech, {idea}, {estilo} style"})
-            if resp.status_code == 200: st.image(Image.open(io.BytesIO(resp.content)))
-            else: st.error(f"Fallo: {resp.status_code}")
+        with st.spinner("Sintetizando polímeros visuales en la forja..."):
+            try:
+                # Actualización de Endpoint para evitar el Error 410 (Modelo actualizado)
+                url = "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-dev"
+                headers = {"Authorization": f"Bearer {HF_TOKEN}"}
+                
+                # Optimizamos el prompt para el nuevo motor
+                payload = {
+                    "inputs": f"Stark Industries highly detailed prototype, {idea}, {estilo} style, 8k resolution, cinematic lighting",
+                    "parameters": {"num_inference_steps": 30}
+                }
+                
+                resp = requests.post(url, headers=headers, json=payload, timeout=60)
+                
+                if resp.status_code == 200:
+                    st.image(Image.open(io.BytesIO(resp.content)), caption=f"Prototipo: {idea}")
+                elif resp.status_code == 503:
+                    st.warning("⚠️ Los servidores de la forja están cargando. JARVIS está reintentando, espere 10 segundos...")
+                else:
+                    st.error(f"Fallo en la forja: Código {resp.status_code}. Mensaje: {resp.text}")
+                    
+            except Exception as e:
+                st.error(f"Error crítico en el Laboratorio: {str(e)}")
