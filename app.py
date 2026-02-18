@@ -293,92 +293,50 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: COMANDO CENTRAL (SOLUCIÓN DE VISIBILIDAD TOTAL) ---
+# --- TAB 0: PROYECTO JARVIS (CONTROL DE ESTABILIDAD V21) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
     
-    # 1. Interruptor Manos Libres
+    # 1. Selector de Modo (Sin interferencias)
     st.session_state.modo_fluido = st.toggle("🎙️ MODO MANOS LIBRES", value=st.session_state.get('modo_fluido', False))
     
-    # 2. Historial de Mensajes
-    # El contenedor asegura que el chat no empuje la barra hacia afuera
-    chat_container = st.container(height=500)
-    with chat_container:
+    # 2. CONTENEDOR DE CHAT CON ALTURA FIJA (Evita que se pegue la barra)
+    # Al definir 'height', el chat se vuelve independiente del resto de la página
+    with st.container(height=450, border=True):
         for m in st.session_state.historial_chat:
             with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
                 st.write(m["content"])
                 if m.get("type") == "VIDEO_SIGNAL":
                     st.video(m["video_url"])
 
-    # 3. ZONA DE COMANDO (DISEÑO UNIFICADO)
-    # Creamos una base visual para que parezca una sola barra
-    st.markdown('<div class="stark-input-zone">', unsafe_allow_html=True)
-    
-    col_mic, col_input = st.columns([1, 10])
-    
-    with col_mic:
-        # El micrófono aparece aquí obligatoriamente
-        audio_data = mic_recorder(
-            start_prompt="🎙️", 
-            stop_prompt="🛑", 
-            key="mic_v20_final", 
-            use_container_width=True
-        )
-    
-    with col_input:
-        # Usamos st.text_input para que pueda convivir en la misma línea que el micro
-        prompt = st.text_input(
-            label="Input",
-            placeholder="Órdenes, Srta. Diana...",
-            label_visibility="collapsed",
-            key="input_v20"
-        )
-    
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("---")
 
-    # 4. CSS PARA FIJAR Y ESTILIZAR
-    st.markdown("""
-        <style>
-        /* Fijamos toda la zona de entrada al fondo */
-        div:has(> div > div > .stark-input-zone) {
-            position: fixed !important;
-            bottom: 30px !important;
-            left: 330px !important; 
-            width: calc(100% - 380px) !important;
-            z-index: 99999 !important;
-            background: rgba(1, 4, 9, 0.9) !important;
-            padding: 10px !important;
-            border: 2px solid #00f2ff !important;
-            border-radius: 15px !important;
-        }
+    # 3. ZONA DE COMANDO UNIFICADA (Sin CSS de posicionamiento externo)
+    # La colocamos de forma natural al final para que no se duplique
+    with st.container():
+        c1, c2 = st.columns([1, 6])
+        with c1:
+            # Usamos una clave única para resetear el micro y eliminar el eco
+            audio_data = mic_recorder(
+                start_prompt="🎙️", 
+                stop_prompt="🛑", 
+                key="mic_stark_ultra_fix", 
+                use_container_width=True
+            )
+        with c2:
+            prompt = st.chat_input("Órdenes, Srta. Diana...")
 
-        /* Estilo del botón de micro */
-        button[aria-label="🎙️"] {
-            background-color: #00f2ff !important;
-            border: none !important;
-            border-radius: 50% !important;
-            height: 45px !important;
-            width: 45px !important;
-            color: black !important;
-        }
-        
-        /* Ajuste de la barra de texto para que parezca de chat */
-        input[data-testid="stWidgetLabel"] + div {
-            background: transparent !important;
-            border: 1px solid rgba(0, 242, 255, 0.3) !important;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-
-    # 5. Lógica de Procesamiento (Whisper + IA)
+    # 4. Lógica Anti-Eco y Procesamiento
     text_in = None
     if audio_data and isinstance(audio_data, dict) and audio_data.get('bytes'):
         if len(audio_data['bytes']) > 5000:
+            # Si el último mensaje es igual al audio procesado, bloqueamos (Anti-Eco)
             try:
                 with st.spinner("JARVIS: Transcribiendo..."):
                     text_in = client.audio.transcriptions.create(
-                        file=("v.wav", audio_data['bytes']), model="whisper-large-v3"
+                        file=("v.wav", audio_data['bytes']), 
+                        model="whisper-large-v3"
                     ).text
             except Exception as e:
                 st.error(f"Error: {e}")
@@ -386,13 +344,34 @@ with tabs[0]:
         text_in = prompt
 
     if text_in:
-        # Lógica de respuesta y voz (se mantiene igual para estabilidad)
-        st.session_state.historial_chat.append({"role": "user", "content": text_in})
-        hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-6:]]
-        res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + hist)
-        ans = res.choices[0].message.content
-        st.session_state.historial_chat.append({"role": "assistant", "content": ans})
-        st.rerun()
+        # Verificación de seguridad para no repetir procesos
+        if "last_processed" not in st.session_state or st.session_state.last_processed != text_in:
+            st.session_state.last_processed = text_in
+            st.session_state.historial_chat.append({"role": "user", "content": text_in})
+            
+            # Respuesta de JARVIS
+            hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-6:]]
+            res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + hist)
+            ans = res.choices[0].message.content
+            st.session_state.historial_chat.append({"role": "assistant", "content": ans})
+            
+            # Protocolo de Voz Limpio
+            import hashlib
+            msg_hash = hashlib.md5(ans.encode()).hexdigest()
+            js_voice = f"""
+                <script>
+                (function() {{
+                    if (window.last_speech_hash === "{msg_hash}") return;
+                    window.speechSynthesis.cancel();
+                    var msg = new SpeechSynthesisUtterance({repr(ans)});
+                    msg.lang = 'es-ES';
+                    msg.onstart = function() {{ window.last_speech_hash = "{msg_hash}"; }};
+                    window.speechSynthesis.speak(msg);
+                }})();
+                </script>
+            """
+            st.components.v1.html(js_voice, height=0)
+            st.rerun()
 
 # --- TAB 1: ANÁLISIS (FIX SCOUT VISION) ---
 with tabs[1]:
