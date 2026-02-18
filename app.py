@@ -246,41 +246,85 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: COMANDO CENTRAL (PROYECCIÓN HOLOGRÁFICA) ---
-if text_in:
-    # 1. Registrar entrada
-    st.session_state.historial_chat.append({"role": "user", "content": text_in})
+# --- TAB 0: COMANDO CENTRAL (PROYECCIÓN + VOZ ANTI-ECO) ---
+with tabs[0]:
+    if "historial_chat" not in st.session_state: st.session_state.historial_chat = []
     
-    # 2. Análisis de Intención (¿Es una búsqueda?)
-    url_final = None
-    prompt_intencion = f"Analiza si el usuario quiere ver un video. Si es así, responde 'BUSCAR: [nombre del video]'. Si no, responde normal. Usuario dice: {text_in}"
+    st.session_state.modo_fluido = st.toggle("🎙️ MODO MANOS LIBRES", value=st.session_state.get('modo_fluido', False))
     
-    check_intencion = client.chat.completions.create(model=modelo_texto, messages=[{"role": "user", "content": prompt_intencion}])
-    respuesta_intencion = check_intencion.choices[0].message.content
+    # Visualización del Historial
+    for m in st.session_state.historial_chat:
+        with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
+            st.write(m["content"])
+            if m.get("type") == "VIDEO_SIGNAL":
+                st.video(m["video_url"])
 
-    if "BUSCAR:" in respuesta_intencion:
-        termino = respuesta_intencion.split("BUSCAR:")[1].strip()
-        with st.spinner(f"JARVIS: Localizando frecuencias para '{termino}'..."):
-            url_final = buscar_video_youtube(termino)
-    else:
-        # Si pega un link directo, lo extraemos como antes
-        url_final = extraer_url_video(text_in)
+    col_mic, col_chat = st.columns([1, 12])
+    with col_mic: audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v1")
+    with col_chat: prompt = st.chat_input("Órdenes, Srta. Diana...")
 
-    # 3. Respuesta de JARVIS
-    res = client.chat.completions.create(
-        model=modelo_texto, 
-        messages=[{"role": "system", "content": PERSONALIDAD}] + st.session_state.historial_chat[-6:]
-    )
-    ans = res.choices[0].message.content
-    
-    # Empaquetado de respuesta con Proyección de Video
-    msg_data = {"role": "assistant", "content": ans}
-    if url_final:
-        msg_data["type"] = "VIDEO_SIGNAL"
-        msg_data["video_url"] = url_final
-    
-    st.session_state.historial_chat.append(msg_data)
-    st.rerun()
+    text_in = None
+    if audio_data and 'bytes' in audio_data:
+        text_in = client.audio.transcriptions.create(file=("v.wav", audio_data['bytes']), model="whisper-large-v3").text
+    elif prompt: text_in = prompt
+
+    if text_in:
+        # 1. Registro de entrada del usuario
+        st.session_state.historial_chat.append({"role": "user", "content": text_in})
+        
+        # 2. Análisis de Intención de Video
+        url_final = None
+        prompt_intencion = f"Analiza si el usuario quiere ver un video. Si es así, responde únicamente 'BUSCAR: [nombre del video]'. Si no, responde 'NORMAL'. Usuario dice: {text_in}"
+        check = client.chat.completions.create(model=modelo_texto, messages=[{"role": "user", "content": prompt_intencion}])
+        intencion = check.choices[0].message.content
+
+        if "BUSCAR:" in intencion:
+            termino = intencion.split("BUSCAR:")[1].strip()
+            with st.spinner(f"JARVIS: Localizando frecuencias para '{termino}'..."):
+                url_final = buscar_video_youtube(termino)
+        else:
+            url_final = extraer_url_video(text_in)
+
+        # 3. Generación de respuesta de JARVIS
+        res = client.chat.completions.create(
+            model=modelo_texto, 
+            messages=[{"role": "system", "content": PERSONALIDAD}] + st.session_state.historial_chat[-6:]
+        )
+        ans = res.choices[0].message.content
+        
+        # 4. Empaquetado de Datos
+        msg_data = {"role": "assistant", "content": ans}
+        if url_final:
+            msg_data["type"] = "VIDEO_SIGNAL"
+            msg_data["video_url"] = url_final
+        
+        st.session_state.historial_chat.append(msg_data)
+        
+        # 5. Protocolo de Voz Anti-Eco (Ejecución única antes del Rerun)
+        msg_id = f"speech_{len(st.session_state.historial_chat)}"
+        js_voice = f"""
+            <script>
+            (function() {{
+                if (window.last_msg_id === "{msg_id}") return;
+                window.speechSynthesis.cancel();
+                var msg = new SpeechSynthesisUtterance({repr(ans)});
+                msg.lang = 'es-ES';
+                msg.pitch = 0.9;
+                msg.onstart = function() {{ window.last_msg_id = "{msg_id}"; }};
+                msg.onend = function() {{
+                    if({str(st.session_state.modo_fluido).lower()}) {{
+                        setTimeout(() => {{
+                            const b = window.parent.document.querySelector('button[aria-label="🎙️"]');
+                            if(b) b.click();
+                        }}, 1000);
+                    }}
+                }};
+                window.speechSynthesis.speak(msg);
+            }})();
+            </script>
+        """
+        st.components.v1.html(js_voice, height=0)
+        st.rerun()
 
 # --- TAB 1: ANÁLISIS (FIX SCOUT VISION) ---
 with tabs[1]:
