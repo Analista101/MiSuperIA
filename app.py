@@ -293,7 +293,7 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: COMANDO CENTRAL (DISEÑO DE COLUMNAS INTEGRADAS) ---
+# --- TAB 0: COMANDO CENTRAL (SOLUCIÓN DEFINITIVA DE VISIBILIDAD) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
@@ -301,48 +301,59 @@ with tabs[0]:
     st.session_state.modo_fluido = st.toggle("🎙️ MODO MANOS LIBRES", value=st.session_state.get('modo_fluido', False))
     
     # 1. Visualización del Historial
-    for m in st.session_state.historial_chat:
-        with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
-            st.write(m["content"])
-            if m.get("type") == "VIDEO_SIGNAL":
-                st.video(m["video_url"])
+    container_chat = st.container()
+    with container_chat:
+        for m in st.session_state.historial_chat:
+            with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
+                st.write(m["content"])
+                if m.get("type") == "VIDEO_SIGNAL":
+                    st.video(m["video_url"])
 
-    # --- NUEVA ZONA DE COMANDO (Failsafe) ---
-    # Creamos una fila dedicada justo encima del input nativo
-    # Esto asegura que el micro SIEMPRE se vea, pegado a la barra
-    c1, c2 = st.columns([1, 10])
-    
-    with c1:
-        audio_data = mic_recorder(
-            start_prompt="🎙️", 
-            stop_prompt="🛑", 
-            key="mic_v5_final",
-            use_container_width=True
-        )
-    
-    with c2:
-        prompt = st.chat_input("Escriba o use el micro a la izquierda...")
+    st.markdown("---") # Separador visual
+
+    # 2. LA BARRA UNIFICADA (Sin st.chat_input para evitar bloqueos)
+    # Creamos un contenedor fijo para que no se mueva al escribir
+    with st.container():
+        col_mic, col_text = st.columns([1, 8])
+        
+        with col_mic:
+            # El micrófono ahora tiene un espacio físico dedicado y garantizado
+            audio_data = mic_recorder(
+                start_prompt="🎙️", 
+                stop_prompt="🛑", 
+                key="mic_stark_final_v10", # Nueva clave para resetear caché
+                use_container_width=True
+            )
+        
+        with col_text:
+            # Usamos text_input con un placeholder para emular el chat_input
+            prompt = st.text_input(
+                label="Comandos",
+                placeholder="Órdenes, Srta. Diana...",
+                label_visibility="collapsed",
+                key="input_stark"
+            )
 
     # 3. Lógica de Procesamiento de Entrada
     text_in = None
     if audio_data and isinstance(audio_data, dict) and audio_data.get('bytes'):
         if len(audio_data['bytes']) > 5000:
             try:
-                with st.spinner("JARVIS: Procesando audio..."):
+                with st.spinner("JARVIS: Procesando frecuencia de voz..."):
                     text_in = client.audio.transcriptions.create(
                         file=("v.wav", audio_data['bytes']), 
                         model="whisper-large-v3"
                     ).text
             except Exception as e:
-                st.error(f"Error de audio: {e}")
+                st.error(f"Fallo en sensores de audio: {e}")
     elif prompt: 
         text_in = prompt
 
-    # 4. Generación de Respuesta
+    # 4. Generación de Respuesta JARVIS
     if text_in:
         st.session_state.historial_chat.append({"role": "user", "content": text_in})
         
-        # Análisis de Intención
+        # Análisis de Intención de Video
         url_final = None
         try:
             p_int = f"Analiza si el usuario quiere ver un video. Si es así, responde 'BUSCAR: [video]'. Si no, 'NORMAL'. Usuario: {text_in}"
@@ -351,7 +362,7 @@ with tabs[0]:
                 url_final = buscar_video_youtube(check.choices[0].message.content.split("BUSCAR:")[1].strip())
         except: pass
 
-        # Respuesta de JARVIS
+        # Respuesta de Voz y Texto
         hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-6:]]
         res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + hist)
         ans = res.choices[0].message.content
@@ -363,7 +374,7 @@ with tabs[0]:
         
         st.session_state.historial_chat.append(msg_data)
         
-        # 5. Voz y Scroll (Filtro Anti-Eco)
+        # 5. Protocolo Anti-Eco y Auto-Scroll
         import hashlib
         msg_hash = hashlib.md5(ans.encode()).hexdigest()
         js_voice = f"""
