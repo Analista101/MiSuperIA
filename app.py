@@ -293,54 +293,34 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: COMANDO CENTRAL (HUD FIJO DE ALTA PRIORIDAD) ---
+# --- TAB 0: COMANDO CENTRAL (SOLUCIÓN DEFINITIVA DE CAPAS) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
     
     st.session_state.modo_fluido = st.toggle("🎙️ MODO MANOS LIBRES", value=st.session_state.get('modo_fluido', False))
     
-    # 1. Área del Historial (con scroll)
+    # 1. Área del Historial (FLUYE LIBREMENTE)
+    # Colocamos el historial en un contenedor simple sin CSS de fijación
     for m in st.session_state.historial_chat:
         with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
             st.write(m["content"])
             if m.get("type") == "VIDEO_SIGNAL":
                 st.video(m["video_url"])
 
-    # 2. EL CONTENEDOR MAESTRO (Fijo y Unificado)
-    # Este bloque CSS fuerza a los elementos internos a quedarse en la base
-    st.markdown("""
-        <style>
-        /* Contenedor que agrupa Micro y Texto */
-        [data-testid="stVerticalBlock"] > div:has(div.st-key-zona_entrada_fija) {
-            position: fixed !important;
-            bottom: 30px !important;
-            left: 330px !important; 
-            width: calc(100% - 380px) !important;
-            z-index: 999999 !important;
-            background: rgba(1, 4, 9, 0.95) !important;
-            padding: 15px !important;
-            border-radius: 15px !important;
-            border: 1px solid #00f2ff !important;
-            box-shadow: 0 0 20px rgba(0, 242, 255, 0.3) !important;
-        }
-        
-        /* Ajuste de espacio para que el chat no se oculte al final */
-        .main .block-container {
-            padding-bottom: 200px !important;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-
-    # Declaramos la zona de entrada con una key específica para que el CSS la encuentre
-    with st.container(key="zona_entrada_fija"):
+    # 2. LA BARRA DE COMANDOS (FIJA ÚNICAMENTE ESTE BLOQUE)
+    # Creamos un contenedor con un ID único para no afectar a las pestañas
+    st.write('<div id="stark-input-bridge"></div>', unsafe_allow_html=True)
+    
+    with st.container():
+        # Este contenedor ahora se moverá independientemente mediante el CSS inferior
         col_mic, col_text = st.columns([1, 8])
         
         with col_mic:
             audio_data = mic_recorder(
                 start_prompt="🎙️", 
                 stop_prompt="🛑", 
-                key="mic_v13_fixed", 
+                key="mic_v15_final", 
                 use_container_width=True
             )
         
@@ -349,34 +329,63 @@ with tabs[0]:
                 label="Entrada",
                 placeholder="Escriba o hable, Srta. Diana...",
                 label_visibility="collapsed",
-                key="input_text_fixed"
+                key="input_text_v15"
             )
 
-    # 3. Lógica de Procesamiento (Mantiene la inteligencia de JARVIS)
+    # 3. CSS DE ANCLAJE QUIRÚRGICO
+    # Solo afectamos al bloque que sigue inmediatamente al 'stark-input-bridge'
+    st.markdown("""
+        <style>
+        /* Localizamos el contenedor de la barra sin tocar el resto */
+        div:has(> div > div > #stark-input-bridge) + div {
+            position: fixed !important;
+            bottom: 30px !important;
+            left: 330px !important; 
+            width: calc(100% - 380px) !important;
+            z-index: 9999 !important;
+            background: rgba(1, 4, 9, 0.95) !important;
+            padding: 15px !important;
+            border-radius: 15px !important;
+            border: 2px solid #00f2ff !important;
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.4) !important;
+        }
+
+        /* Liberamos las pestañas y el historial */
+        .main .block-container {
+            padding-bottom: 220px !important;
+            overflow-y: auto !important;
+        }
+        
+        [data-testid="stExpander"], [data-testid="stTabs"] {
+            position: relative !important;
+            z-index: 1 !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    # 4. Motor de Procesamiento JARVIS
     text_in = None
     if audio_data and isinstance(audio_data, dict) and audio_data.get('bytes'):
         if len(audio_data['bytes']) > 5000:
             try:
-                with st.spinner("JARVIS: Transcribiendo..."):
+                with st.spinner("JARVIS: Procesando frecuencia..."):
                     text_in = client.audio.transcriptions.create(
                         file=("v.wav", audio_data['bytes']), 
                         model="whisper-large-v3"
                     ).text
             except Exception as e:
-                st.error(f"Fallo en sensor: {e}")
+                st.error(f"Error: {e}")
     elif prompt: 
         text_in = prompt
 
     if text_in:
         st.session_state.historial_chat.append({"role": "user", "content": text_in})
-        
-        # Respuesta de la IA
         hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-6:]]
         res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + hist)
         ans = res.choices[0].message.content
         st.session_state.historial_chat.append({"role": "assistant", "content": ans})
         
-        # 4. Protocolo de Voz y Auto-Scroll
+        # Voz y Auto-Scroll
         import hashlib
         msg_hash = hashlib.md5(ans.encode()).hexdigest()
         js_voice = f"""
