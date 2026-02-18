@@ -293,71 +293,48 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: PROYECTO JARVIS (HUD FINAL DE PRECISIÓN) ---
+# --- TAB 0: COMANDO CENTRAL (ANCLAJE SUPERIOR STARK) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
-    
-    # 1. MODO MANOS LIBRES (Estilo discreto arriba)
-    st.session_state.modo_fluido = st.toggle("🎙️ MODO MANOS LIBRES", value=st.session_state.get('modo_fluido', False))
-    
-    # 2. HISTORIAL DE CHAT (Tamaño completo y fluido)
-    # Sin 'height' fijo para que se vea elegante y aproveche la pantalla
-    for m in st.session_state.historial_chat:
-        with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
-            st.write(m["content"])
-            if m.get("type") == "VIDEO_SIGNAL":
-                st.video(m["video_url"])
 
-    # 3. EL MICRÓFONO FLOTANTE (Anclaje Independiente)
-    # Lo colocamos en un div con una clase única para el CSS
-    st.markdown('<div class="floating-stark-mic">', unsafe_allow_html=True)
-    audio_data = mic_recorder(
-        start_prompt="🎙️", 
-        stop_prompt="🛑", 
-        key="mic_floating_v22",
-        use_container_width=False
-    )
-    st.markdown('</div>', unsafe_allow_html=True)
+    # --- 1. PANEL DE CONTROL FIJO (ARRIBA) ---
+    # Usamos un contenedor con una clave única para el control superior
+    with st.container():
+        st.markdown("### 🖥️ CONSOLA DE MANDO")
+        
+        # Fila 1: Controles de Audio
+        col_toggle, col_mic = st.columns([2, 1])
+        with col_toggle:
+            st.session_state.modo_fluido = st.toggle("🎙️ MODO MANOS LIBRES", value=st.session_state.get('modo_fluido', False))
+        with col_mic:
+            audio_data = mic_recorder(
+                start_prompt="HABLAR", 
+                stop_prompt="ENVIAR", 
+                key="mic_superior_stark",
+                use_container_width=True
+            )
+        
+        # Fila 2: Entrada de Texto (Sustituimos chat_input por text_input para control total)
+        prompt = st.text_input(
+            label="Comandos",
+            placeholder="Escriba sus órdenes aquí, Srta. Diana...",
+            label_visibility="collapsed",
+            key="input_superior_manual"
+        )
+        
+    st.markdown("---") # Línea de horizonte del HUD
 
-    # 4. BARRA DE CHAT NATIVA (Fija al fondo por diseño)
-    prompt = st.chat_input("Órdenes, Srta. Diana...")
+    # --- 2. ÁREA DE DATOS DINÁMICA (CON SCROLL) ---
+    # Este contenedor es el ÚNICO que se moverá
+    with st.container(height=600, border=False):
+        for m in st.session_state.historial_chat:
+            with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
+                st.write(m["content"])
+                if m.get("type") == "VIDEO_SIGNAL":
+                    st.video(m["video_url"])
 
-    # 5. CSS DE ALTA INGENIERÍA (HUD STARK)
-    st.markdown("""
-        <style>
-        /* Posicionamos el micro de forma flotante sobre la barra de chat */
-        .floating-stark-mic {
-            position: fixed !important;
-            bottom: 90px !important; /* Justo encima de la barra de chat */
-            left: 350px !important;  /* Respetando la sidebar */
-            z-index: 999999 !important;
-        }
-
-        /* Estilo del botón: Círculo Cian Stark */
-        .floating-stark-mic button {
-            background: rgba(0, 242, 255, 0.8) !important;
-            border: 2px solid #ffffff !important;
-            border-radius: 50% !important;
-            width: 55px !important;
-            height: 55px !important;
-            box-shadow: 0 0 20px rgba(0, 242, 255, 0.6) !important;
-            transition: all 0.3s ease;
-        }
-
-        .floating-stark-mic button:hover {
-            transform: scale(1.1);
-            background: rgba(0, 242, 255, 1) !important;
-        }
-
-        /* Aseguramos que el chat tenga espacio al final para que no lo tape el micro */
-        .main .block-container {
-            padding-bottom: 150px !important;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-
-    # 6. Lógica de Procesamiento JARVIS
+    # --- 3. LÓGICA DE PROCESAMIENTO ---
     text_in = None
     if audio_data and isinstance(audio_data, dict) and audio_data.get('bytes'):
         if len(audio_data['bytes']) > 5000:
@@ -368,23 +345,36 @@ with tabs[0]:
                         model="whisper-large-v3"
                     ).text
             except Exception as e:
-                st.error(f"Error: {e}")
+                st.error(f"Error de sensores: {e}")
     elif prompt: 
         text_in = prompt
 
     if text_in:
-        if "last_processed" not in st.session_state or st.session_state.last_processed != text_in:
-            st.session_state.last_processed = text_in
+        # Evitar duplicidad de procesamiento
+        if "last_cmd" not in st.session_state or st.session_state.last_cmd != text_in:
+            st.session_state.last_cmd = text_in
             st.session_state.historial_chat.append({"role": "user", "content": text_in})
             
-            # Generación de respuesta
+            # Respuesta JARVIS
             hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-6:]]
             res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + hist)
             ans = res.choices[0].message.content
             st.session_state.historial_chat.append({"role": "assistant", "content": ans})
             
-            # Protocolo de Voz y Rerun
+            # Protocolo de Voz y Refresco
             st.rerun()
+
+# --- CSS DE LIMPIEZA INTERFACE ---
+st.markdown("""
+    <style>
+    /* Eliminamos cualquier residuo de la barra de chat nativa al fondo */
+    footer {visibility: hidden;}
+    div[data-testid="stChatInput"] {display: none;}
+    
+    /* Estilizamos el contenedor de mensajes para que el scroll sea fluido */
+    [data-testid="stExpander"] { border: none !important; }
+    </style>
+""", unsafe_allow_html=True)
 
 # --- TAB 1: ANÁLISIS (FIX SCOUT VISION) ---
 with tabs[1]:
