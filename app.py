@@ -293,67 +293,69 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: PROYECTO JARVIS (VERSIÓN NATIVA ESTABLE) ---
+# --- TAB 0: PROYECTO JARVIS (VERSIÓN OPERATIVA + YOUTUBE) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
+    if "video_url" not in st.session_state:
+        st.session_state.video_url = None
 
-    # 1. PROTOCOLO DE PROCESAMIENTO
-    def protocolo_jarvis_nativo():
+    # 1. PROTOCOLO DE PROCESAMIENTO CON DETECCIÓN DE MULTIMEDIA
+    def protocolo_jarvis_completo():
         query = st.session_state.input_cmd.strip()
         if query:
             st.session_state.historial_chat.append({"role": "user", "content": query})
             
-            # Contexto para el núcleo IA
-            hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
-            try:
-                res = client.chat.completions.create(
-                    model=modelo_texto, 
-                    messages=[{"role": "system", "content": PERSONALIDAD}] + hist
-                )
-                st.session_state.historial_chat.append({"role": "assistant", "content": res.choices[0].message.content})
-            except Exception as e:
-                st.error(f"Fallo en el núcleo: {e}")
+            # --- Lógica de YouTube integrada ---
+            # Si la orden incluye "reproducir" o es un link directo
+            if "reproducir" in query.lower() or "youtube.com" in query.lower():
+                # Aquí JARVIS procesaría la búsqueda (simplificado para el ejemplo)
+                # En un despliegue real, usaríamos una función de búsqueda de video
+                st.session_state.video_url = query # O el resultado de la búsqueda
+                st.session_state.historial_chat.append({
+                    "role": "assistant", 
+                    "content": "Entendido, señor. Iniciando reproducción en el panel multimedia."
+                })
+            else:
+                # Respuesta estándar de la IA
+                try:
+                    hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
+                    res = client.chat.completions.create(
+                        model=modelo_texto, 
+                        messages=[{"role": "system", "content": PERSONALIDAD}] + hist
+                    )
+                    st.session_state.historial_chat.append({"role": "assistant", "content": res.choices[0].message.content})
+                except Exception as e:
+                    st.error(f"Fallo en el núcleo: {e}")
             
-            # Limpieza automática por ser un callback
             st.session_state.input_cmd = ""
 
-    # --- 2. CABECERA DE MANDOS (NATIVA) ---
+    # --- 2. CABECERA DE MANDOS ---
     c1, c2, c3, c4 = st.columns([1, 1, 1, 7])
-
     with c1:
-        # Botón de Purga nativo
         if st.button("🗑️", help="Limpiar Historial", use_container_width=True):
             st.session_state.historial_chat = []
+            st.session_state.video_url = None
             st.rerun()
-
     with c2:
-        # Botón Manos Libres nativo (Toggle sencillo)
         estado_ml = "🔔" if st.session_state.get('modo_fluido', False) else "🔕"
         if st.button(estado_ml, help="Modo Manos Libres", use_container_width=True):
             st.session_state.modo_fluido = not st.session_state.get('modo_fluido', False)
             st.rerun()
-
     with c3:
-        # Micrófono nativo
-        st.markdown('<div style="margin-top: -5px;">', unsafe_allow_html=True)
         mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_nativo")
-        st.markdown('</div>', unsafe_allow_html=True)
-
     with c4:
-        # Barra de comandos central
-        st.text_input(
-            "cmd", 
-            placeholder="Órdenes, Srta. Diana...", 
-            label_visibility="collapsed", 
-            key="input_cmd", 
-            on_change=protocolo_jarvis_nativo
-        )
+        st.text_input("cmd", placeholder="Órdenes o links de YouTube...", label_visibility="collapsed", key="input_cmd", on_change=protocolo_jarvis_completo)
+
+    # --- 3. PANEL MULTIMEDIA (Se activa solo si hay un video) ---
+    if st.session_state.video_url:
+        st.markdown("### 📺 Pantalla de Visualización Stark")
+        st.video(st.session_state.video_url)
 
     st.markdown("---")
     
-    # --- 3. RENDERIZADO DEL CHAT ---
-    chat_box = st.container(height=540, border=False)
+    # --- 4. RENDERIZADO DEL CHAT ---
+    chat_box = st.container(height=400, border=False)
     with chat_box:
         for m in st.session_state.historial_chat:
             with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
