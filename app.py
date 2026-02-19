@@ -388,25 +388,27 @@ with tabs[0]:
     if "modo_fluido" not in st.session_state:
         st.session_state.modo_fluido = False
 
-    # 2. CABECERA DE MANDOS (HUD)
+    # --- 2. CABECERA DE MANDOS (HUD SANEADO) ---
+    # He eliminado el exceso de contenedores para quitar la barra cian extra
     c1, c2, c3, c4 = st.columns([1, 1, 1, 7])
+    
     with c1:
         if st.button("🗑️", help="Purgar Historial", key="clear_v518"):
             st.session_state.historial_chat = []
-            st.session_state.video_url = None
             st.rerun()
     with c2:
-        ml_icon = "🔔" if st.session_state.modo_fluido else "🔕"
+        ml_icon = "🔔" if st.session_state.get("modo_fluido") else "🔕"
         if st.button(ml_icon, key="hands_free_v518"):
-            st.session_state.modo_fluido = not st.session_state.modo_fluido
+            st.session_state.modo_fluido = not st.session_state.get("modo_fluido", False)
             st.rerun()
     with c3:
-        # El micrófono se mantiene como solicitó para el control por voz
+        # Micrófono integrado en el HUD
         from streamlit_mic_recorder import mic_recorder
         mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v518")
+    
     with c4:
-        # Input de texto auxiliar
-        st.text_input("cmd", placeholder="Órdenes, Srta. Diana...", label_visibility="collapsed", key="input_cmd")
+        # USAMOS ESTE COMO ENTRADA ÚNICA PARA EVITAR LA BARRA EXTRA ABAJO
+        query = st.chat_input("Escriba su comando, Señor...", key="terminal_unica_jarvis")
 
     st.markdown("---")
 
@@ -426,7 +428,6 @@ with tabs[0]:
                 st.markdown(m["content"], unsafe_allow_html=True)
 
     # 5. PROCESAMIENTO DE COMANDOS (CENTRAL)
-    query = st.chat_input("Escriba su comando, Señor...", key="terminal_jarvis_final")
 
     if query:
         st.session_state.historial_chat.append({"role": "user", "content": query})
