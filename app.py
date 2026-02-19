@@ -388,30 +388,46 @@ with tabs[0]:
     if "modo_fluido" not in st.session_state:
         st.session_state.modo_fluido = False
 
-    # --- 2. CABECERA DE MANDOS (HUD SANEADO) ---
-    # He eliminado el exceso de contenedores para quitar la barra cian extra
+    # --- 2. CABECERA DE MANDOS (HUD STARK INDUSTRIES) ---
     c1, c2, c3, c4 = st.columns([1, 1, 1, 7])
     
     with c1:
-        if st.button("🗑️", help="Purgar Historial", key="clear_v518"):
+        if st.button("🗑️", help="Purgar Historial", key="btn_clear"):
             st.session_state.historial_chat = []
             st.rerun()
     with c2:
         ml_icon = "🔔" if st.session_state.get("modo_fluido") else "🔕"
-        if st.button(ml_icon, key="hands_free_v518"):
-            st.session_state.modo_fluido = not st.session_state.get("modo_fluido", False)
+        if st.button(ml_icon, key="btn_fluido"):
+            st.session_state.modo_fluido = not st.session_state.get("modo_fluido")
             st.rerun()
     with c3:
-        # Micrófono integrado en el HUD
         from streamlit_mic_recorder import mic_recorder
         mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v518")
     
     with c4:
-        # USAMOS ESTE COMO ENTRADA ÚNICA PARA EVITAR LA BARRA EXTRA ABAJO
-        query = st.chat_input("Escriba su comando, Señor...", key="terminal_unica_jarvis")
+        # 1. CAMBIO CLAVE: Usamos text_input con callback para que actúe como terminal
+        # Esto elimina la barra de chat_input del fondo de la pantalla.
+        query = st.text_input(
+            "cmd", 
+            placeholder="Órdenes, Srta. Diana...", 
+            label_visibility="collapsed", 
+            key="input_cmd_final"
+        )
 
     st.markdown("---")
 
+    # --- 3. PROCESAMIENTO DE LÓGICA (Solo si hay texto en la terminal superior) ---
+    if query:
+        # Evitamos que el comando se procese infinitamente
+        if "last_query" not in st.session_state or st.session_state.last_query != query:
+            st.session_state.last_query = query
+            st.session_state.historial_chat.append({"role": "user", "content": query})
+            
+            # --- Aquí van sus protocolos (A. Emergencia, B. Imagen, C. Video, D. Conversación) ---
+            # ... (Misma lógica que ya tenemos) ...
+            
+            # Al terminar, forzamos limpieza para que no se repita el comando
+            st.rerun()
     # 3. MONITOR MULTIMEDIA HUD
     if st.session_state.video_url:
         st.markdown("### 📺 MONITOR PRINCIPAL")
