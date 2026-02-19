@@ -379,7 +379,7 @@ with tabs[0]:
             st.session_state.historial_chat.append({"role": "user", "content": query})
             
             try:
-                # --- A. PROTOCOLO DE RECONOCIMIENTO VISUAL (SCOUT L4) ---
+                # --- A. PROTOCOLO DE RECONOCIMIENTO VISUAL (GROQ MULTIMODAL V52.4) ---
                 palabras_clave = ["muéstrame", "busca una foto", "proyecta", "imagen de", "foto de", "enséñame"]
                 
                 if any(word in query.lower() for word in palabras_clave):
@@ -387,26 +387,46 @@ with tabs[0]:
                     for word in palabras_clave: sujeto = sujeto.replace(word, "")
                     sujeto = sujeto.replace("un ", "").replace("una ", "").replace("la ", "").replace("el ", "").strip()
                     
-                    # Ficha Técnica Avanzada con Llama-4-Scout
-                    meta_prompt = f"Actúa como JARVIS. Proporciona una ficha técnica de '{sujeto}' con ubicación, historia y un dato curioso. Tono sofisticado. Máximo 60 palabras."
-                    info_res = client.chat.completions.create(
-                        model="meta-llama/llama-4-scout-17b-16e-instruct", 
-                        messages=[{"role": "user", "content": meta_prompt}]
-                    )
-                    datos_tecnicos = info_res.choices[0].message.content
-                    
-                    # URL de Imagen con Seed Dinámico para evitar bloqueos
+                    # Generamos la URL de la imagen primero
                     import time
                     ts = int(time.time())
                     url_img = f"https://image.pollinations.ai/prompt/{sujeto.replace(' ', '%20')}?width=1080&height=720&nologo=true&seed={ts}"
                     
+                    # Llamada a Groq usando el formato JSON de Visión que usted especificó
+                    info_res = client.chat.completions.create(
+                        model="meta-llama/llama-4-scout-17b-16e-instruct", 
+                        messages=[
+                            {
+                                "role": "user",
+                                "content": [
+                                    {
+                                        "type": "text",
+                                        "text": f"Actúa como JARVIS. Analiza esta imagen de {sujeto} y proporciona una ficha técnica con ubicación, historia y un dato curioso. Tono sofisticado. Máximo 60 palabras."
+                                    },
+                                    {
+                                        "type": "image_url",
+                                        "image_url": {
+                                            "url": url_img  # Enviamos la URL generada para que Scout la valide
+                                        }
+                                    }
+                                ]
+                            }
+                        ],
+                        temperature=1,
+                        max_tokens=1024,
+                        top_p=1
+                    )
+                    
+                    datos_tecnicos = info_res.choices[0].message.content
+                    
+                    # Proyección en el HUD
                     diseno_hud = f"""
                     <div style='margin-bottom: 25px;'>
-                        <p style='color: #00f2ff; font-weight: bold; margin-bottom: 10px; text-transform: uppercase;'>🛰️ ESCANEO SCOUT L4: {sujeto.upper()}</p>
+                        <p style='color: #00f2ff; font-weight: bold; margin-bottom: 10px; text-transform: uppercase;'>🛰️ ANÁLISIS MULTIMODAL SCOUT: {sujeto.upper()}</p>
                         <img src='{url_img}' style='width:100%; border-radius:15px; border: 2px solid #00f2ff; box-shadow: 0px 4px 20px rgba(0,242,255,0.5);'
-                             onerror="this.src='https://placehold.co/600x400/000/00f2ff?text=RECALIBRANDO+SATELITE';">
+                             onerror="this.src='https://placehold.co/600x400/000/00f2ff?text=ERROR+DE+ENLACE+VISUAL';">
                         <div style='background: rgba(0, 242, 255, 0.15); border-left: 5px solid #00f2ff; padding: 15px; margin-top: 10px; border-radius: 5px;'>
-                            <b style='color: #00f2ff;'>📋 FICHA TÉCNICA OPERATIVA</b><br>
+                            <b style='color: #00f2ff;'>📋 FICHA TÉCNICA (PROCESAMIENTO L4)</b><br>
                             <div style='font-size: 0.95rem; color: #ffffff; line-height: 1.5;'>{datos_tecnicos}</div>
                         </div>
                     </div>
