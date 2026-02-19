@@ -394,47 +394,36 @@ with tabs[0]:
                     nombre_formateado = sujeto.replace(" ", "_").capitalize()
                     url_proyeccion = f"https://commons.wikimedia.org/wiki/Special:FilePath/{nombre_formateado}.jpg"
                     
-# --- A. PROTOCOLO DE ANCLAJE VISUAL (SOLUCIÓN DEFINITIVA V57) ---
+# --- A. PROTOCOLO DE RECONOCIMIENTO VISUAL (ESTRUCTURA DE DATOS V58) ---
                 palabras_clave = ["muéstrame", "busca una foto", "proyecta", "imagen de", "foto de", "enséñame", "muestrame"]
                 
                 if any(word in query.lower() for word in palabras_clave):
-                    # 1. Extracción limpia del objetivo
                     sujeto_lab = query.lower()
                     for word in palabras_clave: sujeto_lab = sujeto_lab.replace(word, "")
                     sujeto_lab = sujeto_lab.strip()
 
-                    # 2. BÚSQUEDA DE IMAGEN (Usamos un motor que no falla)
-                    # Forzamos que sea una foto real para que no le muestre dibujos
-                    url_final = f"https://image.pollinations.ai/prompt/high_resolution_real_world_photo_of_{sujeto_lab.replace(' ', '_')}?width=800&height=500&nologo=true"
+                    # Generamos la URL de la imagen (Motor de alta fidelidad)
+                    url_final = f"https://image.pollinations.ai/prompt/photorealistic_image_of_{sujeto_lab.replace(' ', '_')}?width=1080&height=720&nologo=true"
 
-                    # 3. LLAMADA A GROQ (Solo para la Inteligencia - Estructura Scout)
+                    # Llamada a Groq Scout (Solo texto para evitar Errores 400/530)
                     try:
                         completion = client.chat.completions.create(
                             model="meta-llama/llama-4-scout-17b-16e-instruct",
-                            messages=[{"role": "user", "content": f"Ficha técnica de {sujeto_lab} (Ubicación, Historia, Dato curioso). Tono Stark. Máximo 60 palabras."}],
+                            messages=[{"role": "user", "content": f"Ficha técnica de {sujeto_lab}. Tono Stark. 60 palabras."}],
                             temperature=1
                         )
                         datos_tecnicos = completion.choices[0].message.content
                     except:
-                        datos_tecnicos = "Sensores de datos offline. Información basada en archivos locales."
+                        datos_tecnicos = "Error de enlace con Groq. Información local no disponible."
 
-                    # 4. EL SECRETO DEL ORDEN: Guardar TODO como un solo bloque de texto en el historial
-                    # Al usar sintaxis Markdown estándar ![texto](url), la imagen se queda pegada al texto
-                    # y no se mueve de la burbuja de chat.
-                    respuesta_combinada = f"""### 🛰️ ESCANEO: {sujeto_lab.upper()}
-![{sujeto_lab}]({url_final})
-
-**📋 FICHA TÉCNICA (SISTEMA SCOUT L4):**
-{datos_tecnicos}
-"""
-                    # IMPORTANTE: Guardamos el bloque completo en el historial
+                    # GUARDAMOS LOS DATOS EN EL HISTORIAL (Sin ejecutar st.image aquí)
+                    # Añadimos una clave especial 'image_url' para que el bucle sepa qué hacer
                     st.session_state.historial_chat.append({
                         "role": "assistant", 
-                        "content": respuesta_combinada
+                        "content": datos_tecnicos,
+                        "image_url": url_final,
+                        "subject": sujeto_lab.upper()
                     })
-                    
-                    # Forzamos el refresco para que aparezca en su sitio inmediatamente
-                    st.rerun()
 
                 # --- B. DETECCIÓN DE VIDEO (PROTOCOLO BETA) ---
                 elif any(word in query.lower() for word in ["video", "ver en youtube"]):
