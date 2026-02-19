@@ -263,70 +263,59 @@ def buscar_video_youtube(busqueda):
         return None
     return None
 
-# --- 6. SIDEBAR - TELEMETRÍA AVANZADA (PROTOCOLO NOTICIAS V2) ---
+# --- 6. SIDEBAR - MONITOR DE CRISIS COMPACTO (V4) ---
 with st.sidebar:
-    st.markdown("<h2 style='color: #00f2ff; text-align: center;'>📡 MONITOR DE RED</h2>", unsafe_allow_html=True)
-    st.markdown("---")
-
-    # --- MÓDULO: INTELIGENCIA NACIONAL (CHILE) ---
-    with st.expander("📰 INTELIGENCIA NACIONAL", expanded=True):
-        # Filtro de seguridad Stark: No deportes ni farándula
-        query_cl = "Chile (politica OR economia OR actualidad OR ciencia) -futbol -gol -farándula -reality"
+    st.markdown("<h3 style='color: #ff4b4b; text-align: center; letter-spacing: 2px;'>🚨 MONITOR DE CRISIS</h3>", unsafe_allow_html=True)
+    
+    # MÓDULO: ALERTAS (EXPANDIBLE PARA AHORRAR ESPACIO)
+    with st.expander("🌐 ÚLTIMAS ALERTAS MUNDIALES", expanded=False):
+        # Filtro Stark: Solo desastres y emergencias graves
+        query_crisis = "(terremoto OR sismo OR tsunami OR inundacion OR catastrofe OR 'accidente grave' OR emergencia) -economia -bolsa -dolar -futbol"
         
         try:
             import feedparser
-            # Enlace directo al satélite de Google News Chile con filtros
-            url_rss = f"https://news.google.com/rss/search?q={query_cl}&hl=es-419&gl=CL&ceid=CL:es-419"
+            url_rss = f"https://news.google.com/rss/search?q={query_crisis}&hl=es-419&gl=CL&ceid=CL:es-419"
             feed = feedparser.parse(url_rss)
             
-            if not feed.entries:
-                raise Exception("Sin datos")
-
-            for entry in feed.entries[:5]:
-                # Extracción limpia de origen y título
-                titulo = entry.title.rsplit(' - ', 1)[0]
-                fuente = entry.title.rsplit(' - ', 1)[1] if ' - ' in entry.title else "INFO"
-                
-                st.markdown(f"""
-                    <div class='telemetry-card' style='border-left: 2px solid #00f2ff; padding: 8px; margin-bottom: 5px;'>
-                        <div style='display: flex; justify-content: space-between;'>
-                            <span class='telemetry-label' style='font-size: 0.6rem;'>{fuente}</span>
-                            <span class='telemetry-sub' style='font-size: 0.6rem;'>{entry.published[:12]}</span>
+            if feed.entries:
+                for entry in feed.entries[:5]:
+                    titulo = entry.title.rsplit(' - ', 1)[0]
+                    # Diseño ultra-compacto para sidebar
+                    st.markdown(f"""
+                        <div style='border-left: 2px solid #ff4b4b; padding-left: 8px; margin-bottom: 10px; background: rgba(255,0,0,0.05);'>
+                            <div style='color: #ff4b4b; font-size: 0.6rem; font-weight: bold;'>{entry.published[:12]}</div>
+                            <div style='color: #ffffff; font-size: 0.75rem; line-height: 1.1;'>{titulo}</div>
+                            <a href='{entry.link}' target='_blank' style='color: #ff4b4b; font-size: 0.65rem; text-decoration: none;'>[DETALLES]</a>
                         </div>
-                        <div class='telemetry-value' style='font-size: 0.75rem; line-height: 1.1; margin: 4px 0;'>{titulo}</div>
-                        <a href='{entry.link}' target='_blank' style='color: #00f2ff; font-size: 0.65rem; text-decoration: none;'>[ VER PROTOCOLO ]</a>
-                    </div>
-                """, unsafe_allow_html=True)
-                
+                    """, unsafe_allow_html=True)
+            else:
+                st.write("No se detectan anomalías.")
         except:
-            # PROTOCOLO DE CONTINGENCIA: Si el satélite falla
-            st.warning("⚠️ Enlace RSS inestable. Cargando caché de seguridad...")
-            titulares_fijos = [
-                {"t": "Actualidad Nacional: Reformas económicas en discusión", "f": "DIARIO OFICIAL"},
-                {"t": "Monitor Energético: Avances en Hidrógeno Verde", "f": "MIN ENERGÍA"},
-                {"t": "Reporte Minero: Fluctuación en precio del Cobre", "f": "BOLSA COMERCIO"}
-            ]
-            for noticia in titulares_fijos:
-                st.markdown(f"""
-                    <div class='telemetry-card' style='border-left: 2px solid #ff4b4b;'>
-                        <div class='telemetry-label' style='font-size: 0.6rem;'>{noticia['f']}</div>
-                        <div class='telemetry-value' style='font-size: 0.75rem;'>{noticia['t']}</div>
-                    </div>
-                """, unsafe_allow_html=True)
+            st.error("Error de enlace satelital.")
 
-    # --- LOS DEMÁS MÓDULOS SE MANTIENEN INTACTOS ---
-    with st.expander("🌤️ PRONÓSTICO EXTENDIDO", expanded=False):
-        # (Su código de clima actual aquí...)
-        st.write("Datos de Santiago sincronizados.")
+    # MÓDULO: TELEMETRÍA SÍSMICA (COMPACTA)
+    st.markdown("""
+        <div class='telemetry-card' style='border-left-color: #00f2ff; padding: 5px 10px;'>
+            <div class='telemetry-label' style='font-size: 0.6rem;'>SISMICIDAD ACTIVA</div>
+            <div class='telemetry-value' style='font-size: 0.8rem;'>6.2 Mw - COQUIMBO</div>
+        </div>
+    """, unsafe_allow_html=True)
 
-    # MÓDULO: SISMICIDAD GLOBAL
-    st.markdown("<div class='telemetry-card'><div class='telemetry-label'>🛰️ Alerta Sísmica</div>", unsafe_allow_html=True)
-    st.markdown("<div class='telemetry-value'>6.2 Mw - COQUIMBO</div><div class='telemetry-sub'>Hora: 07:42:15 AM</div>", unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
+    # MÓDULO: FOCOS DE INCENDIO (COMPACTO)
+    st.markdown("""
+        <div class='telemetry-card' style='border-left-color: #ff8800; padding: 5px 10px;'>
+            <div class='telemetry-label' style='font-size: 0.6rem;'>CONTROL DE INCENDIOS</div>
+            <div class='telemetry-value' style='font-size: 0.8rem;'>Pudahuel: Controlado</div>
+        </div>
+    """, unsafe_allow_html=True)
 
     st.markdown("---")
-    if st.button("🔄 RECALIBRAR SENSORES", use_container_width=True):
+    
+    # Botón de Recalibración Estilizado
+    if st.button("🔄 ACTUALIZAR ESCANEO", use_container_width=True):
         st.rerun()
+
+    st.caption(f"Sincronización: {datetime.datetime.now().strftime('%H:%M:%S')}")
 
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
