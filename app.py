@@ -379,40 +379,49 @@ with tabs[0]:
             st.session_state.historial_chat.append({"role": "user", "content": query})
             
             try:
-# --- A. PROTOCOLO DE RECONOCIMIENTO VISUAL (BÚSQUEDA PRECISA V52.8) ---
-                palabras_clave = ["muéstrame", "busca una foto", "proyecta", "imagen de", "foto de", "enséñame"]
+# --- A. PROTOCOLO DE RECONOCIMIENTO VISUAL (REPARACIÓN ESTRUCTURAL V52.9) ---
+                palabras_clave = ["muéstrame", "busca una foto", "proyecta", "imagen de", "foto de", "enséñame", "muestrame"]
                 
                 if any(word in query.lower() for word in palabras_clave):
-                    # Extracción exacta del sujeto
-                    sujeto_objetivo = query.lower()
-                    for word in palabras_clave: sujeto_objetivo = sujeto_objetivo.replace(word, "")
-                    sujeto_objetivo = sujeto_objetivo.replace("un ", "").replace("una ", "").replace("la ", "").replace("el ", "").strip()
+                    # 1. LIMPIEZA QUIRÚRGICA DEL SUJETO
+                    sujeto_input = query.lower()
+                    for word in palabras_clave:
+                        sujeto_input = sujeto_input.replace(word, "")
+                    # Eliminamos conectores y basura sobrante
+                    for prep in [" un ", " una ", " la ", " el ", " de ", " de la ", " del "]:
+                        sujeto_input = sujeto_input.replace(prep, " ")
+                    sujeto_final = sujeto_input.strip().replace("  ", " ")
                     
-                    # 1. Cerebro Scout L4 para la Ficha Técnica
+                    # 2. CEREBRO SCOUT L4: FICHA TÉCNICA DETALLADA
+                    meta_prompt = f"""
+                    Actúa como JARVIS. Genera una ficha técnica de '{sujeto_final}' en formato de lista con puntos.
+                    Incluye: Ubicación, Altura/Dimensiones, Historia breve y un Dato curioso.
+                    Tono: Sofisticado. Máximo 80 palabras.
+                    """
                     info_res = client.chat.completions.create(
                         model="meta-llama/llama-4-scout-17b-16e-instruct", 
-                        messages=[{"role": "user", "content": f"Ficha técnica avanzada de {sujeto_objetivo}. Máximo 60 palabras."}],
+                        messages=[{"role": "user", "content": meta_prompt}],
                         temperature=0.7
                     )
                     datos_tecnicos = info_res.choices[0].message.content
-                    
-                    # 2. Motor de Búsqueda de Imágenes Real (Evita imágenes aleatorias)
-                    # Usamos una URL de búsqueda directa que fuerza la concordancia
-                    url_img = f"https://api.duckduckgo.com/t/i.js?q={sujeto_objetivo.replace(' ', '+')}&format=json" # Estructura lógica
-                    # Para visualización directa y segura en Streamlit:
-                    url_visual = f"https://image.pollinations.ai/prompt/{sujeto_objetivo.replace(' ', '%20')}?width=1080&height=720&nologo=true"
+
+                    # 3. GENERACIÓN DE IMAGEN CON URL LIMPIA (MOTOR POLLINATIONS)
+                    # Usamos .replace(" ", "%20") para asegurar que la URL sea válida
+                    url_limpia = f"https://image.pollinations.ai/prompt/{sujeto_final.replace(' ', '%20')}?width=1080&height=720&nologo=true&seed=123"
 
                     diseno_hud = f"""
                     <div style='margin-bottom: 25px;'>
-                        <p style='color: #00f2ff; font-weight: bold; margin-bottom: 10px; text-transform: uppercase;'>🛰️ ESCANEO SATELITAL DE PRECISIÓN: {sujeto_objetivo.upper()}</p>
-                        <div style="width: 100%; border-radius: 15px; border: 2px solid #00f2ff; overflow: hidden; background-color: #000;">
-                            <img src='{url_visual}' 
+                        <p style='color: #00f2ff; font-weight: bold; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;'>
+                           🛰️ ESCANEO SATELITAL DE PRECISIÓN: {sujeto_final.upper()}
+                        </p>
+                        <div style="width: 100%; min-height: 400px; border-radius: 15px; border: 2px solid #00f2ff; overflow: hidden; background-color: #000; display: flex; align-items: center; justify-content: center;">
+                            <img src='{url_limpia}' 
                                  style='width:100%; height:auto; display:block;'
-                                 alt='Proyectando {sujeto_objetivo}...'>
+                                 onerror="this.src='https://placehold.co/1080x720/000/00f2ff?text=RECALIBRANDO+FRECUENCIAS';">
                         </div>
-                        <div style='background: rgba(0, 242, 255, 0.1); border-left: 5px solid #00f2ff; padding: 15px; margin-top: 15px; border-radius: 5px;'>
-                            <b style='color: #00f2ff;'>📋 FICHA TÉCNICA (SISTEMA SCOUT L4)</b><br>
-                            <div style='font-size: 0.95rem; color: #ffffff; line-height: 1.5;'>{datos_tecnicos}</div>
+                        <div style='background: rgba(0, 242, 255, 0.1); border-left: 5px solid #00f2ff; padding: 20px; margin-top: 15px; border-radius: 5px;'>
+                            <b style='color: #00f2ff; font-size: 1.1rem;'>📋 FICHA TÉCNICA (SISTEMA SCOUT L4)</b><br>
+                            <div style='font-size: 0.95rem; color: #ffffff; line-height: 1.6; margin-top: 10px;'>{datos_tecnicos}</div>
                         </div>
                     </div>
                     """
