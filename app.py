@@ -11,6 +11,7 @@ import smtplib
 import urllib.parse
 from PIL import Image
 from groq import Groq
+from duckduckgo_search import DDGS
 from dotenv import load_dotenv
 from streamlit_mic_recorder import mic_recorder
 from email.mime.text import MIMEText
@@ -393,56 +394,43 @@ with tabs[0]:
                     nombre_formateado = sujeto.replace(" ", "_").capitalize()
                     url_proyeccion = f"https://commons.wikimedia.org/wiki/Special:FilePath/{nombre_formateado}.jpg"
                     
-# --- A. PROTOCOLO DE LABORATORIO (LIBRERÍA DUCKDUCKGO + POSICIÓN FIJA) ---
+# --- A. PROTOCOLO DE LABORATORIO DEFINITIVO (INYECCIÓN LOCALIZADA V56) ---
                 palabras_clave = ["muéstrame", "busca una foto", "proyecta", "imagen de", "foto de", "enséñame", "muestrame"]
                 
                 if any(word in query.lower() for word in palabras_clave):
-                    from duckduckgo_search import DDGS
-                    
-                    # 1. Limpieza y Búsqueda Real en Internet
-                    sujeto = query.lower()
-                    for word in palabras_clave: sujeto = sujeto.replace(word, "")
-                    sujeto = sujeto.strip()
+                    # 1. Extracción del objetivo
+                    sujeto_lab = query.lower()
+                    for word in palabras_clave: sujeto_lab = sujeto_lab.replace(word, "")
+                    sujeto_lab = sujeto_lab.strip()
 
-                    try:
-                        # Buscamos la imagen real en la red
-                        with DDGS() as ddgs:
-                            busqueda = list(ddgs.images(sujeto, max_results=1))
-                            url_real = busqueda[0]['image'] if busqueda else None
-                    except:
-                        url_real = f"https://image.pollinations.ai/prompt/real_photo_{sujeto.replace(' ', '_')}?width=800"
+                    # 2. Localización de imagen (URL de Red Directa)
+                    url_directa = f"https://image.pollinations.ai/prompt/real_photograph_of_{sujeto_lab.replace(' ', '_')}?width=1080&height=720&nologo=true"
 
-                    # 2. Estructura de Pitón (Groq Multimodal)
+                    # 3. Llamada al Modelo Scout (Su estructura de Pitón)
                     try:
                         completion = client.chat.completions.create(
                             model="meta-llama/llama-4-scout-17b-16e-instruct",
-                            messages=[{
-                                "role": "user",
-                                "content": [
-                                    {"type": "text", "text": f"Analiza esta imagen de {sujeto}. Genera ficha técnica: Ubicación, Historia y Dato curioso. Tono Stark."},
-                                    {"type": "image_url", "image_url": {"url": url_real}}
-                                ]
-                            }],
-                            temperature=1,
-                            max_completion_tokens=1024
+                            messages=[{"role": "user", "content": f"Ficha técnica de {sujeto_lab}. Tono Stark. 60 palabras."}],
+                            temperature=1
                         )
                         datos_tecnicos = completion.choices[0].message.content
                     except:
-                        datos_tecnicos = f"El modelo Scout analizó sus archivos: {sujeto} es un monumento histórico..."
+                        datos_tecnicos = "Error de enlace con los servidores de Groq."
 
-                    # 3. RENDERIZADO EN EL LUGAR CORRECTO (Dentro del historial)
-                    # Creamos el bloque HTML que contiene TODO para que no se mueva al reactor
-                    html_final = f"""
-                    <div style="border: 2px solid #00f2ff; border-radius: 15px; overflow: hidden; margin-bottom: 10px;">
-                        <img src="{url_real}" style="width: 100%; display: block;">
-                        <div style="background: rgba(0, 242, 255, 0.1); padding: 15px; border-top: 2px solid #00f2ff;">
-                            <b style="color: #00f2ff; text-transform: uppercase;">🛰️ ANÁLISIS SCOUT L4: {sujeto}</b><br>
-                            <p style="color: white; font-size: 0.95rem; margin-top: 10px;">{datos_tecnicos}</p>
-                        </div>
-                    </div>
-                    """
-                    # Guardamos el HTML completo en el historial para que aparezca en su burbuja de chat
-                    st.session_state.historial_chat.append({"role": "assistant", "content": html_final})
+                    # 4. EL TRUCO PARA QUE NO SALGA SOBRE EL REACTOR:
+                    # Creamos un contenedor en el momento exacto del chat
+                    with st.chat_message("assistant", avatar="🚀"):
+                        # Creamos una "caja" que mantiene todo unido
+                        container = st.container(border=True)
+                        container.write(f"### 🛰️ ESCANEO: {sujeto_lab.upper()}")
+                        container.image(url_directa, use_container_width=True)
+                        container.markdown(f"**📋 FICHA TÉCNICA:**\n\n{datos_tecnicos}")
+                    
+                    # Guardamos una referencia simple en el historial para no romper el bucle
+                    st.session_state.historial_chat.append({
+                        "role": "assistant", 
+                        "content": f"He proyectado la información sobre {sujeto_lab} en su HUD."
+                    })
 
                 # --- B. DETECCIÓN DE VIDEO (PROTOCOLO BETA) ---
                 elif any(word in query.lower() for word in ["video", "ver en youtube"]):
