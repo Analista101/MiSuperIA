@@ -323,37 +323,37 @@ with st.sidebar:
             </div>
         """, unsafe_allow_html=True)
 
-    # MÓDULO 4: CLIMA SEMANAL (PUDAHUEL)
+   # MÓDULO 4: CLIMA SEMANAL (PUDAHUEL) - CORREGIDO
     with st.expander("🌤️ PRONÓSTICO SEMANAL: PUDAHUEL", expanded=False):
         dias = ["Sáb", "Dom", "Lun", "Mar", "Mié", "Jue", "Vie"]
         temps = ["32°", "31°", "29°", "33°", "34°", "30°", "28°"]
         iconos = ["☀️", "☀️", "🌤️", "🔥", "🔥", "🌤️", "☀️"]
         
-        # Diseño de rejilla compacta para la semana
-        clima_html = "<div style='display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px;'>"
+        # Inicio del contenedor Grid
+        clima_html = "<div style='display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;'>"
+        
         for d, t, i in zip(dias, temps, iconos):
-            clima_html += f"""
-                <div style='text-align: center; background: rgba(0,242,255,0.05); padding: 5px; border-radius: 4px;'>
-                    <div style='font-size: 0.6rem; color: #888;'>{d}</div>
-                    <div style='font-size: 0.8rem;'>{i}</div>
-                    <div style='font-size: 0.75rem; color: #00f2ff; font-weight: bold;'>{t}</div>
+            # Construcción limpia de cada celda
+            celda = f"""
+                <div style='text-align: center; background: rgba(0,242,255,0.05); padding: 8px; border-radius: 6px; border: 1px solid rgba(0,242,255,0.1);'>
+                    <div style='font-size: 0.65rem; color: #888; text-transform: uppercase;'>{d}</div>
+                    <div style='font-size: 1rem; margin: 4px 0;'>{i}</div>
+                    <div style='font-size: 0.85rem; color: #00f2ff; font-weight: bold;'>{t}</div>
                 </div>
             """
-        clima_html += "</div>"
+            clima_html += celda
+            
+        clima_html += "</div>" # Cierre del contenedor Grid
         
+        # Renderizado final
         st.markdown(clima_html, unsafe_allow_html=True)
+        
         st.markdown("""
-            <div style='margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 5px;'>
-                <div class='telemetry-sub' style='font-size: 0.65rem;'>SENSACIÓN TÉRMICA: 35°C</div>
-                <div class='telemetry-sub' style='font-size: 0.65rem;'>UV: EXTREMO (11+)</div>
+            <div style='margin-top: 12px; border-top: 1px solid rgba(0,242,255,0.2); padding-top: 8px;'>
+                <div class='telemetry-sub' style='font-size: 0.7rem; color: #f9d71c;'>⚠️ ALERTA: UV EXTREMO (11+)</div>
+                <div class='telemetry-sub' style='font-size: 0.7rem;'>SENSACIÓN TÉRMICA MÁXIMA: 36°C</div>
             </div>
         """, unsafe_allow_html=True)
-
-    st.markdown("---")
-    if st.button("🔄 REFRESCAR SISTEMAS", use_container_width=True):
-        st.rerun()
-
-    st.caption(f"Sincronización: {datetime.datetime.now().strftime('%H:%M:%S')}")
 
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
