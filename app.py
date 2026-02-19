@@ -382,7 +382,7 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: PROYECTO JARVIS (VERSIÓN COMPLETA Y ALINEADA V51.7) ---
+# --- TAB 0: PROYECTO JARVIS (VERSIÓN COMPLETA Y ALINEADA V51.7 - REVISADA) ---
 with tabs[0]:
     # 1. INICIALIZACIÓN DE CANALES DE DATOS
     if "historial_chat" not in st.session_state: st.session_state.historial_chat = []
@@ -393,38 +393,58 @@ with tabs[0]:
     def protocolo_stark_v516():
         query = st.session_state.input_cmd.strip()
         if query:
+            import requests
+            import base64
             # Añadimos la orden del usuario al historial
             st.session_state.historial_chat.append({"role": "user", "content": query})
             
             try:
-                # --- A. DETECCIÓN DE INTENCIÓN DE IMAGEN (NUEVO) ---
-                if any(word in query.lower() for word in ["muéstrame", "busca una foto", "proyecta"]):
-                    sujeto = query.lower().replace("muéstrame", "").replace("busca una foto de", "").replace("proyecta", "").replace("un ", "").replace("una ", "").strip()
+                # --- A. PROTOCOLO DE VISIÓN (IMAGEN + FICHA TÉCNICA) ---
+                palabras_img = ["muéstrame", "busca una foto", "proyecta", "imagen de", "foto de", "enséñame", "muestrame"]
+                if any(word in query.lower() for word in palabras_img):
+                    # Limpieza del sujeto
+                    sujeto = query.lower()
+                    for word in palabras_img: 
+                        sujeto = sujeto.replace(word, "")
+                    sujeto = sujeto.replace("un ", "").replace("una ", "").strip()
                     
-                    # Generamos los datos técnicos usando la IA
-                    meta_prompt = f"Actúa como JARVIS. Dame datos técnicos ultra-breves de {sujeto}: Ubicación/Hábitat y un dato curioso. Máximo 20 palabras."
-                    info_res = client.chat.completions.create(
-                        model=modelo_texto, 
-                        messages=[{"role": "user", "content": meta_prompt}]
-                    )
-                    datos = info_res.choices[0].message.content
+                    # 1. Descarga de imagen segura (Pollinations API)
+                    url_api = f"https://image.pollinations.ai/prompt/high_quality_realistic_photo_of_{sujeto.replace(' ', '_')}?width=800&height=500&nologo=true"
+                    r = requests.get(url_api, timeout=15)
                     
-                    # Guardamos la estructura visual en el historial
-                    diseno_visual = f"""
-                    🔍 **PROYECCIÓN SATELITAL: {sujeto.upper()}**
-                    
-                    <img src='https://source.unsplash.com/800x450/?{sujeto.replace(' ', ',')}' style='width:100%; border-radius:10px; border: 2px solid #00f2ff;'>
-                    
-                    <div style='background: rgba(0, 242, 255, 0.1); border-left: 4px solid #00f2ff; padding: 10px; margin-top: 10px; border-radius: 5px;'>
-                        <b style='color: #00f2ff;'>📋 FICHA TÉCNICA:</b><br>
-                        <span style='font-size: 0.9rem;'>{datos}</span>
-                    </div>
-                    """
-                    st.session_state.historial_chat.append({"role": "assistant", "content": diseno_visual})
+                    if r.status_code == 200:
+                        # Convertimos a Base64 para evitar el error de imagen rota
+                        img_b64 = base64.b64encode(r.content).decode()
+                        
+                        # 2. Generación de Ficha Técnica usando Llama-4 Scout
+                        meta_prompt = f"""
+                        Genera una FICHA TÉCNICA para '{sujeto}'. 
+                        Incluye: 🏰 Lugar, 📏 Dimensiones/Altura, 📅 Construcción y 💡 Dato curioso.
+                        Tono: JARVIS. Máximo 50 palabras.
+                        """
+                        info_res = client.chat.completions.create(
+                            model=modelo_texto, 
+                            messages=[{"role": "user", "content": meta_prompt}]
+                        )
+                        datos = info_res.choices[0].message.content
+
+                        # 3. Diseño Visual del HUD
+                        diseno_visual = f"""
+                        <div style="border: 2px solid #00f2ff; border-radius: 15px; padding: 15px; background: rgba(0,0,0,0.6);">
+                            <h3 style="color: #00f2ff; text-align: center; margin-bottom:10px;">🛰️ PROYECCIÓN SATELITAL: {sujeto.upper()}</h3>
+                            <img src="data:image/jpeg;base64,{img_b64}" style="width:100%; border-radius:10px; border: 1px solid #00f2ff;">
+                            <div style="margin-top: 15px; color: #ffffff; border-left: 3px solid #00f2ff; padding-left: 10px;">
+                                {datos.replace('-', '<br>•')}
+                            </div>
+                        </div>
+                        """
+                        st.session_state.historial_chat.append({"role": "assistant", "content": diseno_visual})
+                    else:
+                        st.session_state.historial_chat.append({"role": "assistant", "content": "Señor, no he podido establecer conexión con el satélite de imágenes."})
 
                 # --- B. PROTOCOLO MULTIMEDIA (VIDEO) ---
-                else:
-                    prompt_intencion = f"Analiza si el usuario quiere ver un video. Si es así, responde 'BUSCAR: [nombre del video]'. Si no, responde normal. Usuario dice: {query}"
+                elif any(word in query.lower() for word in ["video", "ver en youtube", "reproduce"]):
+                    prompt_intencion = f"Extrae el nombre del video. Responde solo 'BUSCAR: [nombre del video]'. Usuario: {query}"
                     check_intencion = client.chat.completions.create(
                         model=modelo_texto, 
                         messages=[{"role": "user", "content": prompt_intencion}]
@@ -442,15 +462,15 @@ with tabs[0]:
                         else:
                             resp = "Señor, no he podido localizar material audiovisual."
                         st.session_state.historial_chat.append({"role": "assistant", "content": resp})
-                    
-                    # --- C. MOTOR DE RESPUESTA IA (CHAT NORMAL) ---
-                    else:
-                        hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
-                        res = client.chat.completions.create(
-                            model=modelo_texto, 
-                            messages=[{"role": "system", "content": PERSONALIDAD}] + hist
-                        )
-                        st.session_state.historial_chat.append({"role": "assistant", "content": res.choices[0].message.content})
+
+                # --- C. MOTOR DE RESPUESTA IA (CHAT NORMAL) ---
+                else:
+                    hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
+                    res = client.chat.completions.create(
+                        model=modelo_texto, 
+                        messages=[{"role": "system", "content": PERSONALIDAD}] + hist
+                    )
+                    st.session_state.historial_chat.append({"role": "assistant", "content": res.choices[0].message.content})
 
             except Exception as e:
                 st.error(f"Error en el núcleo de procesamiento: {str(e)}")
@@ -485,11 +505,11 @@ with tabs[0]:
             st.rerun()
 
     # 5. REGISTRO VISUAL (CHRONOS)
-    chat_box = st.container(height=500, border=False)
+    chat_box = st.container(height=550, border=False)
     with chat_box:
         for m in st.session_state.historial_chat:
             with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"):
-                st.markdown(m["content"], unsafe_allow_html=True) # Importante: unsafe_allow_html para ver la imagen
+                st.markdown(m["content"], unsafe_allow_html=True)
 
 # --- TAB 1: ANÁLISIS (FIX SCOUT VISION) ---
 with tabs[1]:
