@@ -81,13 +81,16 @@ st.markdown("""
         z-index: -1;
     }
 
-    /* --- PROTOCOLO DE PESTAÑAS EXPANDIDAS (NUEVO) --- */
+    /* --- PROTOCOLO EXCLUSIVO PARA PESTAÑAS (TABS) --- */
+    /* Solo afecta al contenedor de pestañas superior */
     div[data-testid="stTabs"] {
         width: 100% !important;
     }
-    div[data-testid="stTabs"] button {
-        flex: 1 !important; /* Distribución uniforme */
-        min-width: 180px !important; /* Pestañas más largas */
+    
+    /* Solo afecta a los botones que son PESTAÑAS */
+    div[data-testid="stTabs"] button[data-baseweb="tab"] {
+        flex: 1 !important; 
+        min-width: 200px !important; 
         height: 50px !important;
         background-color: rgba(0, 242, 255, 0.05) !important;
         border: 1px solid rgba(0, 242, 255, 0.2) !important;
@@ -95,6 +98,7 @@ st.markdown("""
         font-family: 'Share Tech Mono', monospace;
         transition: all 0.3s ease;
     }
+
     div[data-testid="stTabs"] button[aria-selected="true"] {
         background-color: rgba(0, 242, 255, 0.15) !important;
         border-bottom: 3px solid #00f2ff !important;
@@ -110,21 +114,6 @@ st.markdown("""
         border-radius: 0 8px 8px 0;
         font-family: 'Share Tech Mono', monospace;
     }
-    .telemetry-label {
-        color: #00f2ff;
-        font-size: 0.8rem;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-    }
-    .telemetry-value {
-        color: #ffffff;
-        font-size: 0.95rem;
-        font-weight: bold;
-    }
-    .telemetry-sub {
-        color: rgba(255, 255, 255, 0.6);
-        font-size: 0.75rem;
-    }
 
     /* INPUTS Y UPLOADERS CON BORDE NEÓN */
     div[data-baseweb="input"], div[data-baseweb="textarea"], .stFileUploader {
@@ -134,20 +123,15 @@ st.markdown("""
         background: rgba(0, 0, 0, 0.5) !important;
     }
 
-    /* BOTONES ESTILO STARK */
-    button, div.stButton > button, div.stDownloadButton > button {
+    /* BOTONES ESTÁNDAR (Se mantienen sin flex) */
+    .stButton > button {
         background: rgba(0, 242, 255, 0.1) !important;
         color: #00f2ff !important;
         border: 1px solid #00f2ff !important;
-        box-shadow: 0 0 15px rgba(0, 242, 255, 0.4) !important;
         transition: all 0.3s ease;
     }
-    button:hover {
-        background: rgba(0, 242, 255, 0.3) !important;
-        box-shadow: 0 0 25px rgba(0, 242, 255, 0.6) !important;
-    }
 
-    /* REACTOR ARC V2 - CORE Y AUREOLA */
+    /* REACTOR ARC V2 */
     .reactor-container { 
         position: relative; 
         height: 300px; 
@@ -164,7 +148,6 @@ st.markdown("""
         border-radius: 50%;
         animation: rotate-aureola 10s linear infinite;
         opacity: 0.5;
-        box-shadow: 0 0 20px rgba(0, 242, 255, 0.3);
     }
     .reactor-core { 
         width: 100px; 
