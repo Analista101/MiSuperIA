@@ -365,55 +365,52 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: PROYECTO JARVIS (VERSIÓN COMPLETA Y ALINEADA V51.8) ---
+# --- TAB 0: PROYECTO JARVIS (VERSIÓN SANEADA V52.1) ---
 with tabs[0]:
     # 1. INICIALIZACIÓN DE CANALES DE DATOS
     if "historial_chat" not in st.session_state: st.session_state.historial_chat = []
     if "video_url" not in st.session_state: st.session_state.video_url = None
     if "modo_fluido" not in st.session_state: st.session_state.modo_fluido = False
 
-    # 2. MOTOR DE BÚSQUEDA Y PROCESAMIENTO (Cerebro JARVIS)
+    # 2. MOTOR DE BÚSQUEDA Y PROCESAMIENTO
     def protocolo_stark_v516():
         query = st.session_state.input_cmd.strip()
         if query:
-            # Registramos la orden en el historial
             st.session_state.historial_chat.append({"role": "user", "content": query})
             
             try:
-                # --- A. PROTOCOLO DE RECONOCIMIENTO VISUAL (PRIORIDAD ALFA) ---
-                # Detectamos si la orden implica una visualización
+                # --- A. PROTOCOLO DE RECONOCIMIENTO VISUAL (MOTOR SCOUT) ---
                 palabras_clave = ["muéstrame", "busca una foto", "proyecta", "imagen de", "foto de", "enséñame"]
+                
                 if any(word in query.lower() for word in palabras_clave):
-                    # Limpieza del sujeto (Eliminamos artículos y comandos)
                     sujeto = query.lower()
                     for word in palabras_clave: sujeto = sujeto.replace(word, "")
                     sujeto = sujeto.replace("un ", "").replace("una ", "").replace("la ", "").replace("el ", "").strip()
                     
-                    # JARVIS genera la Ficha Técnica usando la IA
-                    meta_prompt = f"Actúa como JARVIS. Dame la ubicación/hábitat y un dato curioso de {sujeto}. Muy breve (máximo 15 palabras)."
+                    # Ficha Técnica con Llama-4-Scout
+                    meta_prompt = f"Actúa como JARVIS. Proporciona una ficha técnica de '{sujeto}' con ubicación, historia y un dato curioso. Tono sofisticado. Máximo 60 palabras."
                     info_res = client.chat.completions.create(
-                        model=modelo_texto, 
+                        model="meta-llama/llama-4-scout-17b-16e-instruct", 
                         messages=[{"role": "user", "content": meta_prompt}]
                     )
                     datos_tecnicos = info_res.choices[0].message.content
                     
-                    # Inyectamos el HUD visual en el historial
-                    # Usamos una URL de alta resolución (1600x900) para nitidez satelital
+                    url_img = f"https://image.pollinations.ai/prompt/{sujeto.replace(' ', '%20')}?width=1080&height=720&nologo=true"
+                    
                     diseno_hud = f"""
-                    <div style='margin-bottom: 20px;'>
-                        <p style='color: #00f2ff; font-weight: bold; margin-bottom: 8px; letter-spacing: 1px;'>🔍 PROYECCIÓN HUD: {sujeto.upper()}</p>
-                        <img src='https://source.unsplash.com/1600x900/?{sujeto.replace(' ', ',')}' 
-                             style='width:100%; border-radius:12px; border: 2px solid #00f2ff; box-shadow: 0px 0px 15px rgba(0,242,255,0.4);'>
-                        <div style='background: rgba(0, 242, 255, 0.1); border-left: 5px solid #00f2ff; padding: 15px; margin-top: 12px; border-radius: 5px;'>
-                            <b style='color: #00f2ff; font-size: 0.85rem;'>📋 FICHA TÉCNICA</b><br>
-                            <span style='font-size: 0.9rem; color: #ffffff; line-height: 1.4;'>{datos_tecnicos}</span>
+                    <div style='margin-bottom: 25px;'>
+                        <p style='color: #00f2ff; font-weight: bold; margin-bottom: 10px; letter-spacing: 1.5px; text-transform: uppercase;'>🛰️ ESCANEO SCOUT L4: {sujeto.upper()}</p>
+                        <img src='{url_img}' style='width:100%; border-radius:15px; border: 2px solid #00f2ff; box-shadow: 0px 4px 20px rgba(0,242,255,0.5);'>
+                        <div style='background: linear-gradient(90deg, rgba(0,242,255,0.15) 0%, rgba(0,0,0,0) 100%); border-left: 5px solid #00f2ff; padding: 20px; margin-top: 15px; border-radius: 5px;'>
+                            <b style='color: #00f2ff; font-size: 1rem;'>📋 FICHA TÉCNICA OPERATIVA</b><br>
+                            <div style='font-size: 0.95rem; color: #ffffff; line-height: 1.6; margin-top: 8px;'>{datos_tecnicos}</div>
                         </div>
                     </div>
                     """
                     st.session_state.historial_chat.append({"role": "assistant", "content": diseno_hud})
 
                 # --- B. DETECCIÓN DE VIDEO (PROTOCOLO BETA) ---
-                elif "video" in query.lower() or "ver en youtube" in query.lower():
+                elif any(word in query.lower() for word in ["video", "ver en youtube"]):
                     prompt_intencion = f"Extrae el nombre del video que el usuario quiere ver. Responde solo 'BUSCAR: [nombre]'. Usuario: {query}"
                     check_intencion = client.chat.completions.create(
                         model=modelo_texto, 
@@ -431,7 +428,7 @@ with tabs[0]:
                             st.session_state.historial_chat.append({"role": "assistant", "content": f"Proyectando archivos de video para '{termino}', Srta. Diana."})
                         else:
                             st.session_state.historial_chat.append({"role": "assistant", "content": "No he localizado registros de video disponibles."})
-                
+
                 # --- C. RESPUESTA CONVERSACIONAL (PROTOCOLO GAMMA) ---
                 else:
                     hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
@@ -444,12 +441,12 @@ with tabs[0]:
             except Exception as e:
                 st.error(f"Fallo en los sistemas centrales: {str(e)}")
             
-            st.session_state.input_cmd = "" # Purgar terminal
+            st.session_state.input_cmd = "" # Limpiar terminal
 
-    # 3. CABECERA DE MANDOS (CONTROL DE HUD)
+    # 3. CABECERA DE MANDOS
     c1, c2, c3, c4 = st.columns([1, 1, 1, 7])
     with c1:
-        if st.button("🗑️", help="Purgar Historial de Misión", key="clear_v518"):
+        if st.button("🗑️", help="Purgar Historial", key="clear_v518"):
             st.session_state.historial_chat = []
             st.session_state.video_url = None
             st.rerun()
@@ -466,21 +463,21 @@ with tabs[0]:
 
     st.markdown("---")
 
-    # 4. MONITOR MULTIMEDIA HUD (VIDEO EMBED)
+    # 4. MONITOR MULTIMEDIA HUD
     if st.session_state.video_url:
         st.markdown("### 📺 MONITOR PRINCIPAL")
         st.components.v1.iframe(st.session_state.video_url, height=450)
-        if st.button("🔴 CERRAR PROYECCIÓN", use_container_width=True):
+        if st.button("🔴 CERRAR PROYECCIÓN", key="close_vid", use_container_width=True):
             st.session_state.video_url = None
             st.rerun()
 
-    # 5. REGISTRO VISUAL (CHRONOS - CON SOPORTE HTML)
+    # 5. REGISTRO VISUAL (CHRONOS)
     chat_box = st.container(height=550, border=False)
     with chat_box:
         for m in st.session_state.historial_chat:
             with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"):
-                # USAR MARKDOWN CON HTML PERMITIDO PARA LAS IMÁGENES
                 st.markdown(m["content"], unsafe_allow_html=True)
+
 # --- TAB 1: ANÁLISIS (FIX SCOUT VISION) ---
 with tabs[1]:
     st.subheader("📊 Análisis Scout v4")
