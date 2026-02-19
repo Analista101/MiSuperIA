@@ -18,6 +18,7 @@ from email.mime.base import MIMEBase
 from email import encoders
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
+from youtube_search import YoutubeSearch
 
 # --- 1. CONFIGURACIÓN DE SEGURIDAD Y HUD ---
 load_dotenv()
