@@ -417,17 +417,40 @@ with tabs[0]:
     st.markdown("---")
 
     # --- 3. PROCESAMIENTO DE LÓGICA (Solo si hay texto en la terminal superior) ---
-    if query:
-        # Evitamos que el comando se procese infinitamente
-        if "last_query" not in st.session_state or st.session_state.last_query != query:
-            st.session_state.last_query = query
-            st.session_state.historial_chat.append({"role": "user", "content": query})
-            
-            # --- Aquí van sus protocolos (A. Emergencia, B. Imagen, C. Video, D. Conversación) ---
-            # ... (Misma lógica que ya tenemos) ...
-            
-            # Al terminar, forzamos limpieza para que no se repita el comando
-            st.rerun()
+  # 1. Definimos la función que limpia la entrada para evitar el eco
+def procesar_comando():
+    # Recuperamos el texto del widget
+    comando = st.session_state.input_cmd_final
+    if comando:
+        # Lo guardamos en el historial
+        st.session_state.historial_chat.append({"role": "user", "content": comando})
+        # Ponemos una marca para que el procesador sepa que hay una orden nueva
+        st.session_state.ejecutar_orden = comando
+        # LIMPIAMOS LA BARRA (Esto elimina el eco)
+        st.session_state.input_cmd_final = ""
+
+# 2. El Widget en la columna c4 (Sin la barra inferior)
+with c4:
+    st.text_input(
+        "cmd", 
+        placeholder="Órdenes, Srta. Diana...", 
+        label_visibility="collapsed", 
+        key="input_cmd_final",
+        on_change=procesar_comando # Se activa al pulsar Enter
+    )
+
+# 3. El Motor de JARVIS (Procesa la orden y se resetea)
+if st.session_state.get("ejecutar_orden"):
+    query = st.session_state.ejecutar_orden
+    
+    # --- PROTOCOLO DE RESPUESTA ---
+    # (Aquí va su lógica de imagen, video o texto)
+    # ...
+    
+    # IMPORTANTE: Borramos la orden de la memoria interna al terminar
+    del st.session_state.ejecutar_orden
+    st.rerun()
+
     # 3. MONITOR MULTIMEDIA HUD
     if st.session_state.video_url:
         st.markdown("### 📺 MONITOR PRINCIPAL")
