@@ -22,6 +22,18 @@ from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from youtube_search import YoutubeSearch
 import feedparser
+import base64
+from io import BytesIO
+
+def get_base64_image(url):
+    try:
+        response = requests.get(url, timeout=5)
+        if response.status_code == 200:
+            # Convertimos la imagen a Base64
+            return base64.b64encode(response.content).decode()
+    except:
+        return None
+    return None
 
 # --- 1. CONFIGURACIÓN DE SEGURIDAD Y HUD ---
 load_dotenv()
@@ -380,60 +392,51 @@ with tabs[0]:
             st.session_state.historial_chat.append({"role": "user", "content": query})
             
             try:
-# --- A. PROTOCOLO DE RECONOCIMIENTO VISUAL (ESTRUCTURA PURA GROQ V53.3) ---
+# --- PROTOCOLO DE INYECCIÓN BASE64 (V61) ---
                 palabras_clave = ["muéstrame", "busca una foto", "proyecta", "imagen de", "foto de", "enséñame", "muestrame"]
                 
                 if any(word in query.lower() for word in palabras_clave):
-                    # 1. Extracción del sujeto para la búsqueda
-                    sujeto = query.lower()
-                    for word in palabras_clave: sujeto = sujeto.replace(word, "")
-                    sujeto = sujeto.strip()
-
-                    # 2. Generación de URL de imagen real (Wikimedia Commons)
-                    # Esta URL es de alta confianza para el modelo Scout
-                    nombre_formateado = sujeto.replace(" ", "_").capitalize()
-                    url_proyeccion = f"https://commons.wikimedia.org/wiki/Special:FilePath/{nombre_formateado}.jpg"
-                    
-# --- A. PROTOCOLO DE RENDERIZADO DE ALTA FIDELIDAD (V60) ---
-                palabras_clave = ["muéstrame", "busca una foto", "proyecta", "imagen de", "foto de", "enséñame", "muestrame"]
-                
-                if any(word in query.lower() for word in palabras_clave):
-                    # 1. Extracción y Limpieza
+                    # 1. Identificación del objetivo
                     objetivo = query.lower()
                     for word in palabras_clave: objetivo = objetivo.replace(word, "")
                     objetivo = objetivo.strip()
 
-                    # 2. Generación de URL
-                    url_final = f"https://image.pollinations.ai/prompt/professional_real_photo_of_{objetivo.replace(' ', '_')}?width=1080&height=720&nologo=true"
+                    # 2. Captura y Conversión (Evita el salto al reactor)
+                    url_red = f"https://image.pollinations.ai/prompt/professional_real_photo_of_{objetivo.replace(' ', '_')}?width=600"
+                    img_base64 = get_base64_image(url_red)
 
-                    # 3. Inteligencia Scout (Su estructura de Pitón)
+                    # 3. Inteligencia Scout (Estructura Groq de Laboratorio)
                     try:
                         completion = client.chat.completions.create(
                             model="meta-llama/llama-4-scout-17b-16e-instruct",
-                            messages=[{"role": "user", "content": f"Ficha técnica de {objetivo}. Tono Stark. Máximo 60 palabras."}],
+                            messages=[{"role": "user", "content": f"Ficha técnica de {objetivo}. Tono Stark. 60 palabras."}],
                             temperature=1
                         )
                         datos_tecnicos = completion.choices[0].message.content
                     except:
-                        datos_tecnicos = "Error de enlace. Información recuperada de caché."
+                        datos_tecnicos = "Error de enlace con Groq."
 
-                    # 4. CONSTRUCCIÓN DEL BLOQUE (Sin espacios extra para evitar errores de renderizado)
-                    # Usamos triple comilla y eliminamos sangrías manuales
-                    respuesta_final = (
-                        f"### 🛰️ ESCANEO: {objetivo.upper()}\n\n"
-                        f"![{objetivo}]({url_final})\n\n"
-                        f"**📋 FICHA TÉCNICA (SISTEMA SCOUT L4):**\n\n"
-                        f"{datos_tecnicos}"
-                    )
+                    # 4. Construcción del HUD Inyectado
+                    if img_base64:
+                        # Creamos un HTML que contiene la imagen incrustada
+                        # Esto garantiza que se quede DENTRO del cuadro de texto
+                        html_inyectado = f"""
+                        <div style="border: 2px solid #00f2ff; border-radius: 10px; overflow: hidden; margin: 10px 0;">
+                            <img src="data:image/jpeg;base64,{img_base64}" style="width: 100%;">
+                            <div style="padding: 10px; background: rgba(0,242,255,0.1);">
+                                <b style="color: #00f2ff;">🛰️ ANÁLISIS: {objetivo.upper()}</b><br>
+                                <p style="color: white; font-size: 0.9rem;">{datos_tecnicos}</p>
+                            </div>
+                        </div>
+                        """
+                    else:
+                        html_inyectado = f"⚠️ No se pudo obtener la imagen, pero aquí están los datos:\n\n{datos_tecnicos}"
 
-                    # 5. DESPLIEGUE DIRECTO
-                    with st.chat_message("assistant", avatar="🚀"):
-                        st.markdown(respuesta_final)
-
-                    # Guardar en historial
+                    # 5. Anclaje al Historial
+                    # Al guardarlo como 'content', aparecerá exactamente en el orden del chat
                     st.session_state.historial_chat.append({
                         "role": "assistant", 
-                        "content": respuesta_final
+                        "content": html_inyectado
                     })
 
                 # --- B. DETECCIÓN DE VIDEO (PROTOCOLO BETA) ---
