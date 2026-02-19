@@ -379,70 +379,66 @@ with tabs[0]:
             st.session_state.historial_chat.append({"role": "user", "content": query})
             
             try:
-# --- A. PROTOCOLO DE RECONOCIMIENTO VISUAL (GROQ SCOUT + WIKI V53.2) ---
+# --- A. PROTOCOLO DE RECONOCIMIENTO VISUAL (ESTRUCTURA PURA GROQ V53.3) ---
                 palabras_clave = ["muéstrame", "busca una foto", "proyecta", "imagen de", "foto de", "enséñame", "muestrame"]
                 
                 if any(word in query.lower() for word in palabras_clave):
-                    # 1. Limpieza del sujeto para búsqueda precisa
+                    # 1. Extracción del sujeto para la búsqueda
                     sujeto = query.lower()
                     for word in palabras_clave: sujeto = sujeto.replace(word, "")
-                    sujeto = sujeto.strip().replace(" ", "_").capitalize()
+                    sujeto = sujeto.strip()
 
-                    # 2. Generación de URL de Wikipedia (Altamente compatible con Groq)
-                    # Usamos el servicio de redirección de Wikipedia que es estable
-                    url_wiki = f"https://en.wikipedia.org/wiki/Special:FilePath/{sujeto}.jpg"
+                    # 2. Generación de URL de imagen real (Wikimedia Commons)
+                    # Esta URL es de alta confianza para el modelo Scout
+                    nombre_formateado = sujeto.replace(" ", "_").capitalize()
+                    url_proyeccion = f"https://commons.wikimedia.org/wiki/Special:FilePath/{nombre_formateado}.jpg"
                     
-                    try:
-                        # 3. Llamada al modelo Scout con el formato JSON Multimodal
-                        # Esta vez usamos una URL que Groq tiene en su lista de confianza
-                        info_res = client.chat.completions.create(
-                            model="meta-llama/llama-4-scout-17b-16e-instruct", 
-                            messages=[
-                                {
-                                    "role": "user",
-                                    "content": [
-                                        {
-                                            "type": "text",
-                                            "text": f"Actúa como JARVIS. Analiza visualmente la '{sujeto}' y genera una ficha técnica profesional con ubicación, historia y un dato curioso. Tono Stark."
-                                        },
-                                        {
-                                            "type": "image_url",
-                                            "image_url": {
-                                                "url": url_wiki
-                                            }
+                    # 3. LLAMADA CON SU ESTRUCTURA EXACTA DE PYTHON
+                    completion = client.chat.completions.create(
+                        model="meta-llama/llama-4-scout-17b-16e-instruct",
+                        messages=[
+                            {
+                                "role": "user",
+                                "content": [
+                                    {
+                                        "type": "text",
+                                        "text": f"Identifica este objeto: {sujeto}. Genera una ficha técnica con Ubicación, Historia y un Dato curioso. Tono JARVIS/Stark. Máximo 80 palabras."
+                                    },
+                                    {
+                                        "type": "image_url",
+                                        "image_url": {
+                                            "url": url_proyeccion
                                         }
-                                    ]
-                                }
-                            ],
-                            temperature=1,
-                            max_tokens=1024
-                        )
-                        datos_tecnicos = info_res.choices[0].message.content
-                    except:
-                        # Respaldo si la visión falla: Scout responde solo por conocimiento previo
-                        res_backup = client.chat.completions.create(
-                            model="meta-llama/llama-4-scout-17b-16e-instruct",
-                            messages=[{"role": "user", "content": f"Ficha técnica de {sujeto}. Tono Stark."}]
-                        )
-                        datos_tecnicos = res_backup.choices[0].message.content
+                                    }
+                                ]
+                            }
+                        ],
+                        temperature=1,
+                        max_completion_tokens=1024,
+                        top_p=1,
+                        stream=False,
+                        stop=None,
+                    )
+                    
+                    datos_tecnicos = completion.choices[0].message.content
 
-                    # 4. Proyección en el HUD (Usamos Markdown para asegurar el renderizado)
+                    # 4. PROYECCIÓN EN EL HUD
                     diseno_hud = f"""
                     <div style='margin-bottom: 25px;'>
                         <p style='color: #00f2ff; font-weight: bold; margin-bottom: 10px; text-transform: uppercase;'>🛰️ ESCANEO MULTIMODAL SCOUT: {sujeto.upper()}</p>
                         <div style="width: 100%; border-radius: 15px; border: 2px solid #00f2ff; overflow: hidden; background-color: #000;">
-                            <img src='{url_wiki}' 
+                            <img src='{url_proyeccion}' 
                                  style='width:100%; height:auto; display:block;'
-                                 onerror="this.src='https://placehold.co/1080x720/000/00f2ff?text=RECALIBRANDO+FRECUENCIA';">
+                                 onerror="this.src='https://placehold.co/1080x720/000/00f2ff?text=ARCHIVO+NO+LOCALIZADO';">
                         </div>
                         <div style='background: rgba(0, 242, 255, 0.1); border-left: 5px solid #00f2ff; padding: 20px; margin-top: 15px; border-radius: 5px;'>
-                            <b style='color: #00f2ff;'>📋 FICHA TÉCNICA (SISTEMA L4)</b><br>
+                            <b style='color: #00f2ff;'>📋 ANÁLISIS DE DATOS (PROTOCOLO GROQ)</b><br>
                             <div style='color: #ffffff; line-height: 1.6; margin-top: 10px;'>{datos_tecnicos}</div>
                         </div>
                     </div>
                     """
                     st.session_state.historial_chat.append({"role": "assistant", "content": diseno_hud})
-
+                    
                 # --- B. DETECCIÓN DE VIDEO (PROTOCOLO BETA) ---
                 elif any(word in query.lower() for word in ["video", "ver en youtube"]):
                     prompt_intencion = f"Extrae el nombre del video que el usuario quiere ver. Responde solo 'BUSCAR: [nombre]'. Usuario: {query}"
