@@ -293,32 +293,44 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: PROYECTO JARVIS (VERSIÓN OPERATIVA + YOUTUBE) ---
+# --- TAB 0: PROYECTO JARVIS (VERSIÓN FINAL OPERATIVA V50.9) ---
 with tabs[0]:
+    # Inicialización de estados de memoria
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
     if "video_url" not in st.session_state:
         st.session_state.video_url = None
+    if "modo_fluido" not in st.session_state:
+        st.session_state.modo_fluido = False
 
-    # 1. PROTOCOLO DE PROCESAMIENTO CON DETECCIÓN DE MULTIMEDIA
-    def protocolo_jarvis_completo():
+    # 1. PROTOCOLO DE PROCESAMIENTO (Callback de Comando Central)
+    def protocolo_jarvis_v509():
         query = st.session_state.input_cmd.strip()
+        
         if query:
+            # Registrar orden en el historial
             st.session_state.historial_chat.append({"role": "user", "content": query})
             
-            # --- Lógica de YouTube integrada ---
-            # Si la orden incluye "reproducir" o es un link directo
-            if "reproducir" in query.lower() or "youtube.com" in query.lower():
-                # Aquí JARVIS procesaría la búsqueda (simplificado para el ejemplo)
-                # En un despliegue real, usaríamos una función de búsqueda de video
-                st.session_state.video_url = query # O el resultado de la búsqueda
-                st.session_state.historial_chat.append({
-                    "role": "assistant", 
-                    "content": "Entendido, señor. Iniciando reproducción en el panel multimedia."
-                })
+            # --- DETECTOR DE MULTIMEDIA (YOUTUBE) ---
+            if "reproducir" in query.lower() or "pon el video" in query.lower():
+                # Enlace directo para Bon Jovi o detección de links
+                if "bon jovi" in query.lower():
+                    url = "https://www.youtube.com/watch?v=vx2u5uUu3DE"
+                else:
+                    # Intento de extraer link si existe en el query
+                    url = query if "http" in query else None
+                
+                if url:
+                    st.session_state.video_url = url
+                    st.session_state.historial_chat.append({
+                        "role": "assistant", 
+                        "content": f"Entendido, Srta. Diana. Proyectando el material audiovisual en el monitor principal..."
+                    })
+            
+            # --- RESPUESTA DE INTELIGENCIA ARTIFICIAL ---
             else:
-                # Respuesta estándar de la IA
                 try:
+                    # Mantenemos el contexto de los últimos 5 mensajes
                     hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
                     res = client.chat.completions.create(
                         model=modelo_texto, 
@@ -326,40 +338,63 @@ with tabs[0]:
                     )
                     st.session_state.historial_chat.append({"role": "assistant", "content": res.choices[0].message.content})
                 except Exception as e:
-                    st.error(f"Fallo en el núcleo: {e}")
+                    st.error(f"Sistemas offline: {str(e)}")
             
+            # Limpieza del buffer (Streamlit lo maneja automáticamente en on_change)
             st.session_state.input_cmd = ""
 
-    # --- 2. CABECERA DE MANDOS ---
+    # --- 2. CABECERA DE BLOQUES (NATIVA Y ESTABLE) ---
     c1, c2, c3, c4 = st.columns([1, 1, 1, 7])
+
     with c1:
-        if st.button("🗑️", help="Limpiar Historial", use_container_width=True):
+        if st.button("🗑️", help="Purgar Historial", use_container_width=True):
             st.session_state.historial_chat = []
             st.session_state.video_url = None
             st.rerun()
-    with c2:
-        estado_ml = "🔔" if st.session_state.get('modo_fluido', False) else "🔕"
-        if st.button(estado_ml, help="Modo Manos Libres", use_container_width=True):
-            st.session_state.modo_fluido = not st.session_state.get('modo_fluido', False)
-            st.rerun()
-    with c3:
-        mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_nativo")
-    with c4:
-        st.text_input("cmd", placeholder="Órdenes o links de YouTube...", label_visibility="collapsed", key="input_cmd", on_change=protocolo_jarvis_completo)
 
-    # --- 3. PANEL MULTIMEDIA (Se activa solo si hay un video) ---
+    with c2:
+        ml_icon = "🔔" if st.session_state.modo_fluido else "🔕"
+        if st.button(ml_icon, help="Alternar Manos Libres", use_container_width=True):
+            st.session_state.modo_fluido = not st.session_state.modo_fluido
+            st.rerun()
+
+    with c3:
+        # Contenedor para el micrófono (mantiene la simetría nativa)
+        mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_nativo_v509")
+
+    with c4:
+        st.text_input(
+            "cmd", 
+            placeholder="Órdenes, Srta. Diana...", 
+            label_visibility="collapsed", 
+            key="input_cmd", 
+            on_change=protocolo_jarvis_v509
+        )
+
+    # --- 3. PROYECCIÓN MULTIMEDIA (HUD) ---
     if st.session_state.video_url:
         st.markdown("### 📺 Pantalla de Visualización Stark")
         st.video(st.session_state.video_url)
+        if st.button("Cerrar Reproductor"):
+            st.session_state.video_url = None
+            st.rerun()
 
     st.markdown("---")
-    
-    # --- 4. RENDERIZADO DEL CHAT ---
-    chat_box = st.container(height=400, border=False)
+
+    # --- 4. REGISTRO VISUAL (CHRONOS) ---
+    chat_box = st.container(height=450, border=False)
     with chat_box:
         for m in st.session_state.historial_chat:
             with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
                 st.write(m["content"])
+        
+        # Script de auto-scroll para JARVIS
+        st.components.v1.html("""
+            <script>
+            var el = window.parent.document.querySelector('div[data-testid="stVBC"]');
+            if (el) { el.scrollTop = el.scrollHeight; }
+            </script>
+        """, height=0)
 
 # --- TAB 1: ANÁLISIS (FIX SCOUT VISION) ---
 with tabs[1]:
