@@ -263,7 +263,7 @@ def buscar_video_youtube(busqueda):
         return None
     return None
 
-# --- 6. SIDEBAR - MONITOR DE CRISIS MODULAR (V10) ---
+# --- 6. SIDEBAR - MONITOR DE RED MODULAR (V11 - PRONÓSTICO EXTENDIDO) ---
 with st.sidebar:
     st.markdown("<h3 style='color: #00f2ff; text-align: center; letter-spacing: 2px;'>📡 MONITOR DE RED</h3>", unsafe_allow_html=True)
     st.markdown("---")
@@ -309,31 +309,43 @@ with st.sidebar:
 
     # MÓDULO 3: CONTROL DE INCENDIOS
     with st.expander("🔥 REPORTE DE INCENDIOS", expanded=False):
-        estado = "EN COMBATE" # Opciones: CONTROLADO, EN COMBATE, FUERA DE CONTROL
-        color = "#ff4b4b" if estado == "FUERA DE CONTROL" else "#ff8800"
+        estado_inc = "EN COMBATE"
+        color_inc = "#ff4b4b" if estado_inc == "FUERA DE CONTROL" else "#ff8800"
         st.markdown(f"""
-            <div class='telemetry-card' style='border-left: 4px solid {color}; padding: 10px;'>
+            <div class='telemetry-card' style='border-left: 4px solid {color_inc}; padding: 10px;'>
                 <div class='telemetry-value' style='font-size: 1rem;'>SECTOR: NOVICIADO</div>
                 <div style='margin-top: 5px;'>
-                    <span style='background: {color}; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; font-weight: bold;'>{estado}</span>
+                    <span style='background: {color_inc}; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; font-weight: bold;'>{estado_inc}</span>
                 </div>
                 <div class='telemetry-sub' style='font-size: 0.7rem; margin-top: 8px;'>
-                    Afectación: 1.2 Hectáreas<br>
-                    Recursos: Brigadas terrestres + Apoyo aéreo
+                    Pudahuel bajo monitoreo aéreo activo.
                 </div>
             </div>
         """, unsafe_allow_html=True)
 
-    # MÓDULO 4: CLIMA LOCAL (PUDAHUEL)
-    with st.expander("🌤️ PRONÓSTICO: PUDAHUEL", expanded=False):
-        # Datos simulados para Pudahuel
-        st.markdown(f"""
-            <div class='telemetry-card' style='border-left: 4px solid #f9d71c; padding: 10px;'>
-                <div class='telemetry-value' style='font-size: 1rem;'>32°C - DESPEJADO</div>
-                <div class='telemetry-sub' style='font-size: 0.7rem; margin-top: 5px;'>
-                    Humedad: 18% | Viento: 15 km/h<br>
-                    Índice UV: 11+ (Extremo)
+    # MÓDULO 4: CLIMA SEMANAL (PUDAHUEL)
+    with st.expander("🌤️ PRONÓSTICO SEMANAL: PUDAHUEL", expanded=False):
+        dias = ["Sáb", "Dom", "Lun", "Mar", "Mié", "Jue", "Vie"]
+        temps = ["32°", "31°", "29°", "33°", "34°", "30°", "28°"]
+        iconos = ["☀️", "☀️", "🌤️", "🔥", "🔥", "🌤️", "☀️"]
+        
+        # Diseño de rejilla compacta para la semana
+        clima_html = "<div style='display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px;'>"
+        for d, t, i in zip(dias, temps, iconos):
+            clima_html += f"""
+                <div style='text-align: center; background: rgba(0,242,255,0.05); padding: 5px; border-radius: 4px;'>
+                    <div style='font-size: 0.6rem; color: #888;'>{d}</div>
+                    <div style='font-size: 0.8rem;'>{i}</div>
+                    <div style='font-size: 0.75rem; color: #00f2ff; font-weight: bold;'>{t}</div>
                 </div>
+            """
+        clima_html += "</div>"
+        
+        st.markdown(clima_html, unsafe_allow_html=True)
+        st.markdown("""
+            <div style='margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 5px;'>
+                <div class='telemetry-sub' style='font-size: 0.65rem;'>SENSACIÓN TÉRMICA: 35°C</div>
+                <div class='telemetry-sub' style='font-size: 0.65rem;'>UV: EXTREMO (11+)</div>
             </div>
         """, unsafe_allow_html=True)
 
