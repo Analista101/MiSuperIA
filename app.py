@@ -365,7 +365,7 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: PROYECTO JARVIS (VERSIÓN COMPLETA Y ALINEADA V51.7) ---
+# --- TAB 0: PROYECTO JARVIS (VERSIÓN COMPLETA Y ALINEADA V51.8) ---
 with tabs[0]:
     # 1. INICIALIZACIÓN DE CANALES DE DATOS
     if "historial_chat" not in st.session_state: st.session_state.historial_chat = []
@@ -376,38 +376,45 @@ with tabs[0]:
     def protocolo_stark_v516():
         query = st.session_state.input_cmd.strip()
         if query:
-            # Añadimos la orden del usuario al historial
+            # Registramos la orden en el historial
             st.session_state.historial_chat.append({"role": "user", "content": query})
             
             try:
-                # --- A. DETECCIÓN DE INTENCIÓN DE IMAGEN (NUEVO) ---
-                if any(word in query.lower() for word in ["muéstrame", "busca una foto", "proyecta"]):
-                    sujeto = query.lower().replace("muéstrame", "").replace("busca una foto de", "").replace("proyecta", "").replace("un ", "").replace("una ", "").strip()
+                # --- A. PROTOCOLO DE RECONOCIMIENTO VISUAL (PRIORIDAD ALFA) ---
+                # Detectamos si la orden implica una visualización
+                palabras_clave = ["muéstrame", "busca una foto", "proyecta", "imagen de", "foto de", "enséñame"]
+                if any(word in query.lower() for word in palabras_clave):
+                    # Limpieza del sujeto (Eliminamos artículos y comandos)
+                    sujeto = query.lower()
+                    for word in palabras_clave: sujeto = sujeto.replace(word, "")
+                    sujeto = sujeto.replace("un ", "").replace("una ", "").replace("la ", "").replace("el ", "").strip()
                     
-                    # Generamos los datos técnicos usando la IA
-                    meta_prompt = f"Actúa como JARVIS. Dame datos técnicos ultra-breves de {sujeto}: Ubicación/Hábitat y un dato curioso. Máximo 20 palabras."
+                    # JARVIS genera la Ficha Técnica usando la IA
+                    meta_prompt = f"Actúa como JARVIS. Dame la ubicación/hábitat y un dato curioso de {sujeto}. Muy breve (máximo 15 palabras)."
                     info_res = client.chat.completions.create(
                         model=modelo_texto, 
                         messages=[{"role": "user", "content": meta_prompt}]
                     )
-                    datos = info_res.choices[0].message.content
+                    datos_tecnicos = info_res.choices[0].message.content
                     
-                    # Guardamos la estructura visual en el historial
-                    diseno_visual = f"""
-                    🔍 **PROYECCIÓN SATELITAL: {sujeto.upper()}**
-                    
-                    <img src='https://source.unsplash.com/800x450/?{sujeto.replace(' ', ',')}' style='width:100%; border-radius:10px; border: 2px solid #00f2ff;'>
-                    
-                    <div style='background: rgba(0, 242, 255, 0.1); border-left: 4px solid #00f2ff; padding: 10px; margin-top: 10px; border-radius: 5px;'>
-                        <b style='color: #00f2ff;'>📋 FICHA TÉCNICA:</b><br>
-                        <span style='font-size: 0.9rem;'>{datos}</span>
+                    # Inyectamos el HUD visual en el historial
+                    # Usamos una URL de alta resolución (1600x900) para nitidez satelital
+                    diseno_hud = f"""
+                    <div style='margin-bottom: 20px;'>
+                        <p style='color: #00f2ff; font-weight: bold; margin-bottom: 8px; letter-spacing: 1px;'>🔍 PROYECCIÓN HUD: {sujeto.upper()}</p>
+                        <img src='https://source.unsplash.com/1600x900/?{sujeto.replace(' ', ',')}' 
+                             style='width:100%; border-radius:12px; border: 2px solid #00f2ff; box-shadow: 0px 0px 15px rgba(0,242,255,0.4);'>
+                        <div style='background: rgba(0, 242, 255, 0.1); border-left: 5px solid #00f2ff; padding: 15px; margin-top: 12px; border-radius: 5px;'>
+                            <b style='color: #00f2ff; font-size: 0.85rem;'>📋 FICHA TÉCNICA</b><br>
+                            <span style='font-size: 0.9rem; color: #ffffff; line-height: 1.4;'>{datos_tecnicos}</span>
+                        </div>
                     </div>
                     """
-                    st.session_state.historial_chat.append({"role": "assistant", "content": diseno_visual})
+                    st.session_state.historial_chat.append({"role": "assistant", "content": diseno_hud})
 
-                # --- B. PROTOCOLO MULTIMEDIA (VIDEO) ---
-                else:
-                    prompt_intencion = f"Analiza si el usuario quiere ver un video. Si es así, responde 'BUSCAR: [nombre del video]'. Si no, responde normal. Usuario dice: {query}"
+                # --- B. DETECCIÓN DE VIDEO (PROTOCOLO BETA) ---
+                elif "video" in query.lower() or "ver en youtube" in query.lower():
+                    prompt_intencion = f"Extrae el nombre del video que el usuario quiere ver. Responde solo 'BUSCAR: [nombre]'. Usuario: {query}"
                     check_intencion = client.chat.completions.create(
                         model=modelo_texto, 
                         messages=[{"role": "user", "content": prompt_intencion}]
@@ -421,59 +428,59 @@ with tabs[0]:
                         if results:
                             video_id = results[0]['id']
                             st.session_state.video_url = f"https://www.youtube.com/embed/{video_id}"
-                            resp = f"He localizado las frecuencias para '{termino}'. Proyectando en el monitor principal, Srta. Diana."
+                            st.session_state.historial_chat.append({"role": "assistant", "content": f"Proyectando archivos de video para '{termino}', Srta. Diana."})
                         else:
-                            resp = "Señor, no he podido localizar material audiovisual."
-                        st.session_state.historial_chat.append({"role": "assistant", "content": resp})
-                    
-                    # --- C. MOTOR DE RESPUESTA IA (CHAT NORMAL) ---
-                    else:
-                        hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
-                        res = client.chat.completions.create(
-                            model=modelo_texto, 
-                            messages=[{"role": "system", "content": PERSONALIDAD}] + hist
-                        )
-                        st.session_state.historial_chat.append({"role": "assistant", "content": res.choices[0].message.content})
+                            st.session_state.historial_chat.append({"role": "assistant", "content": "No he localizado registros de video disponibles."})
+                
+                # --- C. RESPUESTA CONVERSACIONAL (PROTOCOLO GAMMA) ---
+                else:
+                    hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
+                    res = client.chat.completions.create(
+                        model=modelo_texto, 
+                        messages=[{"role": "system", "content": PERSONALIDAD}] + hist
+                    )
+                    st.session_state.historial_chat.append({"role": "assistant", "content": res.choices[0].message.content})
 
             except Exception as e:
-                st.error(f"Error en el núcleo de procesamiento: {str(e)}")
+                st.error(f"Fallo en los sistemas centrales: {str(e)}")
             
-            st.session_state.input_cmd = "" # Limpieza del terminal
+            st.session_state.input_cmd = "" # Purgar terminal
 
-    # 3. CABECERA DE MANDOS
+    # 3. CABECERA DE MANDOS (CONTROL DE HUD)
     c1, c2, c3, c4 = st.columns([1, 1, 1, 7])
     with c1:
-        if st.button("🗑️", help="Purgar Historial", key="clear_chat"):
+        if st.button("🗑️", help="Purgar Historial de Misión", key="clear_v518"):
             st.session_state.historial_chat = []
             st.session_state.video_url = None
             st.rerun()
     with c2:
         ml_icon = "🔔" if st.session_state.modo_fluido else "🔕"
-        if st.button(ml_icon, key="hands_free"):
+        if st.button(ml_icon, key="hands_free_v518"):
             st.session_state.modo_fluido = not st.session_state.modo_fluido
             st.rerun()
     with c3:
         from streamlit_mic_recorder import mic_recorder
-        mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v517")
+        mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v518")
     with c4:
         st.text_input("cmd", placeholder="Órdenes, Srta. Diana...", label_visibility="collapsed", key="input_cmd", on_change=protocolo_stark_v516)
 
     st.markdown("---")
 
-    # 4. MONITOR MULTIMEDIA HUD
+    # 4. MONITOR MULTIMEDIA HUD (VIDEO EMBED)
     if st.session_state.video_url:
+        st.markdown("### 📺 MONITOR PRINCIPAL")
         st.components.v1.iframe(st.session_state.video_url, height=450)
-        if st.button("🔴 Finalizar Proyección", use_container_width=True):
+        if st.button("🔴 CERRAR PROYECCIÓN", use_container_width=True):
             st.session_state.video_url = None
             st.rerun()
 
-    # 5. REGISTRO VISUAL (CHRONOS)
-    chat_box = st.container(height=500, border=False)
+    # 5. REGISTRO VISUAL (CHRONOS - CON SOPORTE HTML)
+    chat_box = st.container(height=550, border=False)
     with chat_box:
         for m in st.session_state.historial_chat:
             with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"):
-                st.markdown(m["content"], unsafe_allow_html=True) # Importante: unsafe_allow_html para ver la imagen
-
+                # USAR MARKDOWN CON HTML PERMITIDO PARA LAS IMÁGENES
+                st.markdown(m["content"], unsafe_allow_html=True)
 # --- TAB 1: ANÁLISIS (FIX SCOUT VISION) ---
 with tabs[1]:
     st.subheader("📊 Análisis Scout v4")
