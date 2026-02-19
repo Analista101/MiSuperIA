@@ -393,31 +393,32 @@ with tabs[0]:
                     nombre_formateado = sujeto.replace(" ", "_").capitalize()
                     url_proyeccion = f"https://commons.wikimedia.org/wiki/Special:FilePath/{nombre_formateado}.jpg"
                     
-                    # 3. LLAMADA CON SU ESTRUCTURA EXACTA DE PYTHON
+                  # --- A. PROTOCOLO DE RECONOCIMIENTO VISUAL (GROQ STABLE V53.4) ---
+                palabras_clave = ["muéstrame", "busca una foto", "proyecta", "imagen de", "foto de", "enséñame", "muestrame"]
+                
+                if any(word in query.lower() for word in palabras_clave):
+                    # 1. Extracción del sujeto
+                    sujeto = query.lower()
+                    for word in palabras_clave: sujeto = sujeto.replace(word, "")
+                    sujeto = sujeto.strip()
+
+                    # 2. Generación de URL Visual Directa (Para el HUD)
+                    # Usamos un motor que el navegador renderiza sin problemas
+                    url_hud = f"https://image.pollinations.ai/prompt/real_photograph_of_{sujeto.replace(' ', '_')}_high_resolution?width=1080&height=720&nologo=true"
+                    
+                    # 3. LLAMADA A GROQ (Modelo Scout)
+                    # NOTA: Omitimos el campo 'image_url' para evitar el error 403/400 del servidor
                     completion = client.chat.completions.create(
                         model="meta-llama/llama-4-scout-17b-16e-instruct",
                         messages=[
                             {
                                 "role": "user",
-                                "content": [
-                                    {
-                                        "type": "text",
-                                        "text": f"Identifica este objeto: {sujeto}. Genera una ficha técnica con Ubicación, Historia y un Dato curioso. Tono JARVIS/Stark. Máximo 80 palabras."
-                                    },
-                                    {
-                                        "type": "image_url",
-                                        "image_url": {
-                                            "url": url_proyeccion
-                                        }
-                                    }
-                                ]
+                                "content": f"Actúa como JARVIS. Genera una ficha técnica de '{sujeto}' con Ubicación, Historia y un Dato curioso. Formato: lista con puntos. Tono: Stark. Máximo 80 palabras."
                             }
                         ],
-                        temperature=1,
+                        temperature=0.8,
                         max_completion_tokens=1024,
                         top_p=1,
-                        stream=False,
-                        stop=None,
                     )
                     
                     datos_tecnicos = completion.choices[0].message.content
@@ -426,19 +427,19 @@ with tabs[0]:
                     diseno_hud = f"""
                     <div style='margin-bottom: 25px;'>
                         <p style='color: #00f2ff; font-weight: bold; margin-bottom: 10px; text-transform: uppercase;'>🛰️ ESCANEO MULTIMODAL SCOUT: {sujeto.upper()}</p>
-                        <div style="width: 100%; border-radius: 15px; border: 2px solid #00f2ff; overflow: hidden; background-color: #000;">
-                            <img src='{url_proyeccion}' 
+                        <div style="width: 100%; border-radius: 15px; border: 2px solid #00f2ff; overflow: hidden; background-color: #000; box-shadow: 0px 0px 15px rgba(0,242,255,0.3);">
+                            <img src='{url_hud}' 
                                  style='width:100%; height:auto; display:block;'
-                                 onerror="this.src='https://placehold.co/1080x720/000/00f2ff?text=ARCHIVO+NO+LOCALIZADO';">
+                                 alt='Proyectando archivos...'>
                         </div>
                         <div style='background: rgba(0, 242, 255, 0.1); border-left: 5px solid #00f2ff; padding: 20px; margin-top: 15px; border-radius: 5px;'>
-                            <b style='color: #00f2ff;'>📋 ANÁLISIS DE DATOS (PROTOCOLO GROQ)</b><br>
+                            <b style='color: #00f2ff;'>📋 ANÁLISIS DE DATOS (PROTOCOLO SCOUT L4)</b><br>
                             <div style='color: #ffffff; line-height: 1.6; margin-top: 10px;'>{datos_tecnicos}</div>
                         </div>
                     </div>
                     """
                     st.session_state.historial_chat.append({"role": "assistant", "content": diseno_hud})
-                    
+
                 # --- B. DETECCIÓN DE VIDEO (PROTOCOLO BETA) ---
                 elif any(word in query.lower() for word in ["video", "ver en youtube"]):
                     prompt_intencion = f"Extrae el nombre del video que el usuario quiere ver. Responde solo 'BUSCAR: [nombre]'. Usuario: {query}"
