@@ -399,7 +399,7 @@ with tabs[0]:
             st.session_state.historial_chat.append({"role": "user", "content": query})
             
             try:
-               # --- A. PROTOCOLO DE VISIÓN (REDUNDANCIA DUAL) ---
+               # --- A. PROTOCOLO DE VISIÓN (VERIFICACIÓN DE BÚFER V52.0) ---
                 palabras_img = ["muéstrame", "busca una foto", "proyecta", "imagen de", "foto de", "enséñame", "muestrame"]
                 if any(word in query.lower() for word in palabras_img):
                     sujeto = query.lower()
@@ -407,45 +407,44 @@ with tabs[0]:
                         sujeto = sujeto.replace(word, "")
                     sujeto = sujeto.replace("un ", "").replace("una ", "").strip()
                     
-                    # 1. Intento con Satélite Principal (Pollinations)
+                    # 1. Intento de Captura Satelital
                     url_api = f"https://image.pollinations.ai/prompt/high_quality_realistic_photo_of_{sujeto.replace(' ', '_')}?width=800&height=500&nologo=true"
                     headers = {"User-Agent": "Mozilla/5.0"}
                     
                     try:
-                        r = requests.get(url_api, headers=headers, timeout=12)
-                        # Si falla o da error de conexión, usamos el respaldo
-                        if r.status_code != 200:
-                            raise Exception("Fallo en satélite principal")
-                        img_data = r.content
-                    except:
-                        # 2. SATÉLITE DE RESPALDO (Unsplash Source)
-                        url_backup = f"https://source.unsplash.com/800x500/?{sujeto.replace(' ', ',')}"
-                        r_back = requests.get(url_backup, headers=headers, timeout=10)
-                        img_data = r_back.content
+                        r = requests.get(url_api, headers=headers, timeout=15)
+                        # VALIDACIÓN CRÍTICA: ¿Es realmente una imagen?
+                        if r.status_code == 200 and "image" in r.headers.get("Content-Type", ""):
+                            img_payload = r.content
+                        else:
+                            # Si falla, usamos el motor de renderizado de emergencia
+                            r_backup = requests.get(f"https://api.dicebear.com/7.x/initials/svg?seed={sujeto}", timeout=10)
+                            img_payload = r_backup.content
+                            
+                        # 2. Generación de Ficha Técnica
+                        meta_prompt = f"FICHA TÉCNICA de '{sujeto}': 🏰 LUGAR, 📏 DIMENSIONES, 📅 CONSTRUCCIÓN, 💡 DATO CURIOSO. Estilo JARVIS. 50 palabras."
+                        info_res = client.chat.completions.create(
+                            model=modelo_texto, 
+                            messages=[{"role": "user", "content": meta_prompt}]
+                        )
+                        datos = info_res.choices[0].message.content
 
-                    # Convertimos a Base64 lo que hayamos obtenido
-                    img_b64 = base64.b64encode(img_data).decode()
-                    
-            # 3. PROYECCIÓN EN EL HUD (SISTEMA NATIVO ANTIBLOQUEO)
-                    with st.chat_message("assistant", avatar="🚀"):
-                        st.markdown(f"### 🛰️ VISIÓN MULTIESPECTRAL: {sujeto.upper()}")
-                        
-                        # Usamos el comando nativo de Streamlit para asegurar la carga
-                        st.image(r.content, caption=f"Captura satelital de {sujeto}", use_column_width=True)
-                        
-                        # Ficha técnica estilizada
-                        st.markdown(f"""
-                        <div style="border-left: 3px solid #00f2ff; padding-left: 15px; background: rgba(0,242,255,0.05); border-radius: 0 10px 10px 0;">
-                            <p style="color: #00f2ff; font-weight: bold; margin-bottom: 5px;">📋 FICHA TÉCNICA:</p>
-                            {datos.replace('-', '<br>•')}
-                        </div>
-                        """, unsafe_allow_html=True)
+                        # 3. Proyección en el HUD
+                        with st.chat_message("assistant", avatar="🚀"):
+                            st.markdown(f"### 🛰️ ESCANEO FINALIZADO: {sujeto.upper()}")
+                            # El comando nativo st.image es el más estable para BytesIO
+                            st.image(img_payload, use_container_width=True)
+                            st.markdown(f"""
+                            <div style="border-left: 3px solid #00f2ff; padding-left: 15px; background: rgba(0,242,255,0.05); border-radius: 10px;">
+                                <p style="color: #00f2ff; font-weight: bold; margin-bottom: 5px;">📋 ANÁLISIS TÉCNICO:</p>
+                                {datos.replace('-', '<br>•')}
+                            </div>
+                            """, unsafe_allow_html=True)
 
-                    # Guardamos el contenido en el historial (Solo el texto para evitar saturar la sesión)
-                    st.session_state.historial_chat.append({
-                        "role": "assistant", 
-                        "content": f"Análisis visual de {sujeto.upper()} finalizado. Imagen proyectada en el HUD."
-                    })
+                        st.session_state.historial_chat.append({"role": "assistant", "content": f"Análisis visual de {sujeto.upper()} proyectado."})
+
+                    except Exception as e:
+                        st.error(f"Fallo en el sensor óptico: {str(e)}")
 
                 # --- B. PROTOCOLO MULTIMEDIA (VIDEO) ---
                 elif any(word in query.lower() for word in ["video", "ver en youtube", "reproduce"]):
