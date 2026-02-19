@@ -300,68 +300,70 @@ import streamlit_antd_components as sac
 
 import streamlit_antd_components as sac
 
-# --- TAB 0: PROYECTO JARVIS (FIX PROTOCOLO DE RESPUESTA) ---
+# --- TAB 0: PROYECTO JARVIS (RECONEXIÓN NÚCLEO IA) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
 
-    # 1. DEFINICIÓN DEL PROTOCOLO (Aseguramos que sea accesible)
+    # 1. FUNCIÓN DE PROCESAMIENTO (Inyectamos las variables globales)
     def protocolo_jarvis_v50():
-        # Capturamos el texto del estado de la sesión
-        query = st.session_state.get("input_v50", "")
+        # Captura inmediata del búfer
+        orden_usuario = st.session_state.input_v50.strip()
         
-        if query.strip():
-            # Añadimos la orden del usuario al historial
-            st.session_state.historial_chat.append({"role": "user", "content": query})
+        if orden_usuario:
+            # Añadir al historial visual
+            st.session_state.historial_chat.append({"role": "user", "content": orden_usuario})
             
-            # Preparamos el contexto para la IA
-            hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
+            # Preparar contexto (Últimos 5 mensajes para no saturar)
+            contexto = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
             
             try:
-                # Llamada al núcleo de IA
-                res = client.chat.completions.create(
-                    model=modelo_texto, 
-                    messages=[{"role": "system", "content": PERSONALIDAD}] + hist
+                # LLAMADA DIRECTA AL CLIENTE (Asegúrese que 'client' esté definido arriba)
+                enlace = client.chat.completions.create(
+                    model=modelo_texto,
+                    messages=[{"role": "system", "content": PERSONALIDAD}] + contexto
                 )
-                respuesta = res.choices[0].message.content
-                st.session_state.historial_chat.append({"role": "assistant", "content": respuesta})
-            except Exception as e:
-                st.error(f"Error de enlace: {str(e)}")
+                respuesta_jarvis = enlace.choices[0].message.content
+                st.session_state.historial_chat.append({"role": "assistant", "content": respuesta_jarvis})
             
-            # Limpiamos el input PARA EL PRÓXIMO comando
-            st.session_state["input_v50"] = ""
+            except Exception as e:
+                # Si falla, el sistema informará el error específico
+                st.error(f"Sistemas offline: {str(e)}")
+            
+            # Limpieza del terminal para la siguiente orden
+            st.session_state.input_v50 = ""
 
-    # --- 2. CABECERA DE BLOQUES ---
+    # --- 2. CABECERA DE BLOQUES (SIMETRÍA STARK) ---
     c1, c2, c3, c4 = st.columns([1, 1, 1, 7])
 
     with c1:
-        if sac.buttons([sac.ButtonsItem(icon='trash')], key='btn_purgar_v505', index=None, variant='link', size='sm', return_index=True) is not None:
+        if sac.buttons([sac.ButtonsItem(icon='trash')], key='btn_purgar_v506', index=None, variant='link', size='sm', return_index=True) is not None:
             st.session_state.historial_chat = []
             st.rerun()
 
     with c2:
         ml_icon = 'headset' if st.session_state.get('modo_fluido', False) else 'headset_off'
-        if sac.buttons([sac.ButtonsItem(icon=ml_icon)], key='btn_ml_v505', index=None, variant='link', size='sm', return_index=True) is not None:
+        if sac.buttons([sac.ButtonsItem(icon=ml_icon)], key='btn_ml_v506', index=None, variant='link', size='sm', return_index=True) is not None:
             st.session_state.modo_fluido = not st.session_state.get('modo_fluido', False)
             st.rerun()
 
     with c3:
         st.markdown('<div class="mic-container-stark">', unsafe_allow_html=True)
-        audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v505")
+        audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v506")
         st.markdown('</div>', unsafe_allow_html=True)
 
     with c4:
-        # IMPORTANTE: El key debe coincidir con el que usamos en la función
+        # BARRA DE COMANDO CENTRAL
         st.text_input(
             "cmd", 
-            placeholder="Órdenes, Srta. Diana...", 
+            placeholder="Esperando órdenes, Srta. Diana...", 
             label_visibility="collapsed", 
             key="input_v50", 
             on_change=protocolo_jarvis_v50
         )
 
     st.markdown("---")
-    # ... (Resto del código de visualización)
+    # ... (Resto del código de renderizado del chat)
 
 # --- TAB 1: ANÁLISIS (FIX SCOUT VISION) ---
 with tabs[1]:
