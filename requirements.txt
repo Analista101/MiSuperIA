@@ -20,5 +20,3 @@ opencv-python-headless
 youtube-search
 feedparser
 duckduckgo_search
-base64
-BytesIO
