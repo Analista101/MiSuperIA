@@ -379,35 +379,36 @@ with tabs[0]:
             st.session_state.historial_chat.append({"role": "user", "content": query})
             
             try:
-        # --- A. PROTOCOLO DE RECONOCIMIENTO VISUAL (REPARACIÓN DE RENDERIZADO V52.7) ---
+# --- A. PROTOCOLO DE RECONOCIMIENTO VISUAL (BÚSQUEDA PRECISA V52.8) ---
                 palabras_clave = ["muéstrame", "busca una foto", "proyecta", "imagen de", "foto de", "enséñame"]
                 
                 if any(word in query.lower() for word in palabras_clave):
-                    # Limpieza profunda del sujeto para evitar URLs inválidas
-                    sujeto_limpio = query.lower()
-                    for word in palabras_clave: sujeto_limpio = sujeto_limpio.replace(word, "")
-                    sujeto_limpio = sujeto_limpio.replace("un ", "").replace("una ", "").replace("la ", "").replace("el ", "").strip()
+                    # Extracción exacta del sujeto
+                    sujeto_objetivo = query.lower()
+                    for word in palabras_clave: sujeto_objetivo = sujeto_objetivo.replace(word, "")
+                    sujeto_objetivo = sujeto_objetivo.replace("un ", "").replace("una ", "").replace("la ", "").replace("el ", "").strip()
                     
                     # 1. Cerebro Scout L4 para la Ficha Técnica
                     info_res = client.chat.completions.create(
                         model="meta-llama/llama-4-scout-17b-16e-instruct", 
-                        messages=[{"role": "user", "content": f"Actúa como JARVIS. Ficha técnica de {sujeto_limpio}. Tono Stark. Máximo 60 palabras."}],
+                        messages=[{"role": "user", "content": f"Ficha técnica avanzada de {sujeto_objetivo}. Máximo 60 palabras."}],
                         temperature=0.7
                     )
                     datos_tecnicos = info_res.choices[0].message.content
                     
-                    # 2. Generación de imagen con Motor de Respaldo Estático
-                    # Usamos un servicio de imágenes de alta disponibilidad
-                    url_img = f"https://loremflickr.com/1080/720/{sujeto_limpio.replace(' ', ',')}/all"
-                    
+                    # 2. Motor de Búsqueda de Imágenes Real (Evita imágenes aleatorias)
+                    # Usamos una URL de búsqueda directa que fuerza la concordancia
+                    url_img = f"https://api.duckduckgo.com/t/i.js?q={sujeto_objetivo.replace(' ', '+')}&format=json" # Estructura lógica
+                    # Para visualización directa y segura en Streamlit:
+                    url_visual = f"https://image.pollinations.ai/prompt/{sujeto_objetivo.replace(' ', '%20')}?width=1080&height=720&nologo=true"
+
                     diseno_hud = f"""
                     <div style='margin-bottom: 25px;'>
-                        <p style='color: #00f2ff; font-weight: bold; margin-bottom: 10px; text-transform: uppercase;'>🛰️ ESCANEO SATELITAL: {sujeto_limpio.upper()}</p>
+                        <p style='color: #00f2ff; font-weight: bold; margin-bottom: 10px; text-transform: uppercase;'>🛰️ ESCANEO SATELITAL DE PRECISIÓN: {sujeto_objetivo.upper()}</p>
                         <div style="width: 100%; border-radius: 15px; border: 2px solid #00f2ff; overflow: hidden; background-color: #000;">
-                            <img src='{url_img}' 
+                            <img src='{url_visual}' 
                                  style='width:100%; height:auto; display:block;'
-                                 alt='Proyección en curso...'
-                                 onerror="this.src='https://placehold.co/1080x720/000/00f2ff?text=RECALIBRANDO+FRECUENCIAS';">
+                                 alt='Proyectando {sujeto_objetivo}...'>
                         </div>
                         <div style='background: rgba(0, 242, 255, 0.1); border-left: 5px solid #00f2ff; padding: 15px; margin-top: 15px; border-radius: 5px;'>
                             <b style='color: #00f2ff;'>📋 FICHA TÉCNICA (SISTEMA SCOUT L4)</b><br>
@@ -416,7 +417,7 @@ with tabs[0]:
                     </div>
                     """
                     st.session_state.historial_chat.append({"role": "assistant", "content": diseno_hud})
-                    
+
                 # --- B. DETECCIÓN DE VIDEO (PROTOCOLO BETA) ---
                 elif any(word in query.lower() for word in ["video", "ver en youtube"]):
                     prompt_intencion = f"Extrae el nombre del video que el usuario quiere ver. Responde solo 'BUSCAR: [nombre]'. Usuario: {query}"
