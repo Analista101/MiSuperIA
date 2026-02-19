@@ -293,9 +293,9 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: PROYECTO JARVIS (VERSIÓN FINAL OPERATIVA V50.9) ---
+# --- TAB 0: PROYECTO JARVIS (VERSIÓN INTEGRAL V51.2) ---
 with tabs[0]:
-    # Inicialización de estados de memoria
+    # 1. INICIALIZACIÓN DE SISTEMAS CRÍTICOS
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
     if "video_url" not in st.session_state:
@@ -303,34 +303,25 @@ with tabs[0]:
     if "modo_fluido" not in st.session_state:
         st.session_state.modo_fluido = False
 
-    # 1. PROTOCOLO DE PROCESAMIENTO (Callback de Comando Central)
-    def protocolo_jarvis_v509():
+    # 2. PROTOCOLO DE PROCESAMIENTO (Cerebro de JARVIS)
+    def protocolo_stark_v51():
         query = st.session_state.input_cmd.strip()
-        
         if query:
-            # Registrar orden en el historial
             st.session_state.historial_chat.append({"role": "user", "content": query})
             
-            # --- DETECTOR DE MULTIMEDIA (YOUTUBE) ---
+            # --- MOTOR MULTIMEDIA: Detección de YouTube ---
             if "reproducir" in query.lower() or "pon el video" in query.lower():
-                # Enlace directo para Bon Jovi o detección de links
                 if "bon jovi" in query.lower():
-                    url = "https://www.youtube.com/watch?v=vx2u5uUu3DE"
+                    # Usamos link de EMBED para saltar restricciones de YouTube
+                    st.session_state.video_url = "https://www.youtube.com/embed/vx2u5uUu3DE"
+                    resp = "Proyectando en el HUD, Srta. Diana. 'It's My Life' de Bon Jovi, versión en vivo. Disfrute del espectáculo."
                 else:
-                    # Intento de extraer link si existe en el query
-                    url = query if "http" in query else None
-                
-                if url:
-                    st.session_state.video_url = url
-                    st.session_state.historial_chat.append({
-                        "role": "assistant", 
-                        "content": f"Entendido, Srta. Diana. Proyectando el material audiovisual en el monitor principal..."
-                    })
+                    resp = "Señor, necesito una referencia clara o un link directo para iniciar la proyección."
+                st.session_state.historial_chat.append({"role": "assistant", "content": resp})
             
-            # --- RESPUESTA DE INTELIGENCIA ARTIFICIAL ---
+            # --- MOTOR DE IA: Respuesta Groq ---
             else:
                 try:
-                    # Mantenemos el contexto de los últimos 5 mensajes
                     hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
                     res = client.chat.completions.create(
                         model=modelo_texto, 
@@ -340,55 +331,55 @@ with tabs[0]:
                 except Exception as e:
                     st.error(f"Sistemas offline: {str(e)}")
             
-            # Limpieza del buffer (Streamlit lo maneja automáticamente en on_change)
             st.session_state.input_cmd = ""
 
-    # --- 2. CABECERA DE BLOQUES (NATIVA Y ESTABLE) ---
+    # 3. CABECERA DE MANDOS (SIMETRÍA NATIVA)
     c1, c2, c3, c4 = st.columns([1, 1, 1, 7])
-
+    
     with c1:
         if st.button("🗑️", help="Purgar Historial", use_container_width=True):
             st.session_state.historial_chat = []
             st.session_state.video_url = None
             st.rerun()
-
+            
     with c2:
         ml_icon = "🔔" if st.session_state.modo_fluido else "🔕"
-        if st.button(ml_icon, help="Alternar Manos Libres", use_container_width=True):
+        if st.button(ml_icon, help="Modo Manos Libres", use_container_width=True):
             st.session_state.modo_fluido = not st.session_state.modo_fluido
             st.rerun()
-
+            
     with c3:
-        # Contenedor para el micrófono (mantiene la simetría nativa)
-        mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_nativo_v509")
-
+        # Micrófono nativo (Asegúrese de tener el import de mic_recorder)
+        mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v51")
+        
     with c4:
         st.text_input(
             "cmd", 
             placeholder="Órdenes, Srta. Diana...", 
             label_visibility="collapsed", 
             key="input_cmd", 
-            on_change=protocolo_jarvis_v509
+            on_change=protocolo_stark_v51
         )
-
-    # --- 3. PROYECCIÓN MULTIMEDIA (HUD) ---
-    if st.session_state.video_url:
-        st.markdown("### 📺 Pantalla de Visualización Stark")
-        st.video(st.session_state.video_url)
-        if st.button("Cerrar Reproductor"):
-            st.session_state.video_url = None
-            st.rerun()
 
     st.markdown("---")
 
-    # --- 4. REGISTRO VISUAL (CHRONOS) ---
-    chat_box = st.container(height=450, border=False)
-    with chat_box:
+    # 4. MONITOR MULTIMEDIA (HUD STARK)
+    if st.session_state.video_url:
+        st.markdown("### 📺 Monitor Principal: Proyección Multimedia")
+        # Usamos Iframe para evitar que YouTube bloquee a JARVIS
+        st.components.v1.iframe(st.session_state.video_url, height=450)
+        if st.button("🔴 Finalizar Proyección"):
+            st.session_state.video_url = None
+            st.rerun()
+
+    # 5. REGISTRO VISUAL (CHAT)
+    chat_container = st.container(height=450, border=False)
+    with chat_container:
         for m in st.session_state.historial_chat:
             with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
                 st.write(m["content"])
         
-        # Script de auto-scroll para JARVIS
+        # Script para auto-scroll automático
         st.components.v1.html("""
             <script>
             var el = window.parent.document.querySelector('div[data-testid="stVBC"]');
