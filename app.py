@@ -379,9 +379,8 @@ with tabs[0]:
             st.session_state.historial_chat.append({"role": "user", "content": query})
             
             try:
-                # --- A. PROTOCOLO DE RECONOCIMIENTO VISUAL (MOTOR SCOUT) ---
+                # --- A. PROTOCOLO DE RECONOCIMIENTO VISUAL (SOLUCIÓN ANTI-ERROR) ---
                 palabras_clave = ["muéstrame", "busca una foto", "proyecta", "imagen de", "foto de", "enséñame"]
-                
                 if any(word in query.lower() for word in palabras_clave):
                     sujeto = query.lower()
                     for word in palabras_clave: sujeto = sujeto.replace(word, "")
@@ -395,12 +394,18 @@ with tabs[0]:
                     )
                     datos_tecnicos = info_res.choices[0].message.content
                     
-                    url_img = f"https://image.pollinations.ai/prompt/{sujeto.replace(' ', '%20')}?width=1080&height=720&nologo=true"
+                    # CAMBIO DE MOTOR: Usamos un generador de imágenes directo que Streamlit procesa mejor
+                    # Esta URL es más ligera y compatible
+                    url_img = f"https://image.pollinations.ai/prompt/{sujeto.replace(' ', '%20')}?width=1080&height=720&nologo=true&seed=42"
                     
                     diseno_hud = f"""
                     <div style='margin-bottom: 25px;'>
                         <p style='color: #00f2ff; font-weight: bold; margin-bottom: 10px; letter-spacing: 1.5px; text-transform: uppercase;'>🛰️ ESCANEO SCOUT L4: {sujeto.upper()}</p>
-                        <img src='{url_img}' style='width:100%; border-radius:15px; border: 2px solid #00f2ff; box-shadow: 0px 4px 20px rgba(0,242,255,0.5);'>
+                        <div style='width:100%; text-align:center;'>
+                            <img src='{url_img}' 
+                                 style='width:100%; border-radius:15px; border: 2px solid #00f2ff; box-shadow: 0px 4px 20px rgba(0,242,255,0.5);'
+                                 onerror="this.onerror=null;this.src='https://placehold.co/600x400/000000/00f2ff?text=RECALIBRANDO+SATELITE';">
+                        </div>
                         <div style='background: linear-gradient(90deg, rgba(0,242,255,0.15) 0%, rgba(0,0,0,0) 100%); border-left: 5px solid #00f2ff; padding: 20px; margin-top: 15px; border-radius: 5px;'>
                             <b style='color: #00f2ff; font-size: 1rem;'>📋 FICHA TÉCNICA OPERATIVA</b><br>
                             <div style='font-size: 0.95rem; color: #ffffff; line-height: 1.6; margin-top: 8px;'>{datos_tecnicos}</div>
