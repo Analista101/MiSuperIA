@@ -378,164 +378,110 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: PROYECTO JARVIS (VERSIÓN MAESTRA V52.9) ---
+# --- TAB 0: PROYECTO JARVIS (VERSIÓN ALINEADA V52.0 - MOTOR SCOUT) ---
 with tabs[0]:
-    # 1. INICIALIZACIÓN DE CANALES
-    if "historial_chat" not in st.session_state: 
-        st.session_state.historial_chat = []
-    if "video_url" not in st.session_state: 
-        st.session_state.video_url = None
-    if "modo_fluido" not in st.session_state:
-        st.session_state.modo_fluido = False
+    # 1. INICIALIZACIÓN DE CANALES DE DATOS
+    if "historial_chat" not in st.session_state: st.session_state.historial_chat = []
+    if "video_url" not in st.session_state: st.session_state.video_url = None
+    if "modo_fluido" not in st.session_state: st.session_state.modo_fluido = False
 
-    # --- 2. CABECERA DE MANDOS (HUD STARK INDUSTRIES) ---
+    # 2. MOTOR DE BÚSQUEDA Y PROCESAMIENTO (MOTOR: Llama-4-Scout)
+    def protocolo_stark_v520():
+        query = st.session_state.input_cmd.strip()
+        if query:
+            st.session_state.historial_chat.append({"role": "user", "content": query})
+            
+            try:
+                # --- A. PROTOCOLO DE RECONOCIMIENTO VISUAL (MOTOR SCOUT) ---
+                palabras_clave = ["muéstrame", "busca una foto", "proyecta", "imagen de", "foto de", "enséñame"]
+                if any(word in query.lower() for word in palabras_clave):
+                    # Filtrado de sujeto
+                    sujeto = query.lower()
+                    for word in palabras_clave: sujeto = sujeto.replace(word, "")
+                    sujeto = sujeto.replace("un ", "").replace("una ", "").replace("la ", "").replace("el ", "").strip()
+                    
+                    # Llamada al modelo Llama-4-Scout para la Ficha Técnica
+                    meta_prompt = f"""
+                    [SISTEMA: JARVIS - MOTOR: META-LLAMA/LLAMA-4-SCOUT]
+                    Proporciona una ficha técnica avanzada de '{sujeto}' incluyendo:
+                    1. Ubicación/Hábitat precisa.
+                    2. Reseña histórica o biológica detallada.
+                    3. Un dato curioso único del sistema.
+                    Tono: Analítico y sofisticado. Máximo 60 palabras.
+                    """
+                    
+                    # Usamos el modelo especificado por la Srta. Diana
+                    info_res = client.chat.completions.create(
+                        model="meta-llama/llama-4-scout-17b-16e-instruct", 
+                        messages=[{"role": "user", "content": meta_prompt}]
+                    )
+                    datos_tecnicos = info_res.choices[0].message.content
+                    
+                    # Generación de imagen con motor Pollinations (estable)
+                    url_img = f"https://image.pollinations.ai/prompt/{sujeto.replace(' ', '%20')}?width=1080&height=720&nologo=true"
+                    
+                    diseno_hud = f"""
+                    <div style='margin-bottom: 25px;'>
+                        <p style='color: #00f2ff; font-weight: bold; margin-bottom: 10px; letter-spacing: 1.5px; text-transform: uppercase;'>🛰️ ESCANEO SCOUT L4: {sujeto.upper()}</p>
+                        <img src='{url_img}' 
+                             style='width:100%; border-radius:15px; border: 2px solid #00f2ff; box-shadow: 0px 4px 20px rgba(0,242,255,0.5);'>
+                        <div style='background: linear-gradient(90deg, rgba(0,242,255,0.15) 0%, rgba(0,0,0,0) 100%); 
+                                    border-left: 5px solid #00f2ff; padding: 20px; margin-top: 15px; border-radius: 5px;'>
+                            <b style='color: #00f2ff; font-size: 1rem; letter-spacing: 1px;'>📋 FICHA TÉCNICA OPERATIVA</b><br>
+                            <div style='font-size: 0.95rem; color: #ffffff; line-height: 1.6; margin-top: 8px;'>{datos_tecnicos}</div>
+                        </div>
+                    </div>
+                    """
+                    st.session_state.historial_chat.append({"role": "assistant", "content": diseno_hud})
+
+                # --- B. PROTOCOLO CONVERSACIONAL Y MULTIMEDIA ---
+                else:
+                    # Aquí puede seguir usando su modelo de texto estándar o también el Scout
+                    hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
+                    res = client.chat.completions.create(
+                        model=modelo_texto, 
+                        messages=[{"role": "system", "content": PERSONALIDAD}] + hist
+                    )
+                    st.session_state.historial_chat.append({"role": "assistant", "content": res.choices[0].message.content})
+
+            except Exception as e:
+                st.error(f"Error en enlace con Llama-4-Scout: {str(e)}")
+            
+            st.session_state.input_cmd = ""
+
+    # 3. CABECERA DE MANDOS (CONTROL DE HUD)
     c1, c2, c3, c4 = st.columns([1, 1, 1, 7])
-    
     with c1:
-        if st.button("🗑️", help="Purgar Historial", key="btn_clear"):
+        if st.button("🗑️", key="clear_v520"):
             st.session_state.historial_chat = []
+            st.session_state.video_url = None
             st.rerun()
     with c2:
-        ml_icon = "🔔" if st.session_state.get("modo_fluido") else "🔕"
-        if st.button(ml_icon, key="btn_fluido"):
-            st.session_state.modo_fluido = not st.session_state.get("modo_fluido")
+        ml_icon = "🔔" if st.session_state.modo_fluido else "🔕"
+        if st.button(ml_icon, key="hands_free_v520"):
+            st.session_state.modo_fluido = not st.session_state.modo_fluido
             st.rerun()
     with c3:
         from streamlit_mic_recorder import mic_recorder
-        mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v518")
-    
+        mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v520")
     with c4:
-        # 1. CAMBIO CLAVE: Usamos text_input con callback para que actúe como terminal
-        # Esto elimina la barra de chat_input del fondo de la pantalla.
-        query = st.text_input(
-            "cmd", 
-            placeholder="Órdenes, Srta. Diana...", 
-            label_visibility="collapsed", 
-            key="input_cmd_final"
-        )
+        st.text_input("cmd", placeholder="Órdenes, Srta. Diana...", label_visibility="collapsed", key="input_cmd", on_change=protocolo_stark_v520)
 
     st.markdown("---")
 
-    # --- 3. PROCESAMIENTO DE LÓGICA (Solo si hay texto en la terminal superior) ---
-  # 1. Definimos la función que limpia la entrada para evitar el eco
-def procesar_comando():
-    # Recuperamos el texto del widget
-    comando = st.session_state.input_cmd_final
-    if comando:
-        # Lo guardamos en el historial
-        st.session_state.historial_chat.append({"role": "user", "content": comando})
-        # Ponemos una marca para que el procesador sepa que hay una orden nueva
-        st.session_state.ejecutar_orden = comando
-        # LIMPIAMOS LA BARRA (Esto elimina el eco)
-        st.session_state.input_cmd_final = ""
-
-# 2. El Widget en la columna c4 (Sin la barra inferior)
-with c4:
-    st.text_input(
-        "cmd", 
-        placeholder="Órdenes, Srta. Diana...", 
-        label_visibility="collapsed", 
-        key="input_cmd_final",
-        on_change=procesar_comando # Se activa al pulsar Enter
-    )
-
-# 3. El Motor de JARVIS (Procesa la orden y se resetea)
-if st.session_state.get("ejecutar_orden"):
-    query = st.session_state.ejecutar_orden
-    
-    # --- PROTOCOLO DE RESPUESTA ---
-    # (Aquí va su lógica de imagen, video o texto)
-    # ...
-    
-    # IMPORTANTE: Borramos la orden de la memoria interna al terminar
-    del st.session_state.ejecutar_orden
-    st.rerun()
-
-    # 3. MONITOR MULTIMEDIA HUD
+    # 4. MONITOR MULTIMEDIA HUD
     if st.session_state.video_url:
-        st.markdown("### 📺 MONITOR PRINCIPAL")
-        st.video(st.session_state.video_url)
-        if st.button("🔴 CERRAR PROYECCIÓN", key="close_vid", use_container_width=True):
+        st.components.v1.iframe(st.session_state.video_url, height=450)
+        if st.button("🔴 CERRAR PROYECCIÓN", use_container_width=True):
             st.session_state.video_url = None
             st.rerun()
 
-    # 4. REGISTRO VISUAL (CHRONOS)
-    chat_box = st.container(height=500, border=False)
+    # 5. REGISTRO VISUAL (CHRONOS)
+    chat_box = st.container(height=600, border=False)
     with chat_box:
         for m in st.session_state.historial_chat:
             with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"):
                 st.markdown(m["content"], unsafe_allow_html=True)
-
-    # 5. PROCESAMIENTO DE COMANDOS (CENTRAL)
-
-    if query:
-        st.session_state.historial_chat.append({"role": "user", "content": query})
-        
-        # --- A. PROTOCOLO DE CRISIS (EMERGENCIAS) ---
-        alertas = ["terremoto", "incendio", "tsunami", "emergencia"]
-        if any(word in query.lower() for word in alertas):
-            with st.chat_message("assistant", avatar="🚨"):
-                st.warning(f"⚠️ ALERTA: Analizando {query.upper()}...")
-            st.session_state.historial_chat.append({"role": "assistant", "content": f"🚨 Alerta de {query} registrada en el log central."})
-            st.rerun()
-
-        # --- B. PROTOCOLO DE VISIÓN (IMÁGENES SCOUT L4) ---
-        palabras_img = ["muéstrame", "busca una foto", "proyecta", "imagen de", "foto de", "enséñame", "muestrame"]
-        if any(word in query.lower() for word in palabras_img):
-            try:
-                import requests, base64
-                from io import BytesIO
-                from PIL import Image
-
-                objetivo = query.lower()
-                for word in palabras_img: objetivo = objetivo.replace(word, "")
-                objetivo = objetivo.strip()
-
-                url_api = f"https://image.pollinations.ai/prompt/high_quality_photo_of_{objetivo.replace(' ', '_')}?width=800&height=500&nologo=true"
-                r = requests.get(url_api, timeout=10)
-                
-                # IA Scout para Ficha Técnica
-                comp = client.chat.completions.create(
-                    model="meta-llama/llama-4-scout-17b-16e-instruct",
-                    messages=[{"role": "user", "content": f"Ficha técnica de {objetivo}. Tono Stark. 60 palabras."}]
-                )
-                info = comp.choices[0].message.content
-                
-                # Persistencia en Base64 para evitar imágenes rotas
-                b64_str = base64.b64encode(r.content).decode()
-                html_img = f"### 🛰️ ESCANEO: {objetivo.upper()}<br><img src='data:image/jpeg;base64,{b64_str}' style='width:100%; border-radius:10px;'><br><br><b>ANÁLISIS:</b> {info}"
-                
-                st.session_state.historial_chat.append({"role": "assistant", "content": html_img})
-                st.rerun()
-            except Exception as e:
-                st.error(f"Fallo en sensores visuales: {e}")
-
-        # --- C. DETECCIÓN DE VIDEO (BETA) ---
-        elif any(word in query.lower() for word in ["video", "ver en youtube", "reproduce"]):
-            try:
-                from youtube_search import YoutubeSearch
-                # Extraemos el término (simplificado)
-                termino = query.lower().replace("video", "").replace("ver en youtube", "").replace("reproduce", "").strip()
-                results = YoutubeSearch(termino, max_results=1).to_dict()
-                if results:
-                    st.session_state.video_url = f"https://www.youtube.com/watch?v={results[0]['id']}"
-                    st.session_state.historial_chat.append({"role": "assistant", "content": f"He localizado el video sobre {termino}, Señor."})
-                    st.rerun()
-            except Exception as e:
-                st.error(f"Error en enlace YouTube: {e}")
-
-        # --- D. RESPUESTA CONVERSACIONAL (GAMMA) ---
-        else:
-            try:
-                hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
-                res = client.chat.completions.create(
-                    model="meta-llama/llama-4-scout-17b-16e-instruct",
-                    messages=[{"role": "system", "content": "Eres JARVIS. Responde con el estilo de Paul Bettany: ingenioso, leal y sofisticado."}] + hist
-                )
-                st.session_state.historial_chat.append({"role": "assistant", "content": res.choices[0].message.content})
-                st.rerun()
-            except Exception as e:
-                st.error(f"Fallo en matriz cerebral: {e}")
 
 # --- TAB 1: ANÁLISIS (FIX SCOUT VISION) ---
 with tabs[1]:
