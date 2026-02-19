@@ -372,44 +372,46 @@ with tabs[0]:
     if "video_url" not in st.session_state: st.session_state.video_url = None
     if "modo_fluido" not in st.session_state: st.session_state.modo_fluido = False
 
-    # 2. MOTOR DE BÚSQUEDA Y PROCESAMIENTO
+    # 2. MOTOR DE BÚSQUEDA Y PROCESAMIENTO (REPARACIÓN DE INDENTACIÓN V52.3)
     def protocolo_stark_v516():
         query = st.session_state.input_cmd.strip()
         if query:
             st.session_state.historial_chat.append({"role": "user", "content": query})
             
             try:
-               # --- PROTOCOLO DE RECONOCIMIENTO VISUAL V52.2 (CON VERIFICACIÓN DE ENLACE) ---
-if any(word in query.lower() for word in palabras_clave):
-    sujeto = query.lower()
-    for word in palabras_clave: sujeto = sujeto.replace(word, "")
-    sujeto = sujeto.replace("un ", "").replace("una ", "").replace("la ", "").replace("el ", "").strip()
-    
-    # Motor Llama-4-Scout para Ficha Técnica
-    info_res = client.chat.completions.create(
-        model="meta-llama/llama-4-scout-17b-16e-instruct", 
-        messages=[{"role": "user", "content": f"Ficha técnica breve de {sujeto}"}]
-    )
-    datos_tecnicos = info_res.choices[0].message.content
-
-    # Usamos una URL que elude bloqueos de caché (Pollinations con timestamp)
-    import time
-    ts = int(time.time())
-    url_img = f"https://image.pollinations.ai/prompt/{sujeto.replace(' ', '%20')}?width=1080&height=720&nologo=true&seed={ts}"
-    
-    diseno_hud = f"""
-    <div style='margin-bottom: 25px; text-align: center;'>
-        <p style='color: #00f2ff; font-weight: bold;'>🛰️ ESCANEO SCOUT L4: {sujeto.upper()}</p>
-        <img src="{url_img}" 
-             style="width:100%; border-radius:15px; border: 2px solid #00f2ff;"
-             onerror="this.src='https://placehold.co/600x400/00171f/00f2ff?text=BUSCANDO+FRECUENCIA...';">
-        <div style='background: rgba(0,242,255,0.1); border-left: 5px solid #00f2ff; padding: 15px; margin-top: 10px; text-align: left;'>
-            <b style='color: #00f2ff;'>📋 FICHA TÉCNICA</b><br>
-            <span style='color: white;'>{datos_tecnicos}</span>
-        </div>
-    </div>
-    """
-    st.session_state.historial_chat.append({"role": "assistant", "content": diseno_hud})
+                # --- A. PROTOCOLO DE RECONOCIMIENTO VISUAL (SCOUT L4) ---
+                palabras_clave = ["muéstrame", "busca una foto", "proyecta", "imagen de", "foto de", "enséñame"]
+                
+                if any(word in query.lower() for word in palabras_clave):
+                    sujeto = query.lower()
+                    for word in palabras_clave: sujeto = sujeto.replace(word, "")
+                    sujeto = sujeto.replace("un ", "").replace("una ", "").replace("la ", "").replace("el ", "").strip()
+                    
+                    # Ficha Técnica Avanzada con Llama-4-Scout
+                    meta_prompt = f"Actúa como JARVIS. Proporciona una ficha técnica de '{sujeto}' con ubicación, historia y un dato curioso. Tono sofisticado. Máximo 60 palabras."
+                    info_res = client.chat.completions.create(
+                        model="meta-llama/llama-4-scout-17b-16e-instruct", 
+                        messages=[{"role": "user", "content": meta_prompt}]
+                    )
+                    datos_tecnicos = info_res.choices[0].message.content
+                    
+                    # URL de Imagen con Seed Dinámico para evitar bloqueos
+                    import time
+                    ts = int(time.time())
+                    url_img = f"https://image.pollinations.ai/prompt/{sujeto.replace(' ', '%20')}?width=1080&height=720&nologo=true&seed={ts}"
+                    
+                    diseno_hud = f"""
+                    <div style='margin-bottom: 25px;'>
+                        <p style='color: #00f2ff; font-weight: bold; margin-bottom: 10px; text-transform: uppercase;'>🛰️ ESCANEO SCOUT L4: {sujeto.upper()}</p>
+                        <img src='{url_img}' style='width:100%; border-radius:15px; border: 2px solid #00f2ff; box-shadow: 0px 4px 20px rgba(0,242,255,0.5);'
+                             onerror="this.src='https://placehold.co/600x400/000/00f2ff?text=RECALIBRANDO+SATELITE';">
+                        <div style='background: rgba(0, 242, 255, 0.15); border-left: 5px solid #00f2ff; padding: 15px; margin-top: 10px; border-radius: 5px;'>
+                            <b style='color: #00f2ff;'>📋 FICHA TÉCNICA OPERATIVA</b><br>
+                            <div style='font-size: 0.95rem; color: #ffffff; line-height: 1.5;'>{datos_tecnicos}</div>
+                        </div>
+                    </div>
+                    """
+                    st.session_state.historial_chat.append({"role": "assistant", "content": diseno_hud})
 
                 # --- B. DETECCIÓN DE VIDEO (PROTOCOLO BETA) ---
                 elif any(word in query.lower() for word in ["video", "ver en youtube"]):
@@ -428,8 +430,6 @@ if any(word in query.lower() for word in palabras_clave):
                             video_id = results[0]['id']
                             st.session_state.video_url = f"https://www.youtube.com/embed/{video_id}"
                             st.session_state.historial_chat.append({"role": "assistant", "content": f"Proyectando archivos de video para '{termino}', Srta. Diana."})
-                        else:
-                            st.session_state.historial_chat.append({"role": "assistant", "content": "No he localizado registros de video disponibles."})
 
                 # --- C. RESPUESTA CONVERSACIONAL (PROTOCOLO GAMMA) ---
                 else:
@@ -443,7 +443,7 @@ if any(word in query.lower() for word in palabras_clave):
             except Exception as e:
                 st.error(f"Fallo en los sistemas centrales: {str(e)}")
             
-            st.session_state.input_cmd = "" # Limpiar terminal
+            st.session_state.input_cmd = "" # Purgar terminal
 
     # 3. CABECERA DE MANDOS
     c1, c2, c3, c4 = st.columns([1, 1, 1, 7])
