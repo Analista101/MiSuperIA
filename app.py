@@ -379,40 +379,37 @@ with tabs[0]:
             st.session_state.historial_chat.append({"role": "user", "content": query})
             
             try:
-                # --- A. PROTOCOLO DE RECONOCIMIENTO VISUAL (SOLUCIÓN ANTI-ERROR) ---
-                palabras_clave = ["muéstrame", "busca una foto", "proyecta", "imagen de", "foto de", "enséñame"]
-                if any(word in query.lower() for word in palabras_clave):
-                    sujeto = query.lower()
-                    for word in palabras_clave: sujeto = sujeto.replace(word, "")
-                    sujeto = sujeto.replace("un ", "").replace("una ", "").replace("la ", "").replace("el ", "").strip()
-                    
-                    # Ficha Técnica con Llama-4-Scout
-                    meta_prompt = f"Actúa como JARVIS. Proporciona una ficha técnica de '{sujeto}' con ubicación, historia y un dato curioso. Tono sofisticado. Máximo 60 palabras."
-                    info_res = client.chat.completions.create(
-                        model="meta-llama/llama-4-scout-17b-16e-instruct", 
-                        messages=[{"role": "user", "content": meta_prompt}]
-                    )
-                    datos_tecnicos = info_res.choices[0].message.content
-                    
-                    # CAMBIO DE MOTOR: Usamos un generador de imágenes directo que Streamlit procesa mejor
-                    # Esta URL es más ligera y compatible
-                    url_img = f"https://image.pollinations.ai/prompt/{sujeto.replace(' ', '%20')}?width=1080&height=720&nologo=true&seed=42"
-                    
-                    diseno_hud = f"""
-                    <div style='margin-bottom: 25px;'>
-                        <p style='color: #00f2ff; font-weight: bold; margin-bottom: 10px; letter-spacing: 1.5px; text-transform: uppercase;'>🛰️ ESCANEO SCOUT L4: {sujeto.upper()}</p>
-                        <div style='width:100%; text-align:center;'>
-                            <img src='{url_img}' 
-                                 style='width:100%; border-radius:15px; border: 2px solid #00f2ff; box-shadow: 0px 4px 20px rgba(0,242,255,0.5);'
-                                 onerror="this.onerror=null;this.src='https://placehold.co/600x400/000000/00f2ff?text=RECALIBRANDO+SATELITE';">
-                        </div>
-                        <div style='background: linear-gradient(90deg, rgba(0,242,255,0.15) 0%, rgba(0,0,0,0) 100%); border-left: 5px solid #00f2ff; padding: 20px; margin-top: 15px; border-radius: 5px;'>
-                            <b style='color: #00f2ff; font-size: 1rem;'>📋 FICHA TÉCNICA OPERATIVA</b><br>
-                            <div style='font-size: 0.95rem; color: #ffffff; line-height: 1.6; margin-top: 8px;'>{datos_tecnicos}</div>
-                        </div>
-                    </div>
-                    """
-                    st.session_state.historial_chat.append({"role": "assistant", "content": diseno_hud})
+               # --- PROTOCOLO DE RECONOCIMIENTO VISUAL V52.2 (CON VERIFICACIÓN DE ENLACE) ---
+if any(word in query.lower() for word in palabras_clave):
+    sujeto = query.lower()
+    for word in palabras_clave: sujeto = sujeto.replace(word, "")
+    sujeto = sujeto.replace("un ", "").replace("una ", "").replace("la ", "").replace("el ", "").strip()
+    
+    # Motor Llama-4-Scout para Ficha Técnica
+    info_res = client.chat.completions.create(
+        model="meta-llama/llama-4-scout-17b-16e-instruct", 
+        messages=[{"role": "user", "content": f"Ficha técnica breve de {sujeto}"}]
+    )
+    datos_tecnicos = info_res.choices[0].message.content
+
+    # Usamos una URL que elude bloqueos de caché (Pollinations con timestamp)
+    import time
+    ts = int(time.time())
+    url_img = f"https://image.pollinations.ai/prompt/{sujeto.replace(' ', '%20')}?width=1080&height=720&nologo=true&seed={ts}"
+    
+    diseno_hud = f"""
+    <div style='margin-bottom: 25px; text-align: center;'>
+        <p style='color: #00f2ff; font-weight: bold;'>🛰️ ESCANEO SCOUT L4: {sujeto.upper()}</p>
+        <img src="{url_img}" 
+             style="width:100%; border-radius:15px; border: 2px solid #00f2ff;"
+             onerror="this.src='https://placehold.co/600x400/00171f/00f2ff?text=BUSCANDO+FRECUENCIA...';">
+        <div style='background: rgba(0,242,255,0.1); border-left: 5px solid #00f2ff; padding: 15px; margin-top: 10px; text-align: left;'>
+            <b style='color: #00f2ff;'>📋 FICHA TÉCNICA</b><br>
+            <span style='color: white;'>{datos_tecnicos}</span>
+        </div>
+    </div>
+    """
+    st.session_state.historial_chat.append({"role": "assistant", "content": diseno_hud})
 
                 # --- B. DETECCIÓN DE VIDEO (PROTOCOLO BETA) ---
                 elif any(word in query.lower() for word in ["video", "ver en youtube"]):
