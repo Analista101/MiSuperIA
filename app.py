@@ -379,7 +379,7 @@ with tabs[0]:
             st.session_state.historial_chat.append({"role": "user", "content": query})
             
             try:
-                # --- A. PROTOCOLO DE RECONOCIMIENTO VISUAL (GROQ MULTIMODAL V52.4) ---
+               # --- A. PROTOCOLO DE RECONOCIMIENTO VISUAL (ESTABILIZADO V52.5) ---
                 palabras_clave = ["muéstrame", "busca una foto", "proyecta", "imagen de", "foto de", "enséñame"]
                 
                 if any(word in query.lower() for word in palabras_clave):
@@ -387,46 +387,36 @@ with tabs[0]:
                     for word in palabras_clave: sujeto = sujeto.replace(word, "")
                     sujeto = sujeto.replace("un ", "").replace("una ", "").replace("la ", "").replace("el ", "").strip()
                     
-                    # Generamos la URL de la imagen primero
+                    # Generamos la URL para el HUD (Usted la verá, pero no se la enviamos a Groq para evitar el Error 530)
                     import time
                     ts = int(time.time())
                     url_img = f"https://image.pollinations.ai/prompt/{sujeto.replace(' ', '%20')}?width=1080&height=720&nologo=true&seed={ts}"
                     
-                    # Llamada a Groq usando el formato JSON de Visión que usted especificó
+                    # Llamada a Groq Scout optimizada para evitar el fallo de recuperación de media
                     info_res = client.chat.completions.create(
                         model="meta-llama/llama-4-scout-17b-16e-instruct", 
                         messages=[
                             {
                                 "role": "user",
-                                "content": [
-                                    {
-                                        "type": "text",
-                                        "text": f"Actúa como JARVIS. Analiza esta imagen de {sujeto} y proporciona una ficha técnica con ubicación, historia y un dato curioso. Tono sofisticado. Máximo 60 palabras."
-                                    },
-                                    {
-                                        "type": "image_url",
-                                        "image_url": {
-                                            "url": url_img  # Enviamos la URL generada para que Scout la valide
-                                        }
-                                    }
-                                ]
+                                "content": f"Actúa como JARVIS. Proporciona una ficha técnica de '{sujeto}' con ubicación, historia y un dato curioso. Tono sofisticado y técnico. Máximo 60 palabras."
                             }
                         ],
-                        temperature=1,
-                        max_tokens=1024,
-                        top_p=1
+                        temperature=0.7, # Bajamos un poco la temperatura para mayor precisión técnica
+                        max_tokens=500
                     )
                     
                     datos_tecnicos = info_res.choices[0].message.content
                     
-                    # Proyección en el HUD
+                    # Proyección en el HUD (Renderizado por el navegador del usuario)
                     diseno_hud = f"""
                     <div style='margin-bottom: 25px;'>
-                        <p style='color: #00f2ff; font-weight: bold; margin-bottom: 10px; text-transform: uppercase;'>🛰️ ANÁLISIS MULTIMODAL SCOUT: {sujeto.upper()}</p>
-                        <img src='{url_img}' style='width:100%; border-radius:15px; border: 2px solid #00f2ff; box-shadow: 0px 4px 20px rgba(0,242,255,0.5);'
-                             onerror="this.src='https://placehold.co/600x400/000/00f2ff?text=ERROR+DE+ENLACE+VISUAL';">
+                        <p style='color: #00f2ff; font-weight: bold; margin-bottom: 10px; text-transform: uppercase;'>🛰️ ESCANEO SATELITAL: {sujeto.upper()}</p>
+                        <div style="position: relative; width: 100%;">
+                            <img src='{url_img}' style='width:100%; border-radius:15px; border: 2px solid #00f2ff; box-shadow: 0px 4px 20px rgba(0,242,255,0.5);'
+                                 onerror="this.src='https://placehold.co/600x400/000/00f2ff?text=RECALIBRANDO+FRECUENCIA';">
+                        </div>
                         <div style='background: rgba(0, 242, 255, 0.15); border-left: 5px solid #00f2ff; padding: 15px; margin-top: 10px; border-radius: 5px;'>
-                            <b style='color: #00f2ff;'>📋 FICHA TÉCNICA (PROCESAMIENTO L4)</b><br>
+                            <b style='color: #00f2ff;'>📋 FICHA TÉCNICA (SISTEMA SCOUT L4)</b><br>
                             <div style='font-size: 0.95rem; color: #ffffff; line-height: 1.5;'>{datos_tecnicos}</div>
                         </div>
                     </div>
