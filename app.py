@@ -235,6 +235,15 @@ def generar_pdf_reporte(titulo, contenido):
     c.drawText(text_object); c.showPage(); c.save(); buffer.seek(0)
     return buffer
 
+def extraer_url_video(texto):
+    """Protocolo de interceptación de enlaces de video"""
+    # Si el usuario pega una URL directamente
+    if "youtube.com/watch?v=" in texto or "youtu.be/" in texto:
+        import re
+        enlace = re.search(r'(https?://\S+)', texto)
+        return enlace.group(0) if enlace else None
+    return None
+
 def buscar_video_youtube(busqueda):
     """Protocolo de búsqueda activa en la red de YouTube"""
     from youtube_search import YoutubeSearch
@@ -297,12 +306,9 @@ tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIO
 # --- TAB 0: PROYECTO JARVIS (VERSIÓN COMPLETA Y ALINEADA V51.6) ---
 with tabs[0]:
     # 1. INICIALIZACIÓN DE CANALES DE DATOS
-    if "historial_chat" not in st.session_state: 
-        st.session_state.historial_chat = []
-    if "video_url" not in st.session_state:
-        st.session_state.video_url = None
-    if "modo_fluido" not in st.session_state:
-        st.session_state.modo_fluido = False
+    if "historial_chat" not in st.session_state: st.session_state.historial_chat = []
+    if "video_url" not in st.session_state: st.session_state.video_url = None
+    if "modo_fluido" not in st.session_state: st.session_state.modo_fluido = False
 
     # 2. MOTOR DE BÚSQUEDA Y PROCESAMIENTO (Cerebro JARVIS)
     def protocolo_stark_v516():
@@ -310,35 +316,43 @@ with tabs[0]:
         if query:
             st.session_state.historial_chat.append({"role": "user", "content": query})
             
-            # --- PROTOCOLO MULTIMEDIA: Detección y Búsqueda ---
-            # Si el usuario pide reproducir algo, usamos la librería youtube-search
-            if any(p in query.lower() for p in ["reproducir", "pon el video", "pon música"]):
-                try:
+            # --- PROTOCOLO MULTIMEDIA: Detección de Intención de Video ---
+            # Primero preguntamos a la IA si el usuario quiere buscar un video
+            prompt_intencion = f"Analiza si el usuario quiere ver un video. Si es así, responde 'BUSCAR: [nombre del video]'. Si no, responde normal. Usuario dice: {query}"
+            
+            try:
+                check_intencion = client.chat.completions.create(
+                    model=modelo_texto, 
+                    messages=[{"role": "user", "content": prompt_intencion}]
+                )
+                respuesta_intencion = check_intencion.choices[0].message.content
+
+                if "BUSCAR:" in respuesta_intencion:
+                    termino = respuesta_intencion.split("BUSCAR:")[1].strip()
                     from youtube_search import YoutubeSearch
-                    results = YoutubeSearch(query, max_results=1).to_dict()
+                    results = YoutubeSearch(termino, max_results=1).to_dict()
+                    
                     if results:
                         video_id = results[0]['id']
-                        # Conversión obligatoria a EMBED para evitar bloqueos de YouTube
+                        # Proyección en formato Embed para el HUD
                         st.session_state.video_url = f"https://www.youtube.com/embed/{video_id}"
-                        resp = "Localizando señal... Proyectando en el HUD, Srta. Diana."
+                        resp = f"He localizado las frecuencias para '{termino}'. Proyectando en el monitor principal, Srta. Diana."
                     else:
                         resp = "Señor, no he podido localizar material audiovisual con esa referencia."
-                except Exception as e:
-                    resp = f"Error en el enlace multimedia: {str(e)}"
+                    
+                    st.session_state.historial_chat.append({"role": "assistant", "content": resp})
                 
-                st.session_state.historial_chat.append({"role": "assistant", "content": resp})
-            
-            # --- MOTOR DE RESPUESTA IA (Groq) ---
-            else:
-                try:
+                # --- MOTOR DE RESPUESTA IA (Si no es video o para acompañar la acción) ---
+                else:
                     hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
                     res = client.chat.completions.create(
                         model=modelo_texto, 
                         messages=[{"role": "system", "content": PERSONALIDAD}] + hist
                     )
                     st.session_state.historial_chat.append({"role": "assistant", "content": res.choices[0].message.content})
-                except Exception as e:
-                    st.error(f"Núcleo IA fuera de línea: {str(e)}")
+
+            except Exception as e:
+                st.error(f"Error en el núcleo de procesamiento: {str(e)}")
             
             # Limpieza automática del terminal
             st.session_state.input_cmd = ""
@@ -359,7 +373,7 @@ with tabs[0]:
             st.rerun()
             
     with c3:
-        # Micrófono nativo (Sincronizado con requirements.txt)
+        from streamlit_mic_recorder import mic_recorder
         mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v516")
         
     with c4:
@@ -373,13 +387,13 @@ with tabs[0]:
 
     st.markdown("---")
 
-    # 4. MONITOR MULTIMEDIA HUD (CORRECCIÓN DE IDENTACIÓN)
+    # 4. MONITOR MULTIMEDIA HUD (PROYECCIÓN ACTUALIZADA)
     if st.session_state.video_url:
-        # Bloque alineado correctamente para evitar IndentationError
         st.markdown("### 📺 Monitor Principal: Proyección Multimedia")
+        # Usamos iframe para asegurar la reproducción dentro de la interfaz
         st.components.v1.iframe(st.session_state.video_url, height=450, scrolling=False)
         
-        if st.button("🔴 Finalizar Proyección", key="close_video_v516"):
+        if st.button("🔴 Finalizar Proyección", key="close_video_v516", use_container_width=True):
             st.session_state.video_url = None
             st.rerun()
 
@@ -390,14 +404,13 @@ with tabs[0]:
             with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
                 st.write(m["content"])
         
-        # Script de auto-scroll para mantener el HUD siempre al día
         st.components.v1.html("""
             <script>
             var el = window.parent.document.querySelector('div[data-testid="stVBC"]');
             if (el) { el.scrollTop = el.scrollHeight; }
             </script>
         """, height=0)
-
+        
 # --- TAB 1: ANÁLISIS (FIX SCOUT VISION) ---
 with tabs[1]:
     st.subheader("📊 Análisis Scout v4")
