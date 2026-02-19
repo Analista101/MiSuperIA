@@ -387,14 +387,22 @@ with tabs[0]:
 
     # 2. MOTOR DE BÚSQUEDA Y PROCESAMIENTO (REPARACIÓN DE INDENTACIÓN V52.3)
     def protocolo_stark_v516():
-        # Dentro de su lógica de detección de imágenes:
-        response = requests.get(url_api, timeout=10)
-        if response.status_code == 200:
-            import base64
-            img_b64 = base64.b64encode(response.content).decode()
-            # Guardamos con un delimitador especial que nuestro nuevo bucle CHRONOS entiende
-            contenido_historial = f"Análisis visual solicitado completado.IMAGEN_B64:{img_b64}||{datos_tecnicos}"
-            st.session_state.historial_chat.append({"role": "assistant", "content": contenido_historial})
+    # 1. Definimos un valor por defecto para evitar el UnboundLocalError
+     url_api = None 
+    
+    # 2. Su lógica de selección (Asegúrese de que url_api se asigne aquí)
+    if condicion_especifica:
+        url_api = "https://api.starkindustries.com/data"
+    
+    # 3. Verificación de seguridad antes del despliegue
+    if url_api:
+        try:
+            response = requests.get(url_api, timeout=10)
+            # ... resto del código
+        except requests.exceptions.RequestException as e:
+            st.error(f"Fallo en la conexión: {e}")
+    else:
+        st.warning("Protocolo interrumpido: La URL de la API no fue definida.")
             
         try:
             # --- PROTOCOLO DE VISIÓN DIRECTA V65 (SOLUCIÓN DEFINITIVA) ---
