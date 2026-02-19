@@ -407,7 +407,6 @@ with tabs[0]:
         return None
 
     # 3. PROCESAMIENTO DE CONSULTAS Y VISIÓN
-    query = st.chat_input("Escriba su comando, Señor...")
 
     if query:
         # Añadir comando del usuario al historial
