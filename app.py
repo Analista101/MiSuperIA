@@ -50,11 +50,15 @@ GMAIL_USER = st.secrets.get("GMAIL_USER") or os.getenv("GMAIL_USER")
 GMAIL_PASS = st.secrets.get("GMAIL_PASSWORD") or os.getenv("GMAIL_PASSWORD")
 HF_TOKEN = st.secrets.get("HF_TOKEN") or os.getenv("HF_TOKEN")
 
-# Zona Horaria y Personalidad
-zona_horaria = pytz.timezone('America/Santiago')
-ahora = datetime.datetime.now(zona_horaria)
+# Sincronización Manual de Reloj Atómico
+# Si America/Santiago falla, forzamos UTC-3 (Hora actual de Chile)
+ahora = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=-3)))
+
 fecha_actual = ahora.strftime("%d de febrero de 2026")
 hora_actual = ahora.strftime("%H:%M")
+
+# Proyección en la barra lateral
+st.sidebar.metric("Sincronización Santiago", hora_actual, delta="UTC-3")
 
 # --- 1. CONFIGURACIÓN DE PERSONALIDAD ACTUALIZADA ---
 PERSONALIDAD = (
