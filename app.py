@@ -379,7 +379,7 @@ with tabs[0]:
             st.session_state.historial_chat.append({"role": "user", "content": query})
             
             try:
-               # --- A. PROTOCOLO DE RECONOCIMIENTO VISUAL (ESTABILIZADO V52.5) ---
+         # --- A. PROTOCOLO DE RECONOCIMIENTO VISUAL (MOTOR DE RESPALDO V52.6) ---
                 palabras_clave = ["muéstrame", "busca una foto", "proyecta", "imagen de", "foto de", "enséñame"]
                 
                 if any(word in query.lower() for word in palabras_clave):
@@ -387,35 +387,30 @@ with tabs[0]:
                     for word in palabras_clave: sujeto = sujeto.replace(word, "")
                     sujeto = sujeto.replace("un ", "").replace("una ", "").replace("la ", "").replace("el ", "").strip()
                     
-                    # Generamos la URL para el HUD (Usted la verá, pero no se la enviamos a Groq para evitar el Error 530)
-                    import time
-                    ts = int(time.time())
-                    url_img = f"https://image.pollinations.ai/prompt/{sujeto.replace(' ', '%20')}?width=1080&height=720&nologo=true&seed={ts}"
-                    
-                    # Llamada a Groq Scout optimizada para evitar el fallo de recuperación de media
+                    # 1. Motor Llama-4-Scout para Ficha Técnica (Solo Texto para evitar Error 530)
                     info_res = client.chat.completions.create(
                         model="meta-llama/llama-4-scout-17b-16e-instruct", 
-                        messages=[
-                            {
-                                "role": "user",
-                                "content": f"Actúa como JARVIS. Proporciona una ficha técnica de '{sujeto}' con ubicación, historia y un dato curioso. Tono sofisticado y técnico. Máximo 60 palabras."
-                            }
-                        ],
-                        temperature=0.7, # Bajamos un poco la temperatura para mayor precisión técnica
-                        max_tokens=500
+                        messages=[{"role": "user", "content": f"Actúa como JARVIS. Ficha técnica de {sujeto}: Ubicación, Historia y un dato curioso. Tono Stark. Máximo 60 palabras."}],
+                        temperature=0.7
                     )
-                    
                     datos_tecnicos = info_res.choices[0].message.content
                     
-                    # Proyección en el HUD (Renderizado por el navegador del usuario)
+                    # 2. Generación de URL compatible (Unsplash con parámetros de búsqueda)
+                    # Esta URL es procesada directamente por el navegador, no por el servidor.
+                    url_img = f"https://images.unsplash.com/photo-1500000000000?{sujeto.replace(' ', ',')}&auto=format&fit=crop&w=1080&q=80"
+                    
+                    # Respaldo secundario si Unsplash falla
+                    url_fallback = f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={sujeto}" # Solo como último recurso visual
+
                     diseno_hud = f"""
                     <div style='margin-bottom: 25px;'>
                         <p style='color: #00f2ff; font-weight: bold; margin-bottom: 10px; text-transform: uppercase;'>🛰️ ESCANEO SATELITAL: {sujeto.upper()}</p>
-                        <div style="position: relative; width: 100%;">
-                            <img src='{url_img}' style='width:100%; border-radius:15px; border: 2px solid #00f2ff; box-shadow: 0px 4px 20px rgba(0,242,255,0.5);'
-                                 onerror="this.src='https://placehold.co/600x400/000/00f2ff?text=RECALIBRANDO+FRECUENCIA';">
+                        <div style="width: 100%; min-height: 300px; background: #000; border-radius: 15px; border: 2px solid #00f2ff; overflow: hidden; box-shadow: 0px 4px 20px rgba(0,242,255,0.4);">
+                            <img src='https://source.unsplash.com/featured/1080x720?{sujeto.replace(' ', ',')}' 
+                                 style='width:100%; height:auto; display:block;'
+                                 onerror="this.onerror=null;this.src='https://image.pollinations.ai/prompt/{sujeto.replace(' ', '%20')}?width=1080&height=720&nologo=true';">
                         </div>
-                        <div style='background: rgba(0, 242, 255, 0.15); border-left: 5px solid #00f2ff; padding: 15px; margin-top: 10px; border-radius: 5px;'>
+                        <div style='background: rgba(0, 242, 255, 0.1); border-left: 5px solid #00f2ff; padding: 15px; margin-top: 15px; border-radius: 5px;'>
                             <b style='color: #00f2ff;'>📋 FICHA TÉCNICA (SISTEMA SCOUT L4)</b><br>
                             <div style='font-size: 0.95rem; color: #ffffff; line-height: 1.5;'>{datos_tecnicos}</div>
                         </div>
