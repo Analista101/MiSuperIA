@@ -299,36 +299,33 @@ import streamlit_antd_components as sac
 
 import streamlit_antd_components as sac
 
-# --- TAB 0: PROYECTO JARVIS (SIMETRÍA DE BLOQUES V50) ---
+# --- TAB 0: PROYECTO JARVIS (SIMETRÍA DE BLOQUES V50.2 - STARK EDITION) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
+    
+    if "modo_fluido" not in st.session_state:
+        st.session_state.modo_fluido = False
 
     # --- 1. CABECERA DE BLOQUES ESTÁTICOS ---
-    # Dividimos el espacio: 4 columnas para los 3 botones y el input largo
+    # Tres columnas pequeñas para herramientas y una ancha para el comando
     c1, c2, c3, c4 = st.columns([1, 1, 1, 7])
 
-    # Usamos sac.segmented de forma individual en cada columna para garantizar 
-    # que cada uno sea un cuadro perfecto e independiente, igual que las pestañas.
-    
     with c1:
-        # CUADRO 1: PURGA
-        if sac.segmented(items=[sac.SegmentedItem(icon='trash')], label=' ', key='btn_purgar', size='sm'):
+        # CUADRO 1: PURGA (Icono limpio sin fondo blanco)
+        if sac.buttons([sac.ButtonsItem(icon='trash')], label=' ', key='btn_purgar', index=None, align='center', variant='link', size='sm'):
             st.session_state.historial_chat = []
             st.rerun()
 
     with c2:
-        # CUADRO 2: MANOS LIBRES
-        # El valor del toggle se guarda directamente en el estado
-        ml_status = sac.segmented(
-            items=[sac.SegmentedItem(label='ML')], 
-            label=' ', key='btn_ml', size='sm'
-        )
-        st.session_state.modo_fluido = True if ml_status else False
+        # CUADRO 2: MANOS LIBRES (Alternador de estado)
+        ml_icon = 'headset' if st.session_state.modo_fluido else 'headset_off'
+        if sac.buttons([sac.ButtonsItem(icon=ml_icon)], label=' ', key='btn_ml', index=None, align='center', variant='link', size='sm'):
+            st.session_state.modo_fluido = not st.session_state.modo_fluido
+            st.rerun()
 
     with c3:
-        # CUADRO 3: MICRÓFONO
-        # Reservamos el espacio simétrico para el micro-recorder
+        # CUADRO 3: MICRÓFONO (Ajustado a la rejilla)
         st.markdown('<div class="mic-container-stark">', unsafe_allow_html=True)
         audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v50")
         st.markdown('</div>', unsafe_allow_html=True)
@@ -339,12 +336,14 @@ with tabs[0]:
             query = st.session_state.input_v50
             if query:
                 st.session_state.historial_chat.append({"role": "user", "content": query})
+                # Mantenemos solo los últimos 5 mensajes para optimizar memoria
                 hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
                 try:
                     res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + hist)
                     st.session_state.historial_chat.append({"role": "assistant", "content": res.choices[0].message.content})
-                except: pass
-                st.session_state.input_v50 = "" # Limpieza instantánea
+                except Exception:
+                    pass
+                st.session_state.input_v50 = "" # Reset instantáneo
 
         st.text_input("cmd", placeholder="Órdenes, Srta. Diana...", label_visibility="collapsed", key="input_v50", on_change=protocolo_jarvis_v50)
 
@@ -357,6 +356,7 @@ with tabs[0]:
             with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
                 st.write(m["content"])
         
+        # Script de Scroll Automático para mantener el foco en la última respuesta
         st.components.v1.html("""
             <script>
             function JARVIS_Scroll() {
@@ -367,31 +367,44 @@ with tabs[0]:
             </script>
         """, height=0)
 
-# --- CSS: CALIBRACIÓN FINAL DE SIMETRÍA ---
+# --- CSS: CALIBRACIÓN FINAL DE SIMETRÍA Y ESTÉTICA ---
 st.markdown("""
     <style>
-    /* Forzamos que los widgets de sac y el input tengan la misma altura */
-    .ant-segmented, .stTextInput input, .mic-container-stark button {
+    /* Eliminación de artefactos blancos y fondos de Ant Design */
+    .ant-btn {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        color: #00f2ff !important;
         height: 45px !important;
-        border: 1px solid rgba(0, 242, 255, 0.3) !important;
-        background: rgba(0, 242, 255, 0.05) !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
     }
 
-    /* Alineación de las columnas para evitar encimados */
+    /* Ajuste del contenedor de micrófono */
+    .mic-container-stark button {
+        height: 45px !important;
+        width: 100% !important;
+        background: rgba(0, 242, 255, 0.05) !important;
+        border: 1px solid rgba(0, 242, 255, 0.2) !important;
+        border-radius: 4px !important;
+    }
+
+    /* Alineación del input de texto */
+    .stTextInput input {
+        height: 45px !important;
+        border: 1px solid rgba(0, 242, 255, 0.3) !important;
+        background: rgba(0, 0, 0, 0.2) !important;
+        color: #ffffff !important;
+    }
+
+    /* Limpieza de espaciados en columnas */
     div[data-testid="column"] {
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        padding: 0 4px !important;
-    }
-
-    /* PESTAÑAS: Mantener el diseño largo y elegante */
-    div[data-testid="stTabs"] button {
-        flex: 1 !important;
-        min-width: 200px !important;
+        padding: 0 2px !important;
     }
     </style>
 """, unsafe_allow_html=True)
