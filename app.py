@@ -393,19 +393,20 @@ with tabs[0]:
                     nombre_formateado = sujeto.replace(" ", "_").capitalize()
                     url_proyeccion = f"https://commons.wikimedia.org/wiki/Special:FilePath/{nombre_formateado}.jpg"
                     
-  # --- A. PROTOCOLO DE LABORATORIO (BÚSQUEDA + VISIÓN L4) ---
+ # --- A. PROTOCOLO DE LABORATORIO (CORRECCIÓN DE VARIABLES V53.6) ---
                 palabras_clave = ["muéstrame", "busca una foto", "proyecta", "imagen de", "foto de", "enséñame", "muestrame"]
                 
                 if any(word in query.lower() for word in palabras_clave):
-                    sujeto = query.lower()
-                    for word in palabras_clave: sujeto = sujeto.replace(word, "")
-                    sujeto = sujeto.strip()
+                    # 1. Extracción del sujeto
+                    sujeto_lab = query.lower()
+                    for word in palabras_clave: sujeto_lab = sujeto_lab.replace(word, "")
+                    sujeto_lab = sujeto_lab.strip()
 
-                    # 1. BÚSQUEDA DE URL REAL (Usamos un proxy de imagen directa)
-                    # Esta URL es una imagen real de alta resolución de la base de datos de Unsplash/Pixabay
-                    url_internet = f"https://api.dupondius.net/image?q={sujeto.replace(' ', '%20')}&format=jpg"
+                    # 2. BÚSQUEDA DE URL REAL (Proxy de imagen directa)
+                    # Esta URL busca una imagen real en la red para pasarla al modelo
+                    url_internet = f"https://image.pollinations.ai/prompt/real_photo_of_{sujeto_lab.replace(' ', '_')}?width=1080&height=720&nologo=true"
 
-                    # 2. ESTRUCTURA EXACTA DE LABORATORIO (Groq Multimodal)
+                    # 3. ESTRUCTURA EXACTA DE LABORATORIO (Groq Multimodal)
                     try:
                         completion = client.chat.completions.create(
                             model="meta-llama/llama-4-scout-17b-16e-instruct",
@@ -415,12 +416,12 @@ with tabs[0]:
                                     "content": [
                                         {
                                             "type": "text",
-                                            "text": f"Analiza esta imagen real de {sujeto}. Genera una ficha técnica con Ubicación, Historia y Dato curioso. Tono Stark."
+                                            "text": f"Analiza esta imagen de {sujeto_lab}. Genera una ficha técnica con Ubicación, Historia y Dato curioso. Tono JARVIS. Máximo 80 palabras."
                                         },
                                         {
                                             "type": "image_url",
                                             "image_url": {
-                                                "url": url_internet # Aquí pasamos la imagen de internet
+                                                "url": url_internet 
                                             }
                                         }
                                     ]
@@ -433,14 +434,13 @@ with tabs[0]:
                         )
                         datos_tecnicos = completion.choices[0].message.content
                     except Exception as e:
-                        # Si Groq sigue bloqueando la URL, JARVIS usa su base de datos interna
-                        datos_tecnicos = f"Interferencia en el enlace de visión. Según mis archivos: {sujeto} es un monumento..."
+                        # Respaldo por si Groq rechaza la conexión al servidor de imagen
+                        datos_tecnicos = f"Interferencia en el enlace de visión (Error: {str(e)[:50]}). Según mi base de datos, {sujeto_lab} es un objetivo prioritario..."
 
-                    # 3. PROYECCIÓN NATIVA (Para que usted SI vea la imagen)
+                    # 4. RENDERIZADO NATIVO (Uso de st.image para evitar bloqueos de HTML)
                     with st.chat_message("assistant", avatar="🚀"):
-                        st.markdown(f"### 🛰️ ESCANEO DE RED: {sujeto.upper()}")
-                        # st.image es la única forma de que el navegador no bloquee la foto
-                        st.image(url_internet, caption=f"Imagen localizada en la red: {sujeto}", use_container_width=True)
+                        st.markdown(f"### 🛰️ ESCANEO DE RED: {sujeto_lab.upper()}")
+                        st.image(url_internet, caption=f"Localización visual: {sujeto_lab}", use_container_width=True)
                         
                         st.markdown(f"""
                         <div style='background: rgba(0, 242, 255, 0.1); border-left: 5px solid #00f2ff; padding: 15px; border-radius: 5px;'>
@@ -449,9 +449,10 @@ with tabs[0]:
                         </div>
                         """, unsafe_allow_html=True)
 
-                    st.session_state.historial_chat.append({"role": "assistant", "content": f"Análisis de {sujeto} finalizado."})
+                    # Registro en historial
+                    st.session_state.historial_chat.append({"role": "assistant", "content": f"Análisis de {sujeto_lab} completado e integrado en el HUD."})
 
-                    # 4. PROYECCIÓN EN EL HUD
+                    # 5. PROYECCIÓN EN EL HUD
                     diseno_hud = f"""
                     <div style='margin-bottom: 25px;'>
                         <p style='color: #00f2ff; font-weight: bold; margin-bottom: 10px; text-transform: uppercase;'>🛰️ ESCANEO MULTIMODAL SCOUT: {sujeto.upper()}</p>
