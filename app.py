@@ -410,7 +410,10 @@ with tabs[0]:
                     
                     # 1. Descarga de imagen segura (Pollinations API)
                     url_api = f"https://image.pollinations.ai/prompt/high_quality_realistic_photo_of_{sujeto.replace(' ', '_')}?width=800&height=500&nologo=true"
-                    r = requests.get(url_api, timeout=15)
+                    
+                    # Añadimos headers de seguridad para evitar bloqueos del satélite
+                    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+                    r = requests.get(url_api, headers=headers, timeout=20)
                     
                     if r.status_code == 200:
                         # Convertimos a Base64 para evitar el error de imagen rota
@@ -418,9 +421,13 @@ with tabs[0]:
                         
                         # 2. Generación de Ficha Técnica usando Llama-4 Scout
                         meta_prompt = f"""
-                        Genera una FICHA TÉCNICA para '{sujeto}'. 
-                        Incluye: 🏰 Lugar, 📏 Dimensiones/Altura, 📅 Construcción y 💡 Dato curioso.
-                        Tono: JARVIS. Máximo 50 palabras.
+                        Genera una FICHA TÉCNICA profesional para '{sujeto}'. 
+                        Incluye estrictamente: 
+                        - 🏰 LUGAR:
+                        - 📏 ALTURA/DIMENSIONES:
+                        - 📅 CONSTRUCCIÓN:
+                        - 💡 DATO CURIOSO:
+                        Tono: JARVIS (brillante y sofisticado). Máximo 60 palabras.
                         """
                         info_res = client.chat.completions.create(
                             model=modelo_texto, 
@@ -428,19 +435,19 @@ with tabs[0]:
                         )
                         datos = info_res.choices[0].message.content
 
-                        # 3. Diseño Visual del HUD
+                        # 3. Diseño Visual del HUD (Interfaz Stark)
                         diseno_visual = f"""
-                        <div style="border: 2px solid #00f2ff; border-radius: 15px; padding: 15px; background: rgba(0,0,0,0.6);">
-                            <h3 style="color: #00f2ff; text-align: center; margin-bottom:10px;">🛰️ PROYECCIÓN SATELITAL: {sujeto.upper()}</h3>
+                        <div style="border: 2px solid #00f2ff; border-radius: 15px; padding: 15px; background: rgba(0,0,0,0.6); box-shadow: 0 0 15px rgba(0,242,255,0.2);">
+                            <h3 style="color: #00f2ff; text-align: center; margin-bottom:10px; font-family: sans-serif;">🛰️ ESCANEO DE OBJETIVO: {sujeto.upper()}</h3>
                             <img src="data:image/jpeg;base64,{img_b64}" style="width:100%; border-radius:10px; border: 1px solid #00f2ff;">
-                            <div style="margin-top: 15px; color: #ffffff; border-left: 3px solid #00f2ff; padding-left: 10px;">
+                            <div style="margin-top: 15px; color: #ffffff; border-left: 3px solid #00f2ff; padding-left: 10px; font-family: monospace;">
                                 {datos.replace('-', '<br>•')}
                             </div>
                         </div>
                         """
                         st.session_state.historial_chat.append({"role": "assistant", "content": diseno_visual})
                     else:
-                        st.session_state.historial_chat.append({"role": "assistant", "content": "Señor, no he podido establecer conexión con el satélite de imágenes."})
+                        st.session_state.historial_chat.append({"role": "assistant", "content": "Señor, el satélite de imágenes ha rechazado la conexión. Intentaré un canal secundario en la próxima solicitud."})
 
                 # --- B. PROTOCOLO MULTIMEDIA (VIDEO) ---
                 elif any(word in query.lower() for word in ["video", "ver en youtube", "reproduce"]):
@@ -460,7 +467,7 @@ with tabs[0]:
                             st.session_state.video_url = f"https://www.youtube.com/embed/{video_id}"
                             resp = f"He localizado las frecuencias para '{termino}'. Proyectando en el monitor principal, Srta. Diana."
                         else:
-                            resp = "Señor, no he podido localizar material audiovisual."
+                            resp = "Señor, no he podido localizar material audiovisual en los registros de YouTube."
                         st.session_state.historial_chat.append({"role": "assistant", "content": resp})
 
                 # --- C. MOTOR DE RESPUESTA IA (CHAT NORMAL) ---
@@ -475,7 +482,7 @@ with tabs[0]:
             except Exception as e:
                 st.error(f"Error en el núcleo de procesamiento: {str(e)}")
             
-            st.session_state.input_cmd = "" # Limpieza del terminal
+            st.session_state.input_cmd = "" # Limpieza del terminal para evitar ecos
 
     # 3. CABECERA DE MANDOS
     c1, c2, c3, c4 = st.columns([1, 1, 1, 7])
@@ -485,9 +492,9 @@ with tabs[0]:
             st.session_state.video_url = None
             st.rerun()
     with c2:
-        ml_icon = "🔔" if st.session_state.modo_fluido else "🔕"
+        ml_icon = "🔔" if st.session_state.get("modo_fluido", False) else "🔕"
         if st.button(ml_icon, key="hands_free"):
-            st.session_state.modo_fluido = not st.session_state.modo_fluido
+            st.session_state.modo_fluido = not st.session_state.get("modo_fluido", False)
             st.rerun()
     with c3:
         from streamlit_mic_recorder import mic_recorder
