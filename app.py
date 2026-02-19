@@ -379,32 +379,69 @@ with tabs[0]:
             st.session_state.historial_chat.append({"role": "user", "content": query})
             
             try:
-# --- A. PROTOCOLO DE RECONOCIMIENTO VISUAL (ESTABILIDAD NATIVA V53.1) ---
+# --- A. PROTOCOLO DE RECONOCIMIENTO VISUAL (GROQ SCOUT + WIKI V53.2) ---
                 palabras_clave = ["muéstrame", "busca una foto", "proyecta", "imagen de", "foto de", "enséñame", "muestrame"]
                 
                 if any(word in query.lower() for word in palabras_clave):
-                    # 1. Limpieza del sujeto
+                    # 1. Limpieza del sujeto para búsqueda precisa
                     sujeto = query.lower()
                     for word in palabras_clave: sujeto = sujeto.replace(word, "")
-                    sujeto = sujeto.strip()
+                    sujeto = sujeto.strip().replace(" ", "_").capitalize()
 
-                    # 2. Cerebro Scout L4 (Solo Texto para evitar el Error 400 de Groq)
-                    info_res = client.chat.completions.create(
-                        model="meta-llama/llama-4-scout-17b-16e-instruct", 
-                        messages=[{"role": "user", "content": f"Ficha técnica avanzada de {sujeto}. Tono Stark. Máximo 80 palabras."}],
-                        temperature=0.7
-                    )
-                    datos_tecnicos = info_res.choices[0].message.content
-
-                    # 3. Renderizado Directo (Usamos st.image para máxima compatibilidad)
-                    url_img = f"https://image.pollinations.ai/prompt/{sujeto.replace(' ', '%20')}?width=1080&height=720&nologo=true"
+                    # 2. Generación de URL de Wikipedia (Altamente compatible con Groq)
+                    # Usamos el servicio de redirección de Wikipedia que es estable
+                    url_wiki = f"https://en.wikipedia.org/wiki/Special:FilePath/{sujeto}.jpg"
                     
-                    # En lugar de guardar HTML en el historial, guardamos un marcador
-                    # o ejecutamos el renderizado directamente en el contenedor
-                    st.session_state.historial_chat.append({
-                        "role": "assistant", 
-                        "content": f"### 🛰️ ESCANEO: {sujeto.upper()}\n![Proyección]({url_img})\n\n**📋 FICHA TÉCNICA (SCOUT L4):**\n{datos_tecnicos}"
-                    })
+                    try:
+                        # 3. Llamada al modelo Scout con el formato JSON Multimodal
+                        # Esta vez usamos una URL que Groq tiene en su lista de confianza
+                        info_res = client.chat.completions.create(
+                            model="meta-llama/llama-4-scout-17b-16e-instruct", 
+                            messages=[
+                                {
+                                    "role": "user",
+                                    "content": [
+                                        {
+                                            "type": "text",
+                                            "text": f"Actúa como JARVIS. Analiza visualmente la '{sujeto}' y genera una ficha técnica profesional con ubicación, historia y un dato curioso. Tono Stark."
+                                        },
+                                        {
+                                            "type": "image_url",
+                                            "image_url": {
+                                                "url": url_wiki
+                                            }
+                                        }
+                                    ]
+                                }
+                            ],
+                            temperature=1,
+                            max_tokens=1024
+                        )
+                        datos_tecnicos = info_res.choices[0].message.content
+                    except:
+                        # Respaldo si la visión falla: Scout responde solo por conocimiento previo
+                        res_backup = client.chat.completions.create(
+                            model="meta-llama/llama-4-scout-17b-16e-instruct",
+                            messages=[{"role": "user", "content": f"Ficha técnica de {sujeto}. Tono Stark."}]
+                        )
+                        datos_tecnicos = res_backup.choices[0].message.content
+
+                    # 4. Proyección en el HUD (Usamos Markdown para asegurar el renderizado)
+                    diseno_hud = f"""
+                    <div style='margin-bottom: 25px;'>
+                        <p style='color: #00f2ff; font-weight: bold; margin-bottom: 10px; text-transform: uppercase;'>🛰️ ESCANEO MULTIMODAL SCOUT: {sujeto.upper()}</p>
+                        <div style="width: 100%; border-radius: 15px; border: 2px solid #00f2ff; overflow: hidden; background-color: #000;">
+                            <img src='{url_wiki}' 
+                                 style='width:100%; height:auto; display:block;'
+                                 onerror="this.src='https://placehold.co/1080x720/000/00f2ff?text=RECALIBRANDO+FRECUENCIA';">
+                        </div>
+                        <div style='background: rgba(0, 242, 255, 0.1); border-left: 5px solid #00f2ff; padding: 20px; margin-top: 15px; border-radius: 5px;'>
+                            <b style='color: #00f2ff;'>📋 FICHA TÉCNICA (SISTEMA L4)</b><br>
+                            <div style='color: #ffffff; line-height: 1.6; margin-top: 10px;'>{datos_tecnicos}</div>
+                        </div>
+                    </div>
+                    """
+                    st.session_state.historial_chat.append({"role": "assistant", "content": diseno_hud})
 
                 # --- B. DETECCIÓN DE VIDEO (PROTOCOLO BETA) ---
                 elif any(word in query.lower() for word in ["video", "ver en youtube"]):
