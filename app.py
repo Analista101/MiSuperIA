@@ -378,51 +378,47 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: PROYECTO JARVIS (VERSIÓN ALINEADA V52.0 - MOTOR SCOUT) ---
+# --- TAB 0: PROYECTO JARVIS (VERSIÓN ALINEADA V51.9 - RECALIBRADA) ---
 with tabs[0]:
     # 1. INICIALIZACIÓN DE CANALES DE DATOS
     if "historial_chat" not in st.session_state: st.session_state.historial_chat = []
     if "video_url" not in st.session_state: st.session_state.video_url = None
     if "modo_fluido" not in st.session_state: st.session_state.modo_fluido = False
 
-    # 2. MOTOR DE BÚSQUEDA Y PROCESAMIENTO (MOTOR: Llama-4-Scout)
-    def protocolo_stark_v520():
+    # 2. MOTOR DE BÚSQUEDA Y PROCESAMIENTO
+    def protocolo_stark_v516():
         query = st.session_state.input_cmd.strip()
         if query:
             st.session_state.historial_chat.append({"role": "user", "content": query})
             
             try:
-                # --- A. PROTOCOLO DE RECONOCIMIENTO VISUAL (MOTOR SCOUT) ---
+                # --- A. PROTOCOLO DE RECONOCIMIENTO VISUAL (MOTOR ACTUALIZADO) ---
                 palabras_clave = ["muéstrame", "busca una foto", "proyecta", "imagen de", "foto de", "enséñame"]
                 if any(word in query.lower() for word in palabras_clave):
-                    # Filtrado de sujeto
                     sujeto = query.lower()
                     for word in palabras_clave: sujeto = sujeto.replace(word, "")
                     sujeto = sujeto.replace("un ", "").replace("una ", "").replace("la ", "").replace("el ", "").strip()
                     
-                    # Llamada al modelo Llama-4-Scout para la Ficha Técnica
+                    # JARVIS genera una Ficha Técnica DETALLADA
                     meta_prompt = f"""
-                    [SISTEMA: JARVIS - MOTOR: META-LLAMA/LLAMA-4-SCOUT]
-                    Proporciona una ficha técnica avanzada de '{sujeto}' incluyendo:
-                    1. Ubicación/Hábitat precisa.
-                    2. Reseña histórica o biológica detallada.
-                    3. Un dato curioso único del sistema.
-                    Tono: Analítico y sofisticado. Máximo 60 palabras.
+                    Actúa como JARVIS. Proporciona una ficha técnica de '{sujeto}' con:
+                    1. Ubicación o Hábitat detallado.
+                    2. Origen o Historia (si es objeto/lugar) o Características biológicas (si es animal).
+                    3. Un dato curioso o 'Sabías que' impactante.
+                    Usa un tono sofisticado y técnico. Máximo 60 palabras.
                     """
-                    
-                    # Usamos el modelo especificado por la Srta. Diana
                     info_res = client.chat.completions.create(
-                        model="meta-llama/llama-4-scout-17b-16e-instruct", 
+                        model=modelo_texto, 
                         messages=[{"role": "user", "content": meta_prompt}]
                     )
                     datos_tecnicos = info_res.choices[0].message.content
                     
-                    # Generación de imagen con motor Pollinations (estable)
+                    # URL de imagen alternativa (Motor Pollinations para evitar imágenes rotas)
                     url_img = f"https://image.pollinations.ai/prompt/{sujeto.replace(' ', '%20')}?width=1080&height=720&nologo=true"
                     
                     diseno_hud = f"""
                     <div style='margin-bottom: 25px;'>
-                        <p style='color: #00f2ff; font-weight: bold; margin-bottom: 10px; letter-spacing: 1.5px; text-transform: uppercase;'>🛰️ ESCANEO SCOUT L4: {sujeto.upper()}</p>
+                        <p style='color: #00f2ff; font-weight: bold; margin-bottom: 10px; letter-spacing: 1.5px; text-transform: uppercase;'>🛰️ ESCANEO SATELITAL: {sujeto.upper()}</p>
                         <img src='{url_img}' 
                              style='width:100%; border-radius:15px; border: 2px solid #00f2ff; box-shadow: 0px 4px 20px rgba(0,242,255,0.5);'>
                         <div style='background: linear-gradient(90deg, rgba(0,242,255,0.15) 0%, rgba(0,0,0,0) 100%); 
@@ -434,9 +430,13 @@ with tabs[0]:
                     """
                     st.session_state.historial_chat.append({"role": "assistant", "content": diseno_hud})
 
-                # --- B. PROTOCOLO CONVERSACIONAL Y MULTIMEDIA ---
+                # --- B. DETECCIÓN DE VIDEO ---
+                elif "video" in query.lower():
+                    # Su lógica de YoutubeSearch...
+                    pass
+
+                # --- C. RESPUESTA CONVERSACIONAL ---
                 else:
-                    # Aquí puede seguir usando su modelo de texto estándar o también el Scout
                     hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
                     res = client.chat.completions.create(
                         model=modelo_texto, 
@@ -445,31 +445,31 @@ with tabs[0]:
                     st.session_state.historial_chat.append({"role": "assistant", "content": res.choices[0].message.content})
 
             except Exception as e:
-                st.error(f"Error en enlace con Llama-4-Scout: {str(e)}")
+                st.error(f"Fallo en los sistemas centrales: {str(e)}")
             
             st.session_state.input_cmd = ""
 
-    # 3. CABECERA DE MANDOS (CONTROL DE HUD)
+    # 3. CABECERA DE MANDOS
     c1, c2, c3, c4 = st.columns([1, 1, 1, 7])
     with c1:
-        if st.button("🗑️", key="clear_v520"):
+        if st.button("🗑️", key="clear_v519"):
             st.session_state.historial_chat = []
             st.session_state.video_url = None
             st.rerun()
     with c2:
         ml_icon = "🔔" if st.session_state.modo_fluido else "🔕"
-        if st.button(ml_icon, key="hands_free_v520"):
+        if st.button(ml_icon, key="hands_free_v519"):
             st.session_state.modo_fluido = not st.session_state.modo_fluido
             st.rerun()
     with c3:
         from streamlit_mic_recorder import mic_recorder
-        mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v520")
+        mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v519")
     with c4:
-        st.text_input("cmd", placeholder="Órdenes, Srta. Diana...", label_visibility="collapsed", key="input_cmd", on_change=protocolo_stark_v520)
+        st.text_input("cmd", placeholder="Órdenes, Srta. Diana...", label_visibility="collapsed", key="input_cmd", on_change=protocolo_stark_v516)
 
     st.markdown("---")
 
-    # 4. MONITOR MULTIMEDIA HUD
+    # 4. MONITOR MULTIMEDIA
     if st.session_state.video_url:
         st.components.v1.iframe(st.session_state.video_url, height=450)
         if st.button("🔴 CERRAR PROYECCIÓN", use_container_width=True):
