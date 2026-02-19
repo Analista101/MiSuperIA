@@ -392,41 +392,43 @@ with tabs[0]:
             st.session_state.historial_chat.append({"role": "user", "content": query})
             
             try:
-# --- A. PROTOCOLO DE ANCLAJE NATIVO (V63) ---
+# --- PROTOCOLO DE ANCLAJE DIRECTO (V64 - SIN RERUN) ---
                 palabras_clave = ["muéstrame", "busca una foto", "proyecta", "imagen de", "foto de", "enséñame", "muestrame"]
                 
                 if any(word in query.lower() for word in palabras_clave):
-                    # 1. Identificación del Objetivo
+                    # 1. Extracción del objetivo
                     objetivo = query.lower()
                     for word in palabras_clave: objetivo = objetivo.replace(word, "")
                     objetivo = objetivo.strip()
 
-                    # 2. Localización (Usamos la URL que mejor responde)
+                    # 2. Localización de la imagen
                     url_internet = f"https://image.pollinations.ai/prompt/high_quality_real_world_photo_of_{objetivo.replace(' ', '_')}?width=1080&height=720&nologo=true"
 
-                    # 3. Inteligencia Scout (Su estructura de Laboratorio)
+                    # 3. Inteligencia Scout (Estructura de Laboratorio)
                     try:
                         completion = client.chat.completions.create(
                             model="meta-llama/llama-4-scout-17b-16e-instruct",
-                            messages=[{"role": "user", "content": f"Ficha técnica de {objetivo}. Tono Stark. 60 palabras."}],
+                            messages=[{"role": "user", "content": f"Ficha técnica de {objetivo}. Tono Stark. Máximo 60 palabras."}],
                             temperature=1
                         )
                         datos_tecnicos = completion.choices[0].message.content
                     except:
-                        datos_tecnicos = "Error de enlace con Groq. Información local no disponible."
+                        datos_tecnicos = "Error de enlace con Groq. Datos recuperados de caché local."
 
-                    # 4. EL TRUCO PARA QUE NO SE ROMPA NI SALTE:
-                    # Guardamos la URL y el Texto en el historial de forma separada
+                    # 4. DESPLIEGUE INMEDIATO (Para que salga en su sitio)
+                    with st.chat_message("assistant", avatar="🚀"):
+                        st.markdown(f"### 🛰️ ESCANEO: {objetivo.upper()}")
+                        st.image(url_internet, use_container_width=True)
+                        st.write(datos_tecnicos)
+
+                    # 5. REGISTRO EN EL HISTORIAL (Para que no se pierda al recargar)
+                    # Guardamos el Markdown completo para que el bucle del historial lo lea bien
+                    contenido_completo = f"### 🛰️ ESCANEO: {objetivo.upper()}\n\n![{objetivo}]({url_internet})\n\n{datos_tecnicos}"
                     st.session_state.historial_chat.append({
                         "role": "assistant", 
-                        "content": datos_tecnicos,
-                        "visual": url_internet, # Guardamos la URL aquí
-                        "title": objetivo.upper()
+                        "content": contenido_completo
                     })
 
-                    # Forzamos que Streamlit pinte el historial inmediatamente
-                    st.rerun()
-                    
                 # --- B. DETECCIÓN DE VIDEO (PROTOCOLO BETA) ---
                 elif any(word in query.lower() for word in ["video", "ver en youtube"]):
                     prompt_intencion = f"Extrae el nombre del video que el usuario quiere ver. Responde solo 'BUSCAR: [nombre]'. Usuario: {query}"
