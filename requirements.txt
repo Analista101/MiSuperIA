@@ -18,3 +18,4 @@ pytz
 ffpyplayer
 opencv-python-headless
 youtube-search
+feedparser
