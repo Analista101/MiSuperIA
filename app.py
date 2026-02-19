@@ -394,49 +394,46 @@ with tabs[0]:
                     nombre_formateado = sujeto.replace(" ", "_").capitalize()
                     url_proyeccion = f"https://commons.wikimedia.org/wiki/Special:FilePath/{nombre_formateado}.jpg"
                     
-# --- A. PROTOCOLO DE RESTAURACIÓN TOTAL (V59) ---
+# --- A. PROTOCOLO DE RENDERIZADO DE ALTA FIDELIDAD (V60) ---
                 palabras_clave = ["muéstrame", "busca una foto", "proyecta", "imagen de", "foto de", "enséñame", "muestrame"]
                 
                 if any(word in query.lower() for word in palabras_clave):
-                    # 1. Extracción del objetivo
+                    # 1. Extracción y Limpieza
                     objetivo = query.lower()
                     for word in palabras_clave: objetivo = objetivo.replace(word, "")
                     objetivo = objetivo.strip()
 
-                    # 2. Localización de imagen (Motor de alta fidelidad)
-                    # Usamos una URL que el navegador renderiza como una simple cadena de texto
+                    # 2. Generación de URL
                     url_final = f"https://image.pollinations.ai/prompt/professional_real_photo_of_{objetivo.replace(' ', '_')}?width=1080&height=720&nologo=true"
 
-                    # 3. Llamada a Groq Scout (Estructura de Laboratorio)
+                    # 3. Inteligencia Scout (Su estructura de Pitón)
                     try:
-                        # Usamos su estructura de Pitón preferida
                         completion = client.chat.completions.create(
                             model="meta-llama/llama-4-scout-17b-16e-instruct",
-                            messages=[{"role": "user", "content": f"Ficha técnica de {objetivo}. Tono Stark. 60 palabras."}],
-                            temperature=1,
-                            max_completion_tokens=512
+                            messages=[{"role": "user", "content": f"Ficha técnica de {objetivo}. Tono Stark. Máximo 60 palabras."}],
+                            temperature=1
                         )
                         datos_tecnicos = completion.choices[0].message.content
                     except:
-                        datos_tecnicos = "Error en la red neuronal. Información recuperada de archivos locales."
+                        datos_tecnicos = "Error de enlace. Información recuperada de caché."
 
-                    # 4. EL ANCLAJE DEFINITIVO: Todo en un solo st.markdown
-                    # Al meter la imagen dentro de la burbuja como Markdown ![texto](url),
-                    # se queda en su lugar exacto y NO rompe la barra de escritura.
+                    # 4. CONSTRUCCIÓN DEL BLOQUE (Sin espacios extra para evitar errores de renderizado)
+                    # Usamos triple comilla y eliminamos sangrías manuales
+                    respuesta_final = (
+                        f"### 🛰️ ESCANEO: {objetivo.upper()}\n\n"
+                        f"![{objetivo}]({url_final})\n\n"
+                        f"**📋 FICHA TÉCNICA (SISTEMA SCOUT L4):**\n\n"
+                        f"{datos_tecnicos}"
+                    )
+
+                    # 5. DESPLIEGUE DIRECTO
                     with st.chat_message("assistant", avatar="🚀"):
-                        respuesta_visual = f"""
-                        ### 🛰️ ESCANEO: {objetivo.upper()}
-                        ![{objetivo}]({url_final})
-                        
-                        **📋 FICHA TÉCNICA (SISTEMA SCOUT L4):**
-                        {datos_tecnicos}
-                        """
-                        st.markdown(respuesta_visual)
+                        st.markdown(respuesta_final)
 
-                    # Guardamos exactamente lo mismo en el historial para que no desaparezca
+                    # Guardar en historial
                     st.session_state.historial_chat.append({
                         "role": "assistant", 
-                        "content": respuesta_visual
+                        "content": respuesta_final
                     })
 
                 # --- B. DETECCIÓN DE VIDEO (PROTOCOLO BETA) ---
