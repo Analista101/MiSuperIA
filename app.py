@@ -399,55 +399,52 @@ with tabs[0]:
             st.session_state.historial_chat.append({"role": "user", "content": query})
             
             try:
-                # --- A. PROTOCOLO DE VISIÓN (IMAGEN + FICHA TÉCNICA) ---
+               # --- A. PROTOCOLO DE VISIÓN (REDUNDANCIA DUAL) ---
                 palabras_img = ["muéstrame", "busca una foto", "proyecta", "imagen de", "foto de", "enséñame", "muestrame"]
                 if any(word in query.lower() for word in palabras_img):
-                    # Limpieza del sujeto
                     sujeto = query.lower()
                     for word in palabras_img: 
                         sujeto = sujeto.replace(word, "")
                     sujeto = sujeto.replace("un ", "").replace("una ", "").strip()
                     
-                    # 1. Descarga de imagen segura (Pollinations API)
+                    # 1. Intento con Satélite Principal (Pollinations)
                     url_api = f"https://image.pollinations.ai/prompt/high_quality_realistic_photo_of_{sujeto.replace(' ', '_')}?width=800&height=500&nologo=true"
+                    headers = {"User-Agent": "Mozilla/5.0"}
                     
-                    # Añadimos headers de seguridad para evitar bloqueos del satélite
-                    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-                    r = requests.get(url_api, headers=headers, timeout=20)
-                    
-                    if r.status_code == 200:
-                        # Convertimos a Base64 para evitar el error de imagen rota
-                        img_b64 = base64.b64encode(r.content).decode()
-                        
-                        # 2. Generación de Ficha Técnica usando Llama-4 Scout
-                        meta_prompt = f"""
-                        Genera una FICHA TÉCNICA profesional para '{sujeto}'. 
-                        Incluye estrictamente: 
-                        - 🏰 LUGAR:
-                        - 📏 ALTURA/DIMENSIONES:
-                        - 📅 CONSTRUCCIÓN:
-                        - 💡 DATO CURIOSO:
-                        Tono: JARVIS (brillante y sofisticado). Máximo 60 palabras.
-                        """
-                        info_res = client.chat.completions.create(
-                            model=modelo_texto, 
-                            messages=[{"role": "user", "content": meta_prompt}]
-                        )
-                        datos = info_res.choices[0].message.content
+                    try:
+                        r = requests.get(url_api, headers=headers, timeout=12)
+                        # Si falla o da error de conexión, usamos el respaldo
+                        if r.status_code != 200:
+                            raise Exception("Fallo en satélite principal")
+                        img_data = r.content
+                    except:
+                        # 2. SATÉLITE DE RESPALDO (Unsplash Source)
+                        url_backup = f"https://source.unsplash.com/800x500/?{sujeto.replace(' ', ',')}"
+                        r_back = requests.get(url_backup, headers=headers, timeout=10)
+                        img_data = r_back.content
 
-                        # 3. Diseño Visual del HUD (Interfaz Stark)
-                        diseno_visual = f"""
-                        <div style="border: 2px solid #00f2ff; border-radius: 15px; padding: 15px; background: rgba(0,0,0,0.6); box-shadow: 0 0 15px rgba(0,242,255,0.2);">
-                            <h3 style="color: #00f2ff; text-align: center; margin-bottom:10px; font-family: sans-serif;">🛰️ ESCANEO DE OBJETIVO: {sujeto.upper()}</h3>
-                            <img src="data:image/jpeg;base64,{img_b64}" style="width:100%; border-radius:10px; border: 1px solid #00f2ff;">
-                            <div style="margin-top: 15px; color: #ffffff; border-left: 3px solid #00f2ff; padding-left: 10px; font-family: monospace;">
-                                {datos.replace('-', '<br>•')}
-                            </div>
+                    # Convertimos a Base64 lo que hayamos obtenido
+                    img_b64 = base64.b64encode(img_data).decode()
+                    
+                    # 3. Generación de Ficha Técnica
+                    meta_prompt = f"FICHA TÉCNICA profesional de '{sujeto}': 🏰 LUGAR, 📏 DIMENSIONES, 📅 CONSTRUCCIÓN, 💡 DATO CURIOSO. Estilo JARVIS. 50 palabras."
+                    info_res = client.chat.completions.create(
+                        model=modelo_texto, 
+                        messages=[{"role": "user", "content": meta_prompt}]
+                    )
+                    datos = info_res.choices[0].message.content
+
+                    # Diseño HUD
+                    diseno_visual = f"""
+                    <div style="border: 2px solid #00f2ff; border-radius: 15px; padding: 15px; background: rgba(0,0,0,0.6); box-shadow: 0 0 20px rgba(0,242,255,0.3);">
+                        <h3 style="color: #00f2ff; text-align: center; font-family: sans-serif;">🛰️ VISIÓN MULTIESPECTRAL: {sujeto.upper()}</h3>
+                        <img src="data:image/jpeg;base64,{img_b64}" style="width:100%; border-radius:10px; border: 1px solid #00f2ff;">
+                        <div style="margin-top: 15px; color: #ffffff; border-left: 3px solid #00f2ff; padding-left: 10px; font-family: monospace; font-size: 0.9em;">
+                            {datos.replace('-', '<br>•')}
                         </div>
-                        """
-                        st.session_state.historial_chat.append({"role": "assistant", "content": diseno_visual})
-                    else:
-                        st.session_state.historial_chat.append({"role": "assistant", "content": "Señor, el satélite de imágenes ha rechazado la conexión. Intentaré un canal secundario en la próxima solicitud."})
+                    </div>
+                    """
+                    st.session_state.historial_chat.append({"role": "assistant", "content": diseno_visual})
 
                 # --- B. PROTOCOLO MULTIMEDIA (VIDEO) ---
                 elif any(word in query.lower() for word in ["video", "ver en youtube", "reproduce"]):
