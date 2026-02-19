@@ -393,66 +393,60 @@ with tabs[0]:
                     nombre_formateado = sujeto.replace(" ", "_").capitalize()
                     url_proyeccion = f"https://commons.wikimedia.org/wiki/Special:FilePath/{nombre_formateado}.jpg"
                     
-# --- A. PROTOCOLO DE LABORATORIO (CORRECCIÓN TOTAL V53.7) ---
+# --- A. PROTOCOLO DE VISIÓN INTEGRADA (LIBRERÍA PIL + REQUESTS) ---
                 palabras_clave = ["muéstrame", "busca una foto", "proyecta", "imagen de", "foto de", "enséñame", "muestrame"]
                 
                 if any(word in query.lower() for word in palabras_clave):
-                    # 1. Extracción del objetivo
-                    objetivo = query.lower()
-                    for word in palabras_clave: objetivo = objetivo.replace(word, "")
-                    objetivo = objetivo.strip()
+                    import requests
+                    from PIL import Image
+                    from io import BytesIO
 
-                    # 2. LOCALIZACIÓN DE IMAGEN (URL PARA LABORATORIO Y HUD)
-                    # Usamos una URL directa que el navegador y Groq puedan interpretar
-                    url_final = f"https://image.pollinations.ai/prompt/real_photo_of_{objetivo.replace(' ', '_')}?width=1080&height=720&nologo=true"
+                    # 1. Limpieza del sujeto
+                    sujeto = query.lower()
+                    for word in palabras_clave: sujeto = sujeto.replace(word, "")
+                    sujeto = sujeto.strip()
 
-                    # 3. ESTRUCTURA DE LABORATORIO (LLAMADA A GROQ)
+                    # 2. Localización de la imagen (URL de Red)
+                    url_red = f"https://image.pollinations.ai/prompt/professional_high_res_photo_of_{sujeto.replace(' ', '_')}?width=1080&height=720&nologo=true"
+
+                    # 3. LLAMADA A GROQ (Estructura Pitón de Laboratorio)
                     try:
                         completion = client.chat.completions.create(
                             model="meta-llama/llama-4-scout-17b-16e-instruct",
-                            messages=[
-                                {
-                                    "role": "user",
-                                    "content": [
-                                        {
-                                            "type": "text",
-                                            "text": f"Actúa como JARVIS. Analiza esta imagen de '{objetivo}' y genera una ficha técnica con Ubicación, Historia y Dato curioso. Formato: lista. Tono Stark."
-                                        },
-                                        {
-                                            "type": "image_url",
-                                            "image_url": {
-                                                "url": url_final 
-                                            }
-                                        }
-                                    ]
-                                }
-                            ],
+                            messages=[{
+                                "role": "user",
+                                "content": f"Actúa como JARVIS. Genera una ficha técnica de '{sujeto}' con Ubicación, Historia y Dato curioso. Formato: lista con puntos. Tono Stark."
+                            }],
                             temperature=1,
-                            max_completion_tokens=1024,
-                            top_p=1,
-                            stream=False
+                            max_completion_tokens=1024
                         )
                         datos_tecnicos = completion.choices[0].message.content
-                    except Exception as e:
-                        # Si el servidor de Groq bloquea el acceso a la URL, Scout usa su conocimiento
-                        datos_tecnicos = f"Interferencia en el enlace de visión. Según mis archivos: {objetivo} es un monumento de gran relevancia histórica..."
+                    except:
+                        datos_tecnicos = f"Interferencia en los servidores de Groq. Según mis archivos, {sujeto} es un objetivo de interés."
 
-                    # 4. DESPLIEGUE EN EL HUD (Uso de st.image para evitar el cuadro negro)
+                    # 4. RENDERIZADO DENTRO DEL FLUJO DEL CHAT
+                    # Esto asegura que salga en el lugar correcto y no arriba del reactor
                     with st.chat_message("assistant", avatar="🚀"):
-                        st.markdown(f"### 🛰️ ESCANEO MULTIMODAL: {objetivo.upper()}")
+                        st.markdown(f"### 🛰️ ESCANEO MULTIMODAL: {sujeto.upper()}")
                         
-                        # Mostramos la imagen usando el comando nativo de Streamlit
-                        st.image(url_final, caption=f"Captura de red: {objetivo}", use_container_width=True)
-                        
+                        try:
+                            # Descargamos la imagen usando la librería REQUESTS
+                            response = requests.get(url_red, timeout=10)
+                            img_bin = Image.open(BytesIO(response.content))
+                            # Mostramos la imagen usando PIL (Garantiza visibilidad)
+                            st.image(img_bin, use_container_width=True)
+                        except:
+                            st.error("No se pudo enlazar con el satélite visual.")
+
                         st.markdown(f"""
                         <div style='background: rgba(0, 242, 255, 0.1); border-left: 5px solid #00f2ff; padding: 15px; border-radius: 5px;'>
-                            <b style='color: #00f2ff;'>📋 ANÁLISIS DEL MODELO SCOUT L4</b><br>
+                            <b style='color: #00f2ff;'>📋 FICHA TÉCNICA (SISTEMA SCOUT L4)</b><br>
                             <div style='color: #ffffff; line-height: 1.6; margin-top: 10px;'>{datos_tecnicos}</div>
                         </div>
                         """, unsafe_allow_html=True)
 
-                    # Guardar en memoria para no perder el hilo
-                    st.session_state.historial_chat.append({"role": "assistant", "content": f"Ficha técnica de {objetivo} procesada con éxito."})
+                    # Guardamos un marcador en el historial para mantener la posición
+                    st.session_state.historial_chat.append({"role": "assistant", "content": f"Proyección de {sujeto} finalizada."})
 
                 # --- B. DETECCIÓN DE VIDEO (PROTOCOLO BETA) ---
                 elif any(word in query.lower() for word in ["video", "ver en youtube"]):
