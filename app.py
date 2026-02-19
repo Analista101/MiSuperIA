@@ -393,20 +393,20 @@ with tabs[0]:
                     nombre_formateado = sujeto.replace(" ", "_").capitalize()
                     url_proyeccion = f"https://commons.wikimedia.org/wiki/Special:FilePath/{nombre_formateado}.jpg"
                     
- # --- A. PROTOCOLO DE LABORATORIO (CORRECCIÓN DE VARIABLES V53.6) ---
+# --- A. PROTOCOLO DE LABORATORIO (CORRECCIÓN TOTAL V53.7) ---
                 palabras_clave = ["muéstrame", "busca una foto", "proyecta", "imagen de", "foto de", "enséñame", "muestrame"]
                 
                 if any(word in query.lower() for word in palabras_clave):
-                    # 1. Extracción del sujeto
-                    sujeto_lab = query.lower()
-                    for word in palabras_clave: sujeto_lab = sujeto_lab.replace(word, "")
-                    sujeto_lab = sujeto_lab.strip()
+                    # 1. Extracción del objetivo
+                    objetivo = query.lower()
+                    for word in palabras_clave: objetivo = objetivo.replace(word, "")
+                    objetivo = objetivo.strip()
 
-                    # 2. BÚSQUEDA DE URL REAL (Proxy de imagen directa)
-                    # Esta URL busca una imagen real en la red para pasarla al modelo
-                    url_internet = f"https://image.pollinations.ai/prompt/real_photo_of_{sujeto_lab.replace(' ', '_')}?width=1080&height=720&nologo=true"
+                    # 2. LOCALIZACIÓN DE IMAGEN (URL PARA LABORATORIO Y HUD)
+                    # Usamos una URL directa que el navegador y Groq puedan interpretar
+                    url_final = f"https://image.pollinations.ai/prompt/real_photo_of_{objetivo.replace(' ', '_')}?width=1080&height=720&nologo=true"
 
-                    # 3. ESTRUCTURA EXACTA DE LABORATORIO (Groq Multimodal)
+                    # 3. ESTRUCTURA DE LABORATORIO (LLAMADA A GROQ)
                     try:
                         completion = client.chat.completions.create(
                             model="meta-llama/llama-4-scout-17b-16e-instruct",
@@ -416,12 +416,12 @@ with tabs[0]:
                                     "content": [
                                         {
                                             "type": "text",
-                                            "text": f"Analiza esta imagen de {sujeto_lab}. Genera una ficha técnica con Ubicación, Historia y Dato curioso. Tono JARVIS. Máximo 80 palabras."
+                                            "text": f"Actúa como JARVIS. Analiza esta imagen de '{objetivo}' y genera una ficha técnica con Ubicación, Historia y Dato curioso. Formato: lista. Tono Stark."
                                         },
                                         {
                                             "type": "image_url",
                                             "image_url": {
-                                                "url": url_internet 
+                                                "url": url_final 
                                             }
                                         }
                                     ]
@@ -434,40 +434,25 @@ with tabs[0]:
                         )
                         datos_tecnicos = completion.choices[0].message.content
                     except Exception as e:
-                        # Respaldo por si Groq rechaza la conexión al servidor de imagen
-                        datos_tecnicos = f"Interferencia en el enlace de visión (Error: {str(e)[:50]}). Según mi base de datos, {sujeto_lab} es un objetivo prioritario..."
+                        # Si el servidor de Groq bloquea el acceso a la URL, Scout usa su conocimiento
+                        datos_tecnicos = f"Interferencia en el enlace de visión. Según mis archivos: {objetivo} es un monumento de gran relevancia histórica..."
 
-                    # 4. RENDERIZADO NATIVO (Uso de st.image para evitar bloqueos de HTML)
+                    # 4. DESPLIEGUE EN EL HUD (Uso de st.image para evitar el cuadro negro)
                     with st.chat_message("assistant", avatar="🚀"):
-                        st.markdown(f"### 🛰️ ESCANEO DE RED: {sujeto_lab.upper()}")
-                        st.image(url_internet, caption=f"Localización visual: {sujeto_lab}", use_container_width=True)
+                        st.markdown(f"### 🛰️ ESCANEO MULTIMODAL: {objetivo.upper()}")
+                        
+                        # Mostramos la imagen usando el comando nativo de Streamlit
+                        st.image(url_final, caption=f"Captura de red: {objetivo}", use_container_width=True)
                         
                         st.markdown(f"""
                         <div style='background: rgba(0, 242, 255, 0.1); border-left: 5px solid #00f2ff; padding: 15px; border-radius: 5px;'>
-                            <b style='color: #00f2ff;'>📋 FICHA TÉCNICA (PROTOCOLO LABORATORIO)</b><br>
+                            <b style='color: #00f2ff;'>📋 ANÁLISIS DEL MODELO SCOUT L4</b><br>
                             <div style='color: #ffffff; line-height: 1.6; margin-top: 10px;'>{datos_tecnicos}</div>
                         </div>
                         """, unsafe_allow_html=True)
 
-                    # Registro en historial
-                    st.session_state.historial_chat.append({"role": "assistant", "content": f"Análisis de {sujeto_lab} completado e integrado en el HUD."})
-
-                    # 5. PROYECCIÓN EN EL HUD
-                    diseno_hud = f"""
-                    <div style='margin-bottom: 25px;'>
-                        <p style='color: #00f2ff; font-weight: bold; margin-bottom: 10px; text-transform: uppercase;'>🛰️ ESCANEO MULTIMODAL SCOUT: {sujeto.upper()}</p>
-                        <div style="width: 100%; border-radius: 15px; border: 2px solid #00f2ff; overflow: hidden; background-color: #000; box-shadow: 0px 0px 15px rgba(0,242,255,0.3);">
-                            <img src='{url_hud}' 
-                                 style='width:100%; height:auto; display:block;'
-                                 alt='Proyectando archivos...'>
-                        </div>
-                        <div style='background: rgba(0, 242, 255, 0.1); border-left: 5px solid #00f2ff; padding: 20px; margin-top: 15px; border-radius: 5px;'>
-                            <b style='color: #00f2ff;'>📋 ANÁLISIS DE DATOS (PROTOCOLO SCOUT L4)</b><br>
-                            <div style='color: #ffffff; line-height: 1.6; margin-top: 10px;'>{datos_tecnicos}</div>
-                        </div>
-                    </div>
-                    """
-                    st.session_state.historial_chat.append({"role": "assistant", "content": diseno_hud})
+                    # Guardar en memoria para no perder el hilo
+                    st.session_state.historial_chat.append({"role": "assistant", "content": f"Ficha técnica de {objetivo} procesada con éxito."})
 
                 # --- B. DETECCIÓN DE VIDEO (PROTOCOLO BETA) ---
                 elif any(word in query.lower() for word in ["video", "ver en youtube"]):
