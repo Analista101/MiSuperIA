@@ -378,88 +378,138 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: PROYECTO JARVIS (VERSIÓN SANEADA V52.1) ---
+# --- TAB 0: PROYECTO JARVIS (VERSIÓN SANEADA V52.4) ---
 with tabs[0]:
     # 1. INICIALIZACIÓN DE CANALES DE DATOS
-    if "historial_chat" not in st.session_state: st.session_state.historial_chat = []
-    if "video_url" not in st.session_state: st.session_state.video_url = None
-    if "modo_fluido" not in st.session_state: st.session_state.modo_fluido = False
+    if "historial_chat" not in st.session_state: 
+        st.session_state.historial_chat = []
+    if "video_url" not in st.session_state: 
+        st.session_state.video_url = None
+    if "modo_fluido" not in st.session_state: 
+        st.session_state.modo_fluido = False
 
-    # 2. MOTOR DE BÚSQUEDA Y PROCESAMIENTO (REPARACIÓN DE INDENTACIÓN V52.3)
+    # 2. DEFINICIÓN DE PROTOCOLOS DE SISTEMA
     def protocolo_stark_v516():
-    # 1. Definimos un valor por defecto para evitar el UnboundLocalError
-     url_api = None 
-    
-    # 2. Su lógica de selección (Asegúrese de que url_api se asigne aquí)
-    if condicion_especifica:
-        url_api = "https://api.starkindustries.com/data"
-    
-    # 3. Verificación de seguridad antes del despliegue
-    if url_api:
-        try:
-            response = requests.get(url_api, timeout=10)
-            # ... resto del código
-        except requests.exceptions.RequestException as e:
-            st.error(f"Fallo en la conexión: {e}")
-    else:
-        st.warning("Protocolo interrumpido: La URL de la API no fue definida.")
+        """Manejo de conexión con la API de Stark Industries"""
+        url_api = "https://su-endpoint-real-aqui.com/api" 
+        activar_protocolo = True 
+
+        if activar_protocolo:
+            try:
+                response = requests.get(url_api, timeout=10)
+                if response.status_code == 200:
+                    st.success("Sincronización con Stark Industries completada.")
+                    return response.json()
+                else:
+                    st.error(f"Error de respuesta: {response.status_code}")
+            except Exception as e:
+                st.error(f"Fallo crítico en el enlace de datos: {e}")
+        return None
+
+    # 3. PROCESAMIENTO DE CONSULTAS Y VISIÓN
+    query = st.chat_input("Escriba su comando, Señor...")
+
+    if query:
+        # Añadir comando del usuario al historial
+        st.session_state.historial_chat.append({"role": "user", "content": query})
+        
+        # --- PROTOCOLO DE VISIÓN DIRECTA V65 ---
+        palabras_img = ["muéstrame", "busca una foto", "proyecta", "imagen de", "foto de", "enséñame", "muestrame"]
+        
+        if any(word in query.lower() for word in palabras_img):
+            from PIL import Image
+            import requests
+            from io import BytesIO
+
+            # 1. Identificación del Objetivo
+            objetivo = query.lower()
+            for word in palabras_img: 
+                objetivo = objetivo.replace(word, "")
+            objetivo = objetivo.strip()
+
+            # 2. Descarga a Memoria RAM
+            url_img = f"https://image.pollinations.ai/prompt/high_quality_real_world_photo_of_{objetivo.replace(' ', '_')}?width=800&height=500&nologo=true"
             
-        try:
-            # --- PROTOCOLO DE VISIÓN DIRECTA V65 (SOLUCIÓN DEFINITIVA) ---
-            palabras_img = ["muéstrame", "busca una foto", "proyecta", "imagen de", "foto de", "enséñame", "muestrame"]
-            
-            if any(word in query.lower() for word in palabras_img):
+            try:
+                response = requests.get(url_img, timeout=10)
+                img_binaria = Image.open(BytesIO(response.content))
+                
+                # 3. Inteligencia Scout L4
+                completion = client.chat.completions.create(
+                    model="meta-llama/llama-4-scout-17b-16e-instruct",
+                    messages=[{"role": "user", "content": f"Ficha técnica de {objetivo}. Tono Stark. 60 palabras."}]
+                )
+                datos_tecnicos = completion.choices[0].message.content
+
+                # 4. Proyección en el HUD
+                with st.chat_message("assistant", avatar="🚀"):
+                    st.markdown(f"### 🛰️ ESCANEO MULTIMODAL: {objetivo.upper()}")
+                    st.image(img_binaria, use_container_width=True)
+                    
+                    st.markdown(f"""
+                    <div style='background: rgba(0, 242, 255, 0.1); border-left: 5px solid #00f2ff; padding: 15px; border-radius: 5px;'>
+                        <b style='color: #00f2ff;'>📋 ANÁLISIS DEL MODELO SCOUT L4</b><br>
+                        <div style='color: #ffffff; line-height: 1.6; margin-top: 10px;'>{datos_tecnicos}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                st.session_state.historial_chat.append({
+                    "role": "assistant", 
+                    "content": f"Análisis visual de {objetivo} completado."
+                })
+
+            except Exception as e:
+                st.error(f"Fallo en la descarga del satélite: {e}")
+        
+        else:
+            # Lógica para respuestas de texto normales aquí
+            pass
+
+# --- PROCESAMIENTO DE CONSULTAS (SISTEMA INTEGRADO V52.7) ---
+    query = st.chat_input("Escriba su comando, Señor...")
+
+    if query:
+        # Añadir comando del usuario al historial
+        st.session_state.historial_chat.append({"role": "user", "content": query})
+        
+        # --- A. PROTOCOLO DE VISIÓN DIRECTA ---
+        palabras_img = ["muéstrame", "busca una foto", "proyecta", "imagen de", "foto de", "enséñame", "muestrame"]
+        
+        if any(word in query.lower() for word in palabras_img):
+            try:
                 from PIL import Image
                 import requests
                 from io import BytesIO
 
-                # 1. Identificación del Objetivo
                 objetivo = query.lower()
                 for word in palabras_img: objetivo = objetivo.replace(word, "")
                 objetivo = objetivo.strip()
 
-                # 2. Descarga a Memoria RAM (Evita la imagen rota)
-                url_api = f"https://image.pollinations.ai/prompt/high_quality_real_world_photo_of_{objetivo.replace(' ', '_')}?width=800&height=500&nologo=true"
+                url_img = f"https://image.pollinations.ai/prompt/high_quality_photo_of_{objetivo.replace(' ', '_')}?width=800&height=500&nologo=true"
+                response = requests.get(url_img, timeout=10)
+                img_binaria = Image.open(BytesIO(response.content))
                 
-                try:
-                    # JARVIS descarga la imagen primero para asegurarse de que existe
-                    response = requests.get(url_api, timeout=10)
-                    img_binaria = Image.open(BytesIO(response.content))
-                    
-                    # 3. Inteligencia Scout L4 (Su estructura de Laboratorio)
-                    completion = client.chat.completions.create(
-                        model="meta-llama/llama-4-scout-17b-16e-instruct",
-                        messages=[{"role": "user", "content": f"Ficha técnica de {objetivo}. Tono Stark. 60 palabras."}]
-                    )
-                    datos_tecnicos = completion.choices[0].message.content
+                completion = client.chat.completions.create(
+                    model="meta-llama/llama-4-scout-17b-16e-instruct",
+                    messages=[{"role": "user", "content": f"Ficha técnica de {objetivo}. Tono Stark. 60 palabras."}]
+                )
+                datos_tecnicos = completion.choices[0].message.content
 
-                    # 4. Proyección en el HUD (Dentro del mensaje actual)
-                    with st.chat_message("assistant", avatar="🚀"):
-                        st.markdown(f"### 🛰️ ESCANEO MULTIMODAL: {objetivo.upper()}")
-                        # Usamos el comando nativo de Streamlit con el objeto de imagen ya descargado
-                        st.image(img_binaria, use_container_width=True)
-                        
-                        st.markdown(f"""
-                        <div style='background: rgba(0, 242, 255, 0.1); border-left: 5px solid #00f2ff; padding: 15px; border-radius: 5px;'>
-                            <b style='color: #00f2ff;'>📋 ANÁLISIS DEL MODELO SCOUT L4</b><br>
-                            <div style='color: #ffffff; line-height: 1.6; margin-top: 10px;'>{datos_tecnicos}</div>
-                        </div>
-                        """, unsafe_allow_html=True)
+                with st.chat_message("assistant", avatar="🚀"):
+                    st.markdown(f"### 🛰️ ESCANEO: {objetivo.upper()}")
+                    st.image(img_binaria, use_container_width=True)
+                    st.info(datos_tecnicos)
 
-                    # Guardamos en historial para persistencia
-                    st.session_state.historial_chat.append({
-                        "role": "assistant", 
-                        "content": f"Análisis visual de {objetivo} completado."
-                    })
+                st.session_state.historial_chat.append({"role": "assistant", "content": f"Imagen de {objetivo} proyectada."})
+            except Exception as e:
+                st.error(f"Error en protocolo de visión: {e}")
 
-                except Exception as e:
-                    st.error(f"Fallo en la descarga del satélite: {e}")
-
-            # --- B. DETECCIÓN DE VIDEO (PROTOCOLO BETA) ---
-            elif any(word in query.lower() for word in ["video", "ver en youtube"]):
-                prompt_intencion = f"Extrae el nombre del video que el usuario quiere ver. Responde solo 'BUSCAR: [nombre]'. Usuario: {query}"
+        # --- B. DETECCIÓN DE VIDEO (PROTOCOLO BETA) ---
+        elif any(word in query.lower() for word in ["video", "ver en youtube", "reproduce"]):
+            try:
+                prompt_intencion = f"Extrae el nombre del video. Responde solo 'BUSCAR: [nombre]'. Usuario: {query}"
                 check_intencion = client.chat.completions.create(
-                    model=modelo_texto, 
+                    model="meta-llama/llama-4-scout-17b-16e-instruct",
                     messages=[{"role": "user", "content": prompt_intencion}]
                 )
                 respuesta_intencion = check_intencion.choices[0].message.content
@@ -468,24 +518,35 @@ with tabs[0]:
                     termino = respuesta_intencion.split("BUSCAR:")[1].strip()
                     from youtube_search import YoutubeSearch
                     results = YoutubeSearch(termino, max_results=1).to_dict()
+                    
                     if results:
                         video_id = results[0]['id']
-                        st.session_state.video_url = f"https://www.youtube.com/embed/{video_id}"
-                        st.session_state.historial_chat.append({"role": "assistant", "content": f"Proyectando archivos de video para '{termino}', Srta. Diana."})
+                        with st.chat_message("assistant", avatar="🚀"):
+                            st.markdown(f"### 🎬 ARCHIVO: {termino.upper()}")
+                            st.video(f"https://www.youtube.com/watch?v={video_id}")
+                        st.session_state.historial_chat.append({"role": "assistant", "content": f"Video de {termino} en pantalla."})
+                    else:
+                        st.warning("No se encontraron registros en YouTube.")
+            except Exception as e:
+                st.error(f"Fallo en enlace de video: {e}")
 
-            # --- C. RESPUESTA CONVERSACIONAL (PROTOCOLO GAMMA) ---
-            else:
+        # --- C. RESPUESTA CONVERSACIONAL (PROTOCOLO GAMMA) ---
+        else:
+            try:
                 hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
                 res = client.chat.completions.create(
-                    model=modelo_texto, 
-                    messages=[{"role": "system", "content": PERSONALIDAD}] + hist
+                    model="meta-llama/llama-4-scout-17b-16e-instruct",
+                    messages=[{"role": "system", "content": "Eres JARVIS. Responde como una IA avanzada, sarcástica y leal."}] + hist
                 )
-                st.session_state.historial_chat.append({"role": "assistant", "content": res.choices[0].message.content})
+                respuesta_texto = res.choices[0].message.content
+                with st.chat_message("assistant", avatar="🚀"):
+                    st.markdown(respuesta_texto)
+                st.session_state.historial_chat.append({"role": "assistant", "content": respuesta_texto})
+            except Exception as e:
+                st.error(f"Error en núcleo central: {e}")
 
-        except Exception as e:
-            st.error(f"Fallo en los sistemas centrales: {str(e)}")
-        
-        st.session_state.input_cmd = "" # Purgar terminal
+        # --- REFRESCO DE SISTEMA ---
+        st.rerun()
 
     # --- 3. CABECERA DE MANDOS (CORREGIDO) ---
     # Asegúrese de que este bloque esté alineado correctamente dentro del 'with tabs[0]:'
