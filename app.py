@@ -323,35 +323,35 @@ with st.sidebar:
             </div>
         """, unsafe_allow_html=True)
 
-   # MÓDULO 4: CLIMA SEMANAL (PUDAHUEL) - CORREGIDO
+   # MÓDULO 4: CLIMA SEMANAL (PUDAHUEL) - PROTOCOLO DE RENDERIZADO SEGURO
     with st.expander("🌤️ PRONÓSTICO SEMANAL: PUDAHUEL", expanded=False):
         dias = ["Sáb", "Dom", "Lun", "Mar", "Mié", "Jue", "Vie"]
         temps = ["32°", "31°", "29°", "33°", "34°", "30°", "28°"]
         iconos = ["☀️", "☀️", "🌤️", "🔥", "🔥", "🌤️", "☀️"]
         
-        # Inicio del contenedor Grid
-        clima_html = "<div style='display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;'>"
+        # Usamos columnas nativas de Streamlit para asegurar que no haya errores de HTML
+        col1, col2, col3 = st.columns(3)
         
-        for d, t, i in zip(dias, temps, iconos):
-            # Construcción limpia de cada celda
-            celda = f"""
-                <div style='text-align: center; background: rgba(0,242,255,0.05); padding: 8px; border-radius: 6px; border: 1px solid rgba(0,242,255,0.1);'>
-                    <div style='font-size: 0.65rem; color: #888; text-transform: uppercase;'>{d}</div>
-                    <div style='font-size: 1rem; margin: 4px 0;'>{i}</div>
-                    <div style='font-size: 0.85rem; color: #00f2ff; font-weight: bold;'>{t}</div>
-                </div>
-            """
-            clima_html += celda
+        for idx, (d, t, i) in enumerate(zip(dias, temps, iconos)):
+            # Distribuimos los días en las 3 columnas de forma automática
+            target_col = [col1, col2, col3][idx % 3]
             
-        clima_html += "</div>" # Cierre del contenedor Grid
+            with target_col:
+                st.markdown(f"""
+                    <div style='text-align: center; background: rgba(0,242,255,0.05); 
+                                padding: 5px; border-radius: 5px; border: 1px solid rgba(0,242,255,0.1);
+                                margin-bottom: 5px;'>
+                        <div style='font-size: 0.6rem; color: #888;'>{d}</div>
+                        <div style='font-size: 0.9rem;'>{i}</div>
+                        <div style='font-size: 0.8rem; color: #00f2ff; font-weight: bold;'>{t}</div>
+                    </div>
+                """, unsafe_allow_html=True)
         
-        # Renderizado final
-        st.markdown(clima_html, unsafe_allow_html=True)
-        
+        st.markdown("---")
         st.markdown("""
-            <div style='margin-top: 12px; border-top: 1px solid rgba(0,242,255,0.2); padding-top: 8px;'>
-                <div class='telemetry-sub' style='font-size: 0.7rem; color: #f9d71c;'>⚠️ ALERTA: UV EXTREMO (11+)</div>
-                <div class='telemetry-sub' style='font-size: 0.7rem;'>SENSACIÓN TÉRMICA MÁXIMA: 36°C</div>
+            <div style='text-align: center;'>
+                <span style='color: #f9d71c; font-size: 0.7rem;'>⚠️ ALERTA UV: EXTREMO</span><br>
+                <span style='color: #888; font-size: 0.65rem;'>SENSACIÓN: 36°C</span>
             </div>
         """, unsafe_allow_html=True)
 
