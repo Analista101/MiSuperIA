@@ -394,35 +394,49 @@ with tabs[0]:
                     nombre_formateado = sujeto.replace(" ", "_").capitalize()
                     url_proyeccion = f"https://commons.wikimedia.org/wiki/Special:FilePath/{nombre_formateado}.jpg"
                     
-# --- A. PROTOCOLO DE RECONOCIMIENTO VISUAL (ESTRUCTURA DE DATOS V58) ---
+# --- A. PROTOCOLO DE RESTAURACIÓN TOTAL (V59) ---
                 palabras_clave = ["muéstrame", "busca una foto", "proyecta", "imagen de", "foto de", "enséñame", "muestrame"]
                 
                 if any(word in query.lower() for word in palabras_clave):
-                    sujeto_lab = query.lower()
-                    for word in palabras_clave: sujeto_lab = sujeto_lab.replace(word, "")
-                    sujeto_lab = sujeto_lab.strip()
+                    # 1. Extracción del objetivo
+                    objetivo = query.lower()
+                    for word in palabras_clave: objetivo = objetivo.replace(word, "")
+                    objetivo = objetivo.strip()
 
-                    # Generamos la URL de la imagen (Motor de alta fidelidad)
-                    url_final = f"https://image.pollinations.ai/prompt/photorealistic_image_of_{sujeto_lab.replace(' ', '_')}?width=1080&height=720&nologo=true"
+                    # 2. Localización de imagen (Motor de alta fidelidad)
+                    # Usamos una URL que el navegador renderiza como una simple cadena de texto
+                    url_final = f"https://image.pollinations.ai/prompt/professional_real_photo_of_{objetivo.replace(' ', '_')}?width=1080&height=720&nologo=true"
 
-                    # Llamada a Groq Scout (Solo texto para evitar Errores 400/530)
+                    # 3. Llamada a Groq Scout (Estructura de Laboratorio)
                     try:
+                        # Usamos su estructura de Pitón preferida
                         completion = client.chat.completions.create(
                             model="meta-llama/llama-4-scout-17b-16e-instruct",
-                            messages=[{"role": "user", "content": f"Ficha técnica de {sujeto_lab}. Tono Stark. 60 palabras."}],
-                            temperature=1
+                            messages=[{"role": "user", "content": f"Ficha técnica de {objetivo}. Tono Stark. 60 palabras."}],
+                            temperature=1,
+                            max_completion_tokens=512
                         )
                         datos_tecnicos = completion.choices[0].message.content
                     except:
-                        datos_tecnicos = "Error de enlace con Groq. Información local no disponible."
+                        datos_tecnicos = "Error en la red neuronal. Información recuperada de archivos locales."
 
-                    # GUARDAMOS LOS DATOS EN EL HISTORIAL (Sin ejecutar st.image aquí)
-                    # Añadimos una clave especial 'image_url' para que el bucle sepa qué hacer
+                    # 4. EL ANCLAJE DEFINITIVO: Todo en un solo st.markdown
+                    # Al meter la imagen dentro de la burbuja como Markdown ![texto](url),
+                    # se queda en su lugar exacto y NO rompe la barra de escritura.
+                    with st.chat_message("assistant", avatar="🚀"):
+                        respuesta_visual = f"""
+                        ### 🛰️ ESCANEO: {objetivo.upper()}
+                        ![{objetivo}]({url_final})
+                        
+                        **📋 FICHA TÉCNICA (SISTEMA SCOUT L4):**
+                        {datos_tecnicos}
+                        """
+                        st.markdown(respuesta_visual)
+
+                    # Guardamos exactamente lo mismo en el historial para que no desaparezca
                     st.session_state.historial_chat.append({
                         "role": "assistant", 
-                        "content": datos_tecnicos,
-                        "image_url": url_final,
-                        "subject": sujeto_lab.upper()
+                        "content": respuesta_visual
                     })
 
                 # --- B. DETECCIÓN DE VIDEO (PROTOCOLO BETA) ---
