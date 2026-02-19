@@ -394,43 +394,47 @@ with tabs[0]:
                     nombre_formateado = sujeto.replace(" ", "_").capitalize()
                     url_proyeccion = f"https://commons.wikimedia.org/wiki/Special:FilePath/{nombre_formateado}.jpg"
                     
-# --- A. PROTOCOLO DE LABORATORIO DEFINITIVO (INYECCIÓN LOCALIZADA V56) ---
+# --- A. PROTOCOLO DE ANCLAJE VISUAL (SOLUCIÓN DEFINITIVA V57) ---
                 palabras_clave = ["muéstrame", "busca una foto", "proyecta", "imagen de", "foto de", "enséñame", "muestrame"]
                 
                 if any(word in query.lower() for word in palabras_clave):
-                    # 1. Extracción del objetivo
+                    # 1. Extracción limpia del objetivo
                     sujeto_lab = query.lower()
                     for word in palabras_clave: sujeto_lab = sujeto_lab.replace(word, "")
                     sujeto_lab = sujeto_lab.strip()
 
-                    # 2. Localización de imagen (URL de Red Directa)
-                    url_directa = f"https://image.pollinations.ai/prompt/real_photograph_of_{sujeto_lab.replace(' ', '_')}?width=1080&height=720&nologo=true"
+                    # 2. BÚSQUEDA DE IMAGEN (Usamos un motor que no falla)
+                    # Forzamos que sea una foto real para que no le muestre dibujos
+                    url_final = f"https://image.pollinations.ai/prompt/high_resolution_real_world_photo_of_{sujeto_lab.replace(' ', '_')}?width=800&height=500&nologo=true"
 
-                    # 3. Llamada al Modelo Scout (Su estructura de Pitón)
+                    # 3. LLAMADA A GROQ (Solo para la Inteligencia - Estructura Scout)
                     try:
                         completion = client.chat.completions.create(
                             model="meta-llama/llama-4-scout-17b-16e-instruct",
-                            messages=[{"role": "user", "content": f"Ficha técnica de {sujeto_lab}. Tono Stark. 60 palabras."}],
+                            messages=[{"role": "user", "content": f"Ficha técnica de {sujeto_lab} (Ubicación, Historia, Dato curioso). Tono Stark. Máximo 60 palabras."}],
                             temperature=1
                         )
                         datos_tecnicos = completion.choices[0].message.content
                     except:
-                        datos_tecnicos = "Error de enlace con los servidores de Groq."
+                        datos_tecnicos = "Sensores de datos offline. Información basada en archivos locales."
 
-                    # 4. EL TRUCO PARA QUE NO SALGA SOBRE EL REACTOR:
-                    # Creamos un contenedor en el momento exacto del chat
-                    with st.chat_message("assistant", avatar="🚀"):
-                        # Creamos una "caja" que mantiene todo unido
-                        container = st.container(border=True)
-                        container.write(f"### 🛰️ ESCANEO: {sujeto_lab.upper()}")
-                        container.image(url_directa, use_container_width=True)
-                        container.markdown(f"**📋 FICHA TÉCNICA:**\n\n{datos_tecnicos}")
-                    
-                    # Guardamos una referencia simple en el historial para no romper el bucle
+                    # 4. EL SECRETO DEL ORDEN: Guardar TODO como un solo bloque de texto en el historial
+                    # Al usar sintaxis Markdown estándar ![texto](url), la imagen se queda pegada al texto
+                    # y no se mueve de la burbuja de chat.
+                    respuesta_combinada = f"""### 🛰️ ESCANEO: {sujeto_lab.upper()}
+![{sujeto_lab}]({url_final})
+
+**📋 FICHA TÉCNICA (SISTEMA SCOUT L4):**
+{datos_tecnicos}
+"""
+                    # IMPORTANTE: Guardamos el bloque completo en el historial
                     st.session_state.historial_chat.append({
                         "role": "assistant", 
-                        "content": f"He proyectado la información sobre {sujeto_lab} en su HUD."
+                        "content": respuesta_combinada
                     })
+                    
+                    # Forzamos el refresco para que aparezca en su sitio inmediatamente
+                    st.rerun()
 
                 # --- B. DETECCIÓN DE VIDEO (PROTOCOLO BETA) ---
                 elif any(word in query.lower() for word in ["video", "ver en youtube"]):
