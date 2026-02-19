@@ -379,49 +379,38 @@ with tabs[0]:
             st.session_state.historial_chat.append({"role": "user", "content": query})
             
             try:
-# --- A. PROTOCOLO DE RECONOCIMIENTO VISUAL (REPARACIÓN ESTRUCTURAL V52.9) ---
+# --- A. PROTOCOLO DE RECONOCIMIENTO VISUAL (VISIBILIDAD GARANTIZADA V53.0) ---
                 palabras_clave = ["muéstrame", "busca una foto", "proyecta", "imagen de", "foto de", "enséñame", "muestrame"]
                 
                 if any(word in query.lower() for word in palabras_clave):
-                    # 1. LIMPIEZA QUIRÚRGICA DEL SUJETO
+                    # Limpieza del sujeto
                     sujeto_input = query.lower()
-                    for word in palabras_clave:
-                        sujeto_input = sujeto_input.replace(word, "")
-                    # Eliminamos conectores y basura sobrante
-                    for prep in [" un ", " una ", " la ", " el ", " de ", " de la ", " del "]:
-                        sujeto_input = sujeto_input.replace(prep, " ")
-                    sujeto_final = sujeto_input.strip().replace("  ", " ")
-                    
-                    # 2. CEREBRO SCOUT L4: FICHA TÉCNICA DETALLADA
-                    meta_prompt = f"""
-                    Actúa como JARVIS. Genera una ficha técnica de '{sujeto_final}' en formato de lista con puntos.
-                    Incluye: Ubicación, Altura/Dimensiones, Historia breve y un Dato curioso.
-                    Tono: Sofisticado. Máximo 80 palabras.
-                    """
+                    for word in palabras_clave: sujeto_input = sujeto_input.replace(word, "")
+                    sujeto_final = sujeto_input.strip()
+
+                    # 1. CEREBRO SCOUT L4: FICHA TÉCNICA
                     info_res = client.chat.completions.create(
                         model="meta-llama/llama-4-scout-17b-16e-instruct", 
-                        messages=[{"role": "user", "content": meta_prompt}],
+                        messages=[{"role": "user", "content": f"Ficha técnica detallada de {sujeto_final} en formato lista. Tono Stark."}],
                         temperature=0.7
                     )
                     datos_tecnicos = info_res.choices[0].message.content
 
-                    # 3. GENERACIÓN DE IMAGEN CON URL LIMPIA (MOTOR POLLINATIONS)
-                    # Usamos .replace(" ", "%20") para asegurar que la URL sea válida
-                    url_limpia = f"https://image.pollinations.ai/prompt/{sujeto_final.replace(' ', '%20')}?width=1080&height=720&nologo=true&seed=123"
+                    # 2. MOTOR DE IMAGEN ESTÁTICA (MÁXIMA COMPATIBILIDAD)
+                    # Usamos Unsplash con parámetros de búsqueda directa que los navegadores no bloquean
+                    url_img = f"https://source.unsplash.com/featured/1080x720?{sujeto_final.replace(' ', ',')}"
 
                     diseno_hud = f"""
                     <div style='margin-bottom: 25px;'>
-                        <p style='color: #00f2ff; font-weight: bold; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;'>
-                           🛰️ ESCANEO SATELITAL DE PRECISIÓN: {sujeto_final.upper()}
-                        </p>
-                        <div style="width: 100%; min-height: 400px; border-radius: 15px; border: 2px solid #00f2ff; overflow: hidden; background-color: #000; display: flex; align-items: center; justify-content: center;">
-                            <img src='{url_limpia}' 
+                        <p style='color: #00f2ff; font-weight: bold; margin-bottom: 10px; text-transform: uppercase;'>🛰️ ESCANEO SATELITAL: {sujeto_final.upper()}</p>
+                        <div style="width: 100%; border-radius: 15px; border: 2px solid #00f2ff; overflow: hidden; background-color: #000;">
+                            <img src='{url_img}' 
                                  style='width:100%; height:auto; display:block;'
-                                 onerror="this.src='https://placehold.co/1080x720/000/00f2ff?text=RECALIBRANDO+FRECUENCIAS';">
+                                 onerror="this.src='https://placehold.co/1080x720/000/00f2ff?text=RECALIBRANDO+FRECUENCIA';">
                         </div>
                         <div style='background: rgba(0, 242, 255, 0.1); border-left: 5px solid #00f2ff; padding: 20px; margin-top: 15px; border-radius: 5px;'>
-                            <b style='color: #00f2ff; font-size: 1.1rem;'>📋 FICHA TÉCNICA (SISTEMA SCOUT L4)</b><br>
-                            <div style='font-size: 0.95rem; color: #ffffff; line-height: 1.6; margin-top: 10px;'>{datos_tecnicos}</div>
+                            <b style='color: #00f2ff;'>📋 FICHA TÉCNICA (SISTEMA SCOUT L4)</b><br>
+                            <div style='color: #ffffff; line-height: 1.6; margin-top: 10px;'>{datos_tecnicos}</div>
                         </div>
                     </div>
                     """
