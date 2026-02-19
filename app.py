@@ -426,25 +426,26 @@ with tabs[0]:
                     # Convertimos a Base64 lo que hayamos obtenido
                     img_b64 = base64.b64encode(img_data).decode()
                     
-                    # 3. Generación de Ficha Técnica
-                    meta_prompt = f"FICHA TÉCNICA profesional de '{sujeto}': 🏰 LUGAR, 📏 DIMENSIONES, 📅 CONSTRUCCIÓN, 💡 DATO CURIOSO. Estilo JARVIS. 50 palabras."
-                    info_res = client.chat.completions.create(
-                        model=modelo_texto, 
-                        messages=[{"role": "user", "content": meta_prompt}]
-                    )
-                    datos = info_res.choices[0].message.content
-
-                    # Diseño HUD
-                    diseno_visual = f"""
-                    <div style="border: 2px solid #00f2ff; border-radius: 15px; padding: 15px; background: rgba(0,0,0,0.6); box-shadow: 0 0 20px rgba(0,242,255,0.3);">
-                        <h3 style="color: #00f2ff; text-align: center; font-family: sans-serif;">🛰️ VISIÓN MULTIESPECTRAL: {sujeto.upper()}</h3>
-                        <img src="data:image/jpeg;base64,{img_b64}" style="width:100%; border-radius:10px; border: 1px solid #00f2ff;">
-                        <div style="margin-top: 15px; color: #ffffff; border-left: 3px solid #00f2ff; padding-left: 10px; font-family: monospace; font-size: 0.9em;">
+            # 3. PROYECCIÓN EN EL HUD (SISTEMA NATIVO ANTIBLOQUEO)
+                    with st.chat_message("assistant", avatar="🚀"):
+                        st.markdown(f"### 🛰️ VISIÓN MULTIESPECTRAL: {sujeto.upper()}")
+                        
+                        # Usamos el comando nativo de Streamlit para asegurar la carga
+                        st.image(r.content, caption=f"Captura satelital de {sujeto}", use_column_width=True)
+                        
+                        # Ficha técnica estilizada
+                        st.markdown(f"""
+                        <div style="border-left: 3px solid #00f2ff; padding-left: 15px; background: rgba(0,242,255,0.05); border-radius: 0 10px 10px 0;">
+                            <p style="color: #00f2ff; font-weight: bold; margin-bottom: 5px;">📋 FICHA TÉCNICA:</p>
                             {datos.replace('-', '<br>•')}
                         </div>
-                    </div>
-                    """
-                    st.session_state.historial_chat.append({"role": "assistant", "content": diseno_visual})
+                        """, unsafe_allow_html=True)
+
+                    # Guardamos el contenido en el historial (Solo el texto para evitar saturar la sesión)
+                    st.session_state.historial_chat.append({
+                        "role": "assistant", 
+                        "content": f"Análisis visual de {sujeto.upper()} finalizado. Imagen proyectada en el HUD."
+                    })
 
                 # --- B. PROTOCOLO MULTIMEDIA (VIDEO) ---
                 elif any(word in query.lower() for word in ["video", "ver en youtube", "reproduce"]):
