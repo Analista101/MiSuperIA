@@ -365,12 +365,12 @@ with tabs[0]:
 
     # 4. MONITOR MULTIMEDIA (HUD STARK)
     if st.session_state.video_url:
-        st.markdown("### 📺 Monitor Principal: Proyección Multimedia")
-        # Usamos Iframe para evitar que YouTube bloquee a JARVIS
-        st.components.v1.iframe(st.session_state.video_url, height=450)
-        if st.button("🔴 Finalizar Proyección"):
-            st.session_state.video_url = None
-            st.rerun()
+    # Este fue el componente que desbloqueó la reproducción
+    st.components.v1.iframe(st.session_state.video_url, height=450, scrolling=False)
+    
+    if st.button("🔴 Finalizar Proyección Multimedia", key="shutdown_video"):
+        st.session_state.video_url = None
+        st.rerun()
 
     # 5. REGISTRO VISUAL (CHAT)
     chat_container = st.container(height=450, border=False)
