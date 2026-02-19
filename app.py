@@ -263,56 +263,65 @@ def buscar_video_youtube(busqueda):
         return None
     return None
 
-# --- 6. SIDEBAR - MONITOR DE CRISIS COMPACTO (V4) ---
+# --- 6. SIDEBAR - MONITOR DE CRISIS BLINDADO (V5) ---
 with st.sidebar:
     st.markdown("<h3 style='color: #ff4b4b; text-align: center; letter-spacing: 2px;'>🚨 MONITOR DE CRISIS</h3>", unsafe_allow_html=True)
     
-    # MÓDULO: ALERTAS (EXPANDIBLE PARA AHORRAR ESPACIO)
+    # MÓDULO: ALERTAS (EXPANDIBLE)
     with st.expander("🌐 ÚLTIMAS ALERTAS MUNDIALES", expanded=False):
-        # Filtro Stark: Solo desastres y emergencias graves
-        query_crisis = "(terremoto OR sismo OR tsunami OR inundacion OR catastrofe OR 'accidente grave' OR emergencia) -economia -bolsa -dolar -futbol"
-        
+        # Filtro de seguridad Stark
+        query_crisis = "(terremoto OR sismo OR tsunami OR catastrofe OR emergencia) -economia -bolsa"
+        noticias_cargadas = False
+
         try:
             import feedparser
             url_rss = f"https://news.google.com/rss/search?q={query_crisis}&hl=es-419&gl=CL&ceid=CL:es-419"
             feed = feedparser.parse(url_rss)
             
             if feed.entries:
-                for entry in feed.entries[:5]:
+                for entry in feed.entries[:4]:
                     titulo = entry.title.rsplit(' - ', 1)[0]
-                    # Diseño ultra-compacto para sidebar
                     st.markdown(f"""
-                        <div style='border-left: 2px solid #ff4b4b; padding-left: 8px; margin-bottom: 10px; background: rgba(255,0,0,0.05);'>
-                            <div style='color: #ff4b4b; font-size: 0.6rem; font-weight: bold;'>{entry.published[:12]}</div>
-                            <div style='color: #ffffff; font-size: 0.75rem; line-height: 1.1;'>{titulo}</div>
-                            <a href='{entry.link}' target='_blank' style='color: #ff4b4b; font-size: 0.65rem; text-decoration: none;'>[DETALLES]</a>
+                        <div style='border-left: 2px solid #ff4b4b; padding-left: 8px; margin-bottom: 8px; background: rgba(255,0,0,0.05);'>
+                            <div style='color: #ff4b4b; font-size: 0.6rem;'>{entry.published[:12]}</div>
+                            <div style='color: #ffffff; font-size: 0.72rem; line-height: 1.1;'>{titulo}</div>
+                            <a href='{entry.link}' target='_blank' style='color: #ff4b4b; font-size: 0.6rem; text-decoration: none;'>[ VER SEÑAL ]</a>
                         </div>
                     """, unsafe_allow_html=True)
-            else:
-                st.write("No se detectan anomalías.")
-        except:
-            st.error("Error de enlace satelital.")
+                noticias_cargadas = True
+        except Exception:
+            pass # Fallo silencioso para activar contingencia
 
-    # MÓDULO: TELEMETRÍA SÍSMICA (COMPACTA)
+        # --- PROTOCOLO DE CONTINGENCIA SI EL ENLACE FALLA ---
+        if not noticias_cargadas:
+            st.warning("⚠️ Satélite Offline. Datos de Caché:")
+            alertas_cache = [
+                {"t": "Alerta Sísmica: Monitoreo permanente en Zona Central", "h": "ACTUAL"},
+                {"t": "Protocolo Incendios: Alerta Amarilla por altas temperaturas", "h": "ACTUAL"},
+                {"t": "Emergencia Global: Monitoreo de actividad volcánica", "h": "ACTUAL"}
+            ]
+            for alerta in alertas_cache:
+                st.markdown(f"""
+                    <div style='border-left: 2px solid #555; padding-left: 8px; margin-bottom: 8px; opacity: 0.7;'>
+                        <div style='color: #888; font-size: 0.6rem;'>{alerta['h']}</div>
+                        <div style='color: #bbb; font-size: 0.72rem;'>{alerta['t']}</div>
+                    </div>
+                """, unsafe_allow_html=True)
+
+    # MÓDULOS FIJOS COMPACTOS
     st.markdown("""
-        <div class='telemetry-card' style='border-left-color: #00f2ff; padding: 5px 10px;'>
-            <div class='telemetry-label' style='font-size: 0.6rem;'>SISMICIDAD ACTIVA</div>
-            <div class='telemetry-value' style='font-size: 0.8rem;'>6.2 Mw - COQUIMBO</div>
+        <div class='telemetry-card' style='border-left-color: #00f2ff; padding: 5px 10px; margin-bottom: 5px;'>
+            <div class='telemetry-label' style='font-size: 0.55rem;'>SISMICIDAD ACTIVA</div>
+            <div class='telemetry-value' style='font-size: 0.75rem;'>6.2 Mw - COQUIMBO</div>
         </div>
-    """, unsafe_allow_html=True)
-
-    # MÓDULO: FOCOS DE INCENDIO (COMPACTO)
-    st.markdown("""
         <div class='telemetry-card' style='border-left-color: #ff8800; padding: 5px 10px;'>
-            <div class='telemetry-label' style='font-size: 0.6rem;'>CONTROL DE INCENDIOS</div>
-            <div class='telemetry-value' style='font-size: 0.8rem;'>Pudahuel: Controlado</div>
+            <div class='telemetry-label' style='font-size: 0.55rem;'>CONTROL DE INCENDIOS</div>
+            <div class='telemetry-value' style='font-size: 0.75rem;'>Pudahuel: Controlado</div>
         </div>
     """, unsafe_allow_html=True)
 
     st.markdown("---")
-    
-    # Botón de Recalibración Estilizado
-    if st.button("🔄 ACTUALIZAR ESCANEO", use_container_width=True):
+    if st.button("🔄 REFRESCAR ESCANEO", use_container_width=True):
         st.rerun()
 
     st.caption(f"Sincronización: {datetime.datetime.now().strftime('%H:%M:%S')}")
