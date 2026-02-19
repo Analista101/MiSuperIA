@@ -262,14 +262,36 @@ def buscar_video_youtube(busqueda):
         return None
     return None
 
-# --- 6. SIDEBAR - TELEMETRÍA AVANZADA ---
+# --- 6. SIDEBAR - TELEMETRÍA AVANZADA (EDICIÓN NOTICIAS CHILE) ---
 with st.sidebar:
     st.markdown("<h2 style='color: #00f2ff; text-align: center;'>📡 MONITOR DE RED</h2>", unsafe_allow_html=True)
     st.markdown("---")
 
+    # --- NUEVO MÓDULO: INTELIGENCIA NACIONAL (NOTICIAS CHILE) ---
+    with st.expander("📰 INTELIGENCIA NACIONAL", expanded=True):
+        try:
+            # Protocolo de extracción de noticias (Filtrado: No farándula/deportes)
+            # Nota: Usamos feedparser o una búsqueda rápida para Chile
+            import feedparser
+            # Fuente confiable de noticias generales de Chile (Ej: BioBio o Google News Chile)
+            feed = feedparser.parse("https://news.google.com/rss/search?q=chile+politica+economia+actualidad&hl=es-419&gl=CL&ceid=CL:es-419")
+            
+            for i, entry in enumerate(feed.entries[:4]): # Solo las 4 más relevantes
+                # Limpieza de títulos (Omitir si contienen palabras de farándula o deportes por seguridad)
+                black_list = ["fútbol", "gol", "farándula", "teleserie", "reality", "partido", "estadio"]
+                if not any(word in entry.title.lower() for word in black_list):
+                    st.markdown(f"""
+                        <div class='telemetry-card' style='border-left-width: 2px; margin-bottom: 8px;'>
+                            <div class='telemetry-label' style='font-size: 0.65rem;'>{entry.published[:16]}</div>
+                            <div class='telemetry-value' style='font-size: 0.8rem; line-height: 1.2;'>{entry.title.split('-')[0]}</div>
+                            <a href='{entry.link}' style='color: #00f2ff; font-size: 0.7rem; text-decoration: none;'>[LEER PROTOCOLO]</a>
+                        </div>
+                    """, unsafe_allow_html=True)
+        except Exception as e:
+            st.markdown("<div class='telemetry-sub'>Error de enlace con el satélite de noticias.</div>", unsafe_allow_html=True)
+
     # MÓDULO: CLIMA SEMANAL
-    with st.expander("🌤️ PRONÓSTICO EXTENDIDO", expanded=True):
-        # Datos simulados de alta precisión para Santiago
+    with st.expander("🌤️ PRONÓSTICO EXTENDIDO", expanded=False): # Cambiado a False para no saturar
         dias = ["Sáb", "Dom", "Lun", "Mar", "Mié", "Jue", "Vie"]
         temps = ["32°C", "31°C", "29°C", "33°C", "34°C", "30°C", "28°C"]
         
@@ -281,7 +303,6 @@ with st.sidebar:
 
     # MÓDULO: SISMICIDAD GLOBAL
     st.markdown("<div class='telemetry-card'><div class='telemetry-label'>🛰️ Alerta Sísmica</div>", unsafe_allow_html=True)
-    # Aquí puede actualizar estos datos manualmente según el último reporte de CSN
     st.markdown("""
         <div class='telemetry-value'>6.2 Mw - COQUIMBO</div>
         <div class='telemetry-sub'>Epicentro: 42km al O de Tongoy</div>
