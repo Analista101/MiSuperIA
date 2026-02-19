@@ -392,43 +392,56 @@ with tabs[0]:
             st.session_state.historial_chat.append({"role": "user", "content": query})
             
             try:
-# --- PROTOCOLO DE ANCLAJE DIRECTO (V64 - SIN RERUN) ---
-                palabras_clave = ["muéstrame", "busca una foto", "proyecta", "imagen de", "foto de", "enséñame", "muestrame"]
+# --- PROTOCOLO DE VISIÓN DIRECTA V65 (SOLUCIÓN DEFINITIVA) ---
+                palabras_img = ["muéstrame", "busca una foto", "proyecta", "imagen de", "foto de", "enséñame", "muestrame"]
                 
-                if any(word in query.lower() for word in palabras_clave):
-                    # 1. Extracción del objetivo
+                if any(word in query.lower() for word in palabras_img):
+                    from PIL import Image
+                    import requests
+                    from io import BytesIO
+
+                    # 1. Identificación del Objetivo
                     objetivo = query.lower()
-                    for word in palabras_clave: objetivo = objetivo.replace(word, "")
+                    for word in palabras_img: objetivo = objetivo.replace(word, "")
                     objetivo = objetivo.strip()
 
-                    # 2. Localización de la imagen
-                    url_internet = f"https://image.pollinations.ai/prompt/high_quality_real_world_photo_of_{objetivo.replace(' ', '_')}?width=1080&height=720&nologo=true"
-
-                    # 3. Inteligencia Scout (Estructura de Laboratorio)
+                    # 2. Descarga a Memoria RAM (Evita la imagen rota)
+                    url_api = f"https://image.pollinations.ai/prompt/high_quality_real_world_photo_of_{objetivo.replace(' ', '_')}?width=800&height=500&nologo=true"
+                    
                     try:
+                        # JARVIS descarga la imagen primero para asegurarse de que existe
+                        response = requests.get(url_api, timeout=10)
+                        img_binaria = Image.open(BytesIO(response.content))
+                        
+                        # 3. Inteligencia Scout L4 (Su estructura de Laboratorio)
                         completion = client.chat.completions.create(
                             model="meta-llama/llama-4-scout-17b-16e-instruct",
-                            messages=[{"role": "user", "content": f"Ficha técnica de {objetivo}. Tono Stark. Máximo 60 palabras."}],
-                            temperature=1
+                            messages=[{"role": "user", "content": f"Ficha técnica de {objetivo}. Tono Stark. 60 palabras."}]
                         )
                         datos_tecnicos = completion.choices[0].message.content
-                    except:
-                        datos_tecnicos = "Error de enlace con Groq. Datos recuperados de caché local."
 
-                    # 4. DESPLIEGUE INMEDIATO (Para que salga en su sitio)
-                    with st.chat_message("assistant", avatar="🚀"):
-                        st.markdown(f"### 🛰️ ESCANEO: {objetivo.upper()}")
-                        st.image(url_internet, use_container_width=True)
-                        st.write(datos_tecnicos)
+                        # 4. Proyección en el HUD (Dentro del mensaje actual)
+                        with st.chat_message("assistant", avatar="🚀"):
+                            st.markdown(f"### 🛰️ ESCANEO MULTIMODAL: {objetivo.upper()}")
+                            # Usamos el comando nativo de Streamlit con el objeto de imagen ya descargado
+                            st.image(img_binaria, use_container_width=True)
+                            
+                            st.markdown(f"""
+                            <div style='background: rgba(0, 242, 255, 0.1); border-left: 5px solid #00f2ff; padding: 15px; border-radius: 5px;'>
+                                <b style='color: #00f2ff;'>📋 ANÁLISIS DEL MODELO SCOUT L4</b><br>
+                                <div style='color: #ffffff; line-height: 1.6; margin-top: 10px;'>{datos_tecnicos}</div>
+                            </div>
+                            """, unsafe_allow_html=True)
 
-                    # 5. REGISTRO EN EL HISTORIAL (Para que no se pierda al recargar)
-                    # Guardamos el Markdown completo para que el bucle del historial lo lea bien
-                    contenido_completo = f"### 🛰️ ESCANEO: {objetivo.upper()}\n\n![{objetivo}]({url_internet})\n\n{datos_tecnicos}"
-                    st.session_state.historial_chat.append({
-                        "role": "assistant", 
-                        "content": contenido_completo
-                    })
+                        # Guardamos en historial para persistencia
+                        st.session_state.historial_chat.append({
+                            "role": "assistant", 
+                            "content": f"Análisis visual de {objetivo} completado."
+                        })
 
+                    except Exception as e:
+                        st.error(f"Fallo en la descarga del satélite: {e}")
+                        
                 # --- B. DETECCIÓN DE VIDEO (PROTOCOLO BETA) ---
                 elif any(word in query.lower() for word in ["video", "ver en youtube"]):
                     prompt_intencion = f"Extrae el nombre del video que el usuario quiere ver. Responde solo 'BUSCAR: [nombre]'. Usuario: {query}"
