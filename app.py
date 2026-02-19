@@ -379,36 +379,35 @@ with tabs[0]:
             st.session_state.historial_chat.append({"role": "user", "content": query})
             
             try:
-         # --- A. PROTOCOLO DE RECONOCIMIENTO VISUAL (MOTOR DE RESPALDO V52.6) ---
+        # --- A. PROTOCOLO DE RECONOCIMIENTO VISUAL (REPARACIÓN DE RENDERIZADO V52.7) ---
                 palabras_clave = ["muéstrame", "busca una foto", "proyecta", "imagen de", "foto de", "enséñame"]
                 
                 if any(word in query.lower() for word in palabras_clave):
-                    sujeto = query.lower()
-                    for word in palabras_clave: sujeto = sujeto.replace(word, "")
-                    sujeto = sujeto.replace("un ", "").replace("una ", "").replace("la ", "").replace("el ", "").strip()
+                    # Limpieza profunda del sujeto para evitar URLs inválidas
+                    sujeto_limpio = query.lower()
+                    for word in palabras_clave: sujeto_limpio = sujeto_limpio.replace(word, "")
+                    sujeto_limpio = sujeto_limpio.replace("un ", "").replace("una ", "").replace("la ", "").replace("el ", "").strip()
                     
-                    # 1. Motor Llama-4-Scout para Ficha Técnica (Solo Texto para evitar Error 530)
+                    # 1. Cerebro Scout L4 para la Ficha Técnica
                     info_res = client.chat.completions.create(
                         model="meta-llama/llama-4-scout-17b-16e-instruct", 
-                        messages=[{"role": "user", "content": f"Actúa como JARVIS. Ficha técnica de {sujeto}: Ubicación, Historia y un dato curioso. Tono Stark. Máximo 60 palabras."}],
+                        messages=[{"role": "user", "content": f"Actúa como JARVIS. Ficha técnica de {sujeto_limpio}. Tono Stark. Máximo 60 palabras."}],
                         temperature=0.7
                     )
                     datos_tecnicos = info_res.choices[0].message.content
                     
-                    # 2. Generación de URL compatible (Unsplash con parámetros de búsqueda)
-                    # Esta URL es procesada directamente por el navegador, no por el servidor.
-                    url_img = f"https://images.unsplash.com/photo-1500000000000?{sujeto.replace(' ', ',')}&auto=format&fit=crop&w=1080&q=80"
+                    # 2. Generación de imagen con Motor de Respaldo Estático
+                    # Usamos un servicio de imágenes de alta disponibilidad
+                    url_img = f"https://loremflickr.com/1080/720/{sujeto_limpio.replace(' ', ',')}/all"
                     
-                    # Respaldo secundario si Unsplash falla
-                    url_fallback = f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={sujeto}" # Solo como último recurso visual
-
                     diseno_hud = f"""
                     <div style='margin-bottom: 25px;'>
-                        <p style='color: #00f2ff; font-weight: bold; margin-bottom: 10px; text-transform: uppercase;'>🛰️ ESCANEO SATELITAL: {sujeto.upper()}</p>
-                        <div style="width: 100%; min-height: 300px; background: #000; border-radius: 15px; border: 2px solid #00f2ff; overflow: hidden; box-shadow: 0px 4px 20px rgba(0,242,255,0.4);">
-                            <img src='https://source.unsplash.com/featured/1080x720?{sujeto.replace(' ', ',')}' 
+                        <p style='color: #00f2ff; font-weight: bold; margin-bottom: 10px; text-transform: uppercase;'>🛰️ ESCANEO SATELITAL: {sujeto_limpio.upper()}</p>
+                        <div style="width: 100%; border-radius: 15px; border: 2px solid #00f2ff; overflow: hidden; background-color: #000;">
+                            <img src='{url_img}' 
                                  style='width:100%; height:auto; display:block;'
-                                 onerror="this.onerror=null;this.src='https://image.pollinations.ai/prompt/{sujeto.replace(' ', '%20')}?width=1080&height=720&nologo=true';">
+                                 alt='Proyección en curso...'
+                                 onerror="this.src='https://placehold.co/1080x720/000/00f2ff?text=RECALIBRANDO+FRECUENCIAS';">
                         </div>
                         <div style='background: rgba(0, 242, 255, 0.1); border-left: 5px solid #00f2ff; padding: 15px; margin-top: 15px; border-radius: 5px;'>
                             <b style='color: #00f2ff;'>📋 FICHA TÉCNICA (SISTEMA SCOUT L4)</b><br>
@@ -417,7 +416,7 @@ with tabs[0]:
                     </div>
                     """
                     st.session_state.historial_chat.append({"role": "assistant", "content": diseno_hud})
-
+                    
                 # --- B. DETECCIÓN DE VIDEO (PROTOCOLO BETA) ---
                 elif any(word in query.lower() for word in ["video", "ver en youtube"]):
                     prompt_intencion = f"Extrae el nombre del video que el usuario quiere ver. Responde solo 'BUSCAR: [nombre]'. Usuario: {query}"
