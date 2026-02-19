@@ -300,56 +300,68 @@ import streamlit_antd_components as sac
 
 import streamlit_antd_components as sac
 
-# --- TAB 0: PROYECTO JARVIS (VERSIÓN OPERATIVA FINAL V50.5) ---
+# --- TAB 0: PROYECTO JARVIS (FIX PROTOCOLO DE RESPUESTA) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
-    
-    if "modo_fluido" not in st.session_state:
-        st.session_state.modo_fluido = False
 
-    # --- 1. CABECERA DE BLOQUES ESTÁTICOS ---
+    # 1. DEFINICIÓN DEL PROTOCOLO (Aseguramos que sea accesible)
+    def protocolo_jarvis_v50():
+        # Capturamos el texto del estado de la sesión
+        query = st.session_state.get("input_v50", "")
+        
+        if query.strip():
+            # Añadimos la orden del usuario al historial
+            st.session_state.historial_chat.append({"role": "user", "content": query})
+            
+            # Preparamos el contexto para la IA
+            hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
+            
+            try:
+                # Llamada al núcleo de IA
+                res = client.chat.completions.create(
+                    model=modelo_texto, 
+                    messages=[{"role": "system", "content": PERSONALIDAD}] + hist
+                )
+                respuesta = res.choices[0].message.content
+                st.session_state.historial_chat.append({"role": "assistant", "content": respuesta})
+            except Exception as e:
+                st.error(f"Error de enlace: {str(e)}")
+            
+            # Limpiamos el input PARA EL PRÓXIMO comando
+            st.session_state["input_v50"] = ""
+
+    # --- 2. CABECERA DE BLOQUES ---
     c1, c2, c3, c4 = st.columns([1, 1, 1, 7])
 
     with c1:
-        # BOTÓN PURGA: Acción inmediata
-        purgar_click = sac.buttons([sac.ButtonsItem(icon='trash')], label=' ', key='btn_purgar_v505', index=None, align='center', variant='link', size='sm', return_index=True)
-        if purgar_click is not None:
+        if sac.buttons([sac.ButtonsItem(icon='trash')], key='btn_purgar_v505', index=None, variant='link', size='sm', return_index=True) is not None:
             st.session_state.historial_chat = []
             st.rerun()
 
     with c2:
-        # BOTÓN MANOS LIBRES: Toggle visual y lógico
-        ml_icon = 'headset' if st.session_state.modo_fluido else 'headset_off'
-        ml_click = sac.buttons([sac.ButtonsItem(icon=ml_icon)], label=' ', key='btn_ml_v505', index=None, align='center', variant='link', size='sm', return_index=True)
-        if ml_click is not None:
-            st.session_state.modo_fluido = not st.session_state.modo_fluido
+        ml_icon = 'headset' if st.session_state.get('modo_fluido', False) else 'headset_off'
+        if sac.buttons([sac.ButtonsItem(icon=ml_icon)], key='btn_ml_v505', index=None, variant='link', size='sm', return_index=True) is not None:
+            st.session_state.modo_fluido = not st.session_state.get('modo_fluido', False)
             st.rerun()
 
     with c3:
-        # BOTÓN MICRÓFONO: Manteniendo la simetría Stark
         st.markdown('<div class="mic-container-stark">', unsafe_allow_html=True)
         audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v505")
         st.markdown('</div>', unsafe_allow_html=True)
 
     with c4:
-        # CUADRO DE COMANDOS (Protocolo Enter + Limpieza instantánea)
-        def protocolo_jarvis_v50():
-            query = st.session_state.input_v50
-            if query:
-                st.session_state.historial_chat.append({"role": "user", "content": query})
-                hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
-                try:
-                    res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + hist)
-                    st.session_state.historial_chat.append({"role": "assistant", "content": res.choices[0].message.content})
-                except: pass
-                st.session_state.input_v50 = "" 
-
-        st.text_input("cmd", placeholder="Órdenes, Srta. Diana...", label_visibility="collapsed", key="input_v50", on_change=protocolo_jarvis_v50)
+        # IMPORTANTE: El key debe coincidir con el que usamos en la función
+        st.text_input(
+            "cmd", 
+            placeholder="Órdenes, Srta. Diana...", 
+            label_visibility="collapsed", 
+            key="input_v50", 
+            on_change=protocolo_jarvis_v50
+        )
 
     st.markdown("---")
-    
-    # ... (Resto del código de historial y scroll)
+    # ... (Resto del código de visualización)
 
 # --- TAB 1: ANÁLISIS (FIX SCOUT VISION) ---
 with tabs[1]:
