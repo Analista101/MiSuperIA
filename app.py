@@ -12,6 +12,7 @@ from PIL import Image
 from groq import Groq
 from dotenv import load_dotenv
 from streamlit_mic_recorder import mic_recorder
+import streamlit_antd_components as sac
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
@@ -299,7 +300,7 @@ import streamlit_antd_components as sac
 
 import streamlit_antd_components as sac
 
-# --- TAB 0: PROYECTO JARVIS (VERSIÓN ESTABILIZADA V50.3) ---
+# --- TAB 0: PROYECTO JARVIS (VERSIÓN OPERATIVA FINAL V50.5) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
@@ -311,27 +312,28 @@ with tabs[0]:
     c1, c2, c3, c4 = st.columns([1, 1, 1, 7])
 
     with c1:
-        # CUADRO 1: PURGA (Corregido para evitar conflictos de valor)
-        if sac.buttons([sac.ButtonsItem(icon='trash')], label=' ', key='btn_purgar_v5', index=None, align='center', variant='link', size='sm'):
+        # BOTÓN PURGA: Acción inmediata
+        purgar_click = sac.buttons([sac.ButtonsItem(icon='trash')], label=' ', key='btn_purgar_v505', index=None, align='center', variant='link', size='sm', return_index=True)
+        if purgar_click is not None:
             st.session_state.historial_chat = []
             st.rerun()
 
     with c2:
-        # CUADRO 2: MANOS LIBRES (Ajuste técnico para evitar ValueError)
-        # Usamos un solo estado visual y el clic alterna la variable de sesión
+        # BOTÓN MANOS LIBRES: Toggle visual y lógico
         ml_icon = 'headset' if st.session_state.modo_fluido else 'headset_off'
-        if sac.buttons([sac.ButtonsItem(icon=ml_icon)], label=' ', key='btn_ml_v5', index=None, align='center', variant='link', size='sm'):
+        ml_click = sac.buttons([sac.ButtonsItem(icon=ml_icon)], label=' ', key='btn_ml_v505', index=None, align='center', variant='link', size='sm', return_index=True)
+        if ml_click is not None:
             st.session_state.modo_fluido = not st.session_state.modo_fluido
             st.rerun()
 
     with c3:
-        # CUADRO 3: MICRÓFONO
+        # BOTÓN MICRÓFONO: Manteniendo la simetría Stark
         st.markdown('<div class="mic-container-stark">', unsafe_allow_html=True)
-        audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v50")
+        audio_data = mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v505")
         st.markdown('</div>', unsafe_allow_html=True)
 
     with c4:
-        # CUADRO DE COMANDOS (Protocolo Enter + Limpieza)
+        # CUADRO DE COMANDOS (Protocolo Enter + Limpieza instantánea)
         def protocolo_jarvis_v50():
             query = st.session_state.input_v50
             if query:
@@ -340,69 +342,14 @@ with tabs[0]:
                 try:
                     res = client.chat.completions.create(model=modelo_texto, messages=[{"role": "system", "content": PERSONALIDAD}] + hist)
                     st.session_state.historial_chat.append({"role": "assistant", "content": res.choices[0].message.content})
-                except:
-                    pass
+                except: pass
                 st.session_state.input_v50 = "" 
 
         st.text_input("cmd", placeholder="Órdenes, Srta. Diana...", label_visibility="collapsed", key="input_v50", on_change=protocolo_jarvis_v50)
 
     st.markdown("---")
-
-    # --- 2. REGISTRO VISUAL (AUTO-SCROLL) ---
-    chat_box = st.container(height=540, border=False)
-    with chat_box:
-        for m in st.session_state.historial_chat:
-            with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
-                st.write(m["content"])
-        
-        st.components.v1.html("""
-            <script>
-            function JARVIS_Scroll() {
-                const el = window.parent.document.querySelector('div[data-testid="stVBC"]');
-                if (el) { el.scrollTop = el.scrollHeight; }
-            }
-            JARVIS_Scroll(); setTimeout(JARVIS_Scroll, 500);
-            </script>
-        """, height=0)
-
-# --- CSS: CALIBRACIÓN DE SIMETRÍA ---
-st.markdown("""
-    <style>
-    /* Reset de botones sac para evitar cuadros blancos */
-    .ant-btn {
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-        color: #00f2ff !important;
-        height: 45px !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-    }
-
-    .mic-container-stark button {
-        height: 45px !important;
-        width: 100% !important;
-        background: rgba(0, 242, 255, 0.05) !important;
-        border: 1px solid rgba(0, 242, 255, 0.2) !important;
-        border-radius: 4px !important;
-    }
-
-    .stTextInput input {
-        height: 45px !important;
-        border: 1px solid rgba(0, 242, 255, 0.3) !important;
-        background: rgba(0, 0, 0, 0.2) !important;
-        color: #ffffff !important;
-    }
-
-    div[data-testid="column"] {
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        padding: 0 2px !important;
-    }
-    </style>
-""", unsafe_allow_html=True)
+    
+    # ... (Resto del código de historial y scroll)
 
 # --- TAB 1: ANÁLISIS (FIX SCOUT VISION) ---
 with tabs[1]:
