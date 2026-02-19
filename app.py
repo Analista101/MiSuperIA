@@ -294,9 +294,9 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: PROYECTO JARVIS (VERSIÓN INTEGRAL V51.2) ---
+# --- TAB 0: PROYECTO JARVIS (VERSIÓN COMPLETA Y ALINEADA V51.6) ---
 with tabs[0]:
-    # 1. INICIALIZACIÓN DE SISTEMAS CRÍTICOS
+    # 1. INICIALIZACIÓN DE CANALES DE DATOS
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
     if "video_url" not in st.session_state:
@@ -304,23 +304,31 @@ with tabs[0]:
     if "modo_fluido" not in st.session_state:
         st.session_state.modo_fluido = False
 
-    # 2. PROTOCOLO DE PROCESAMIENTO (Cerebro de JARVIS)
-    def protocolo_stark_v51():
+    # 2. MOTOR DE BÚSQUEDA Y PROCESAMIENTO (Cerebro JARVIS)
+    def protocolo_stark_v516():
         query = st.session_state.input_cmd.strip()
         if query:
             st.session_state.historial_chat.append({"role": "user", "content": query})
             
-            # --- MOTOR MULTIMEDIA: Detección de YouTube ---
-            if "reproducir" in query.lower() or "pon el video" in query.lower():
-                if "bon jovi" in query.lower():
-                    # Usamos link de EMBED para saltar restricciones de YouTube
-                    st.session_state.video_url = "https://www.youtube.com/embed/vx2u5uUu3DE"
-                    resp = "Proyectando en el HUD, Srta. Diana. 'It's My Life' de Bon Jovi, versión en vivo. Disfrute del espectáculo."
-                else:
-                    resp = "Señor, necesito una referencia clara o un link directo para iniciar la proyección."
+            # --- PROTOCOLO MULTIMEDIA: Detección y Búsqueda ---
+            # Si el usuario pide reproducir algo, usamos la librería youtube-search
+            if any(p in query.lower() for p in ["reproducir", "pon el video", "pon música"]):
+                try:
+                    from youtube_search import YoutubeSearch
+                    results = YoutubeSearch(query, max_results=1).to_dict()
+                    if results:
+                        video_id = results[0]['id']
+                        # Conversión obligatoria a EMBED para evitar bloqueos de YouTube
+                        st.session_state.video_url = f"https://www.youtube.com/embed/{video_id}"
+                        resp = "Localizando señal... Proyectando en el HUD, Srta. Diana."
+                    else:
+                        resp = "Señor, no he podido localizar material audiovisual con esa referencia."
+                except Exception as e:
+                    resp = f"Error en el enlace multimedia: {str(e)}"
+                
                 st.session_state.historial_chat.append({"role": "assistant", "content": resp})
             
-            # --- MOTOR DE IA: Respuesta Groq ---
+            # --- MOTOR DE RESPUESTA IA (Groq) ---
             else:
                 try:
                     hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
@@ -330,11 +338,12 @@ with tabs[0]:
                     )
                     st.session_state.historial_chat.append({"role": "assistant", "content": res.choices[0].message.content})
                 except Exception as e:
-                    st.error(f"Sistemas offline: {str(e)}")
+                    st.error(f"Núcleo IA fuera de línea: {str(e)}")
             
+            # Limpieza automática del terminal
             st.session_state.input_cmd = ""
 
-    # 3. CABECERA DE MANDOS (SIMETRÍA NATIVA)
+    # 3. CABECERA DE MANDOS (SIMETRÍA STARK)
     c1, c2, c3, c4 = st.columns([1, 1, 1, 7])
     
     with c1:
@@ -345,13 +354,13 @@ with tabs[0]:
             
     with c2:
         ml_icon = "🔔" if st.session_state.modo_fluido else "🔕"
-        if st.button(ml_icon, help="Modo Manos Libres", use_container_width=True):
+        if st.button(ml_icon, help="Alternar Manos Libres", use_container_width=True):
             st.session_state.modo_fluido = not st.session_state.modo_fluido
             st.rerun()
             
     with c3:
-        # Micrófono nativo (Asegúrese de tener el import de mic_recorder)
-        mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v51")
+        # Micrófono nativo (Sincronizado con requirements.txt)
+        mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v516")
         
     with c4:
         st.text_input(
@@ -359,28 +368,29 @@ with tabs[0]:
             placeholder="Órdenes, Srta. Diana...", 
             label_visibility="collapsed", 
             key="input_cmd", 
-            on_change=protocolo_stark_v51
+            on_change=protocolo_stark_v516
         )
 
     st.markdown("---")
 
-    # 4. MONITOR MULTIMEDIA (HUD STARK)
+    # 4. MONITOR MULTIMEDIA HUD (CORRECCIÓN DE IDENTACIÓN)
     if st.session_state.video_url:
-    # Este fue el componente que desbloqueó la reproducción
-    st.components.v1.iframe(st.session_state.video_url, height=450, scrolling=False)
-    
-    if st.button("🔴 Finalizar Proyección Multimedia", key="shutdown_video"):
-        st.session_state.video_url = None
-        st.rerun()
+        # Bloque alineado correctamente para evitar IndentationError
+        st.markdown("### 📺 Monitor Principal: Proyección Multimedia")
+        st.components.v1.iframe(st.session_state.video_url, height=450, scrolling=False)
+        
+        if st.button("🔴 Finalizar Proyección", key="close_video_v516"):
+            st.session_state.video_url = None
+            st.rerun()
 
-    # 5. REGISTRO VISUAL (CHAT)
-    chat_container = st.container(height=450, border=False)
-    with chat_container:
+    # 5. REGISTRO VISUAL (CHRONOS)
+    chat_box = st.container(height=450, border=False)
+    with chat_box:
         for m in st.session_state.historial_chat:
             with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
                 st.write(m["content"])
         
-        # Script para auto-scroll automático
+        # Script de auto-scroll para mantener el HUD siempre al día
         st.components.v1.html("""
             <script>
             var el = window.parent.document.querySelector('div[data-testid="stVBC"]');
