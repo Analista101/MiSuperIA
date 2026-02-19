@@ -12,7 +12,6 @@ from PIL import Image
 from groq import Groq
 from dotenv import load_dotenv
 from streamlit_mic_recorder import mic_recorder
-import streamlit_antd_components as sac
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
@@ -294,63 +293,71 @@ with st.sidebar:
 # --- 7. PESTAÑAS ---
 tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-# --- TAB 0: PROYECTO JARVIS (VERSIÓN ESTABLE V50.8) ---
+# --- TAB 0: PROYECTO JARVIS (VERSIÓN NATIVA ESTABLE) ---
 with tabs[0]:
     if "historial_chat" not in st.session_state: 
         st.session_state.historial_chat = []
-    
-    # 1. PROTOCOLO DE PROCESAMIENTO (Callback corregido)
-    def enviar_comando():
-        # Capturamos la orden del buffer antes de que se limpie
-        orden = st.session_state.buffer_input.strip()
-        if orden:
-            st.session_state.historial_chat.append({"role": "user", "content": orden})
+
+    # 1. PROTOCOLO DE PROCESAMIENTO
+    def protocolo_jarvis_nativo():
+        query = st.session_state.input_cmd.strip()
+        if query:
+            st.session_state.historial_chat.append({"role": "user", "content": query})
             
-            # Llamada al núcleo IA
+            # Contexto para el núcleo IA
+            hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
             try:
-                hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
                 res = client.chat.completions.create(
                     model=modelo_texto, 
                     messages=[{"role": "system", "content": PERSONALIDAD}] + hist
                 )
                 st.session_state.historial_chat.append({"role": "assistant", "content": res.choices[0].message.content})
             except Exception as e:
-                st.error(f"Error de enlace: {e}")
+                st.error(f"Fallo en el núcleo: {e}")
             
-            # NO MODIFICAMOS st.session_state.buffer_input AQUÍ. 
-            # El widget lo limpia automáticamente al ser un callback.
+            # Limpieza automática por ser un callback
+            st.session_state.input_cmd = ""
 
-    # --- 2. CABECERA DE BLOQUES ---
+    # --- 2. CABECERA DE MANDOS (NATIVA) ---
     c1, c2, c3, c4 = st.columns([1, 1, 1, 7])
 
     with c1:
-        if sac.buttons([sac.ButtonsItem(icon='trash')], key='purgar_v508', index=None, variant='link', return_index=True) is not None:
+        # Botón de Purga nativo
+        if st.button("🗑️", help="Limpiar Historial", use_container_width=True):
             st.session_state.historial_chat = []
             st.rerun()
 
     with c2:
-        ml_icon = 'headset' if st.session_state.get('modo_fluido', False) else 'headset_off'
-        if sac.buttons([sac.ButtonsItem(icon=ml_icon)], key='ml_v508', index=None, variant='link', return_index=True) is not None:
+        # Botón Manos Libres nativo (Toggle sencillo)
+        estado_ml = "🔔" if st.session_state.get('modo_fluido', False) else "🔕"
+        if st.button(estado_ml, help="Modo Manos Libres", use_container_width=True):
             st.session_state.modo_fluido = not st.session_state.get('modo_fluido', False)
             st.rerun()
 
     with c3:
-        st.markdown('<div class="mic-container-stark">', unsafe_allow_html=True)
-        mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v508")
+        # Micrófono nativo
+        st.markdown('<div style="margin-top: -5px;">', unsafe_allow_html=True)
+        mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_nativo")
         st.markdown('</div>', unsafe_allow_html=True)
 
     with c4:
-        # Usamos on_change para que Streamlit limpie el cuadro automáticamente
+        # Barra de comandos central
         st.text_input(
             "cmd", 
-            placeholder="Esperando órdenes, Srta. Diana...", 
+            placeholder="Órdenes, Srta. Diana...", 
             label_visibility="collapsed", 
-            key="buffer_input", 
-            on_change=enviar_comando
+            key="input_cmd", 
+            on_change=protocolo_jarvis_nativo
         )
 
     st.markdown("---")
-    # ... (Resto del código de visualización del chat)
+    
+    # --- 3. RENDERIZADO DEL CHAT ---
+    chat_box = st.container(height=540, border=False)
+    with chat_box:
+        for m in st.session_state.historial_chat:
+            with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"): 
+                st.write(m["content"])
 
 # --- TAB 1: ANÁLISIS (FIX SCOUT VISION) ---
 with tabs[1]:
