@@ -50,10 +50,10 @@ PERSONALIDAD = (
     f"Ubicación: Santiago, Chile. Fecha: {fecha_actual} | Hora: {hora_actual}."
 )
 
-# --- 2. ESTILOS HUD AVANZADOS (REACTOR V2 + NEON ENHANCEMENT) ---
+# --- 2. ESTILOS HUD AVANZADOS (REACTOR V2 + NEON ENHANCEMENT + TABS FLEX) ---
 st.markdown("""
     <style>
-    /* Fondo General (Se mantiene según protocolo) */
+    /* Fondo General (Protocolo Stark) */
     .stApp {
         background: #010409 !important;
         background-image: 
@@ -80,7 +80,28 @@ st.markdown("""
         white-space: pre-wrap;
         z-index: -1;
     }
-            /* Contenedores de Telemetría Moderna */
+
+    /* --- PROTOCOLO DE PESTAÑAS EXPANDIDAS (NUEVO) --- */
+    div[data-testid="stTabs"] {
+        width: 100% !important;
+    }
+    div[data-testid="stTabs"] button {
+        flex: 1 !important; /* Distribución uniforme */
+        min-width: 180px !important; /* Pestañas más largas */
+        height: 50px !important;
+        background-color: rgba(0, 242, 255, 0.05) !important;
+        border: 1px solid rgba(0, 242, 255, 0.2) !important;
+        color: #00f2ff !important;
+        font-family: 'Share Tech Mono', monospace;
+        transition: all 0.3s ease;
+    }
+    div[data-testid="stTabs"] button[aria-selected="true"] {
+        background-color: rgba(0, 242, 255, 0.15) !important;
+        border-bottom: 3px solid #00f2ff !important;
+        box-shadow: 0 0 15px rgba(0, 242, 255, 0.3);
+    }
+
+    /* Contenedores de Telemetría Moderna */
     .telemetry-card {
         background: rgba(0, 20, 30, 0.6) !important;
         border-left: 3px solid #00f2ff !important;
@@ -410,7 +431,7 @@ with tabs[0]:
             if (el) { el.scrollTop = el.scrollHeight; }
             </script>
         """, height=0)
-        
+
 # --- TAB 1: ANÁLISIS (FIX SCOUT VISION) ---
 with tabs[1]:
     st.subheader("📊 Análisis Scout v4")
