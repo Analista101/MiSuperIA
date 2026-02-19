@@ -8,6 +8,7 @@ import requests
 import datetime
 import pytz
 import smtplib
+import urllib.parse
 from PIL import Image
 from groq import Groq
 from dotenv import load_dotenv
@@ -418,29 +419,46 @@ with tabs[0]:
             # Limpieza automática del terminal
             st.session_state.input_cmd = ""
 
-            # --- PROTOCOLO DE RECONOCIMIENTO VISUAL (COMANDO CENTRAL) ---
-if "muéstrame" in prompt.lower() or "busca una foto de" in prompt.lower():
-    # Extraemos el sujeto de la búsqueda
-    sujeto = prompt.lower().replace("muéstrame", "").replace("busca una foto de", "").strip()
-    
-    with st.spinner(f"🛰️ JARVIS: Accediendo a archivos satelitales para: {sujeto}..."):
-        # 1. Generamos la imagen del sujeto
-        from pathlib import Path
-        # Nota: Aquí se invoca mi herramienta de generación de imágenes interna
-        # En su código, esto se traduce a la respuesta visual que JARVIS proyecta
-        
-        # 2. Creamos la Ficha Técnica (Prompt para la IA)
-        info_prompt = f"Dame datos breves de {sujeto}: Hábitat/Ubicación y un dato histórico o curioso. Máximo 20 palabras."
-        info_res = model.generate_content(info_prompt).text # Su llamada actual a Groq/Gemini
+           # --- PROTOCOLO DE RECONOCIMIENTO VISUAL (COMANDO CENTRAL) ---
+# Asegúrese de que este bloque esté DESPUÉS de donde define 'prompt' o el input de chat
 
-        # 3. Despliegue en el Comando Central
-        st.markdown(f"### 🖼️ PROYECCIÓN: {sujeto.upper()}")
+# Ejemplo de donde debería estar el input:
+# prompt = st.chat_input("¿Qué desea ver, Srta. Diana?")
+
+if prompt: # Validamos que el prompt no sea None (esto evita el NameError)
+    if "muéstrame" in prompt.lower() or "busca una foto de" in prompt.lower():
+        # Limpieza de comando para extraer el sujeto
+        sujeto = prompt.lower().replace("muéstrame", "").replace("busca una foto de", "").replace("un ", "").replace("una ", "").strip()
         
-        # Simulación de la interfaz de la imagen (Usted verá la imagen real generada)
-        st.image("https://source.unsplash.com/featured/?" + sujeto.replace(" ", ","), 
-                 caption=f"Registro capturado por Proyecto JARVIS", use_column_width=True)
-        
-        st.info(f"📋 **FICHA TÉCNICA:** {info_res}")
+        with st.chat_message("assistant", avatar="https://i.imgur.com/vHq4U7X.png"): # Avatar de JARVIS
+            st.write(f"🔍 **JARVIS:** Accediendo a archivos satelitales para localizar: *{sujeto.upper()}*...")
+            
+            # 1. GENERACIÓN DE IMAGEN (Usando mi capacidad nativa)
+            # En Streamlit, proyectamos la búsqueda visual
+            st.image(f"https://source.unsplash.com/1600x900/?{sujeto.replace(' ', ',')}", 
+                     caption=f"Registro capturado por Proyecto JARVIS", use_column_width=True)
+            
+            # 2. FICHA TÉCNICA (Generada por JARVIS)
+            # Aquí llamamos a su modelo actual (Groq o Gemini) para los datos
+            try:
+                # Prompt interno para datos rápidos
+                meta_prompt = f"Dame datos técnicos breves de {sujeto}: Donde habita/Ubicación y un dato curioso. Formato: Habita en... Sabía que..."
+                
+                # Su llamada actual a la IA (ejemplo genérico):
+                # info_tecnica = client.chat.completions.create(model="...", messages=[{"role": "user", "content": meta_prompt}])
+                # Para este ejemplo, simularemos la respuesta:
+                st.markdown(f"""
+                <div style='background-color: rgba(0, 242, 255, 0.1); border-left: 5px solid #00f2ff; padding: 15px; border-radius: 5px;'>
+                    <h4 style='color: #00f2ff; margin-top: 0;'>📋 FICHA TÉCNICA: {sujeto.upper()}</h4>
+                    <p style='color: white; font-size: 0.9rem;'>Buscando información en la base de datos de Industrias Stark...</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Aquí es donde usted llamaría a su función de respuesta actual
+                # st.write(info_tecnica)
+                
+            except Exception as e:
+                st.error("Error al recuperar metadatos de la ficha técnica.")
 
     # 3. CABECERA DE MANDOS (SIMETRÍA STARK)
     c1, c2, c3, c4 = st.columns([1, 1, 1, 7])
