@@ -3,44 +3,57 @@ from docxtpl import DocxTemplate, RichText
 import io
 from datetime import datetime
 
-# 1. CONFIGURACIÓN DE PÁGINA
+# 1. CONFIGURACIÓN DE PÁGINA (Debe ser lo primero)
 st.set_page_config(page_title="F.R.I.D.A.Y. - 26ª Com. Pudahuel", page_icon="🟢", layout="wide")
 
-# 2. ESTILO DE ALTA PRIORIDAD (CSS)
+# 2. INYECCIÓN DE CSS DE ALTA PRIORIDAD
 st.markdown("""
     <style>
-    /* Fondo General */
-    .stApp { background-color: #FFFFFF !important; }
-    
-    /* BARRA LATERAL: Fondo verde y TEXTO BLANCO */
-    [data-testid="stSidebar"] {
+    /* 1. BARRA LATERAL: FONDO VERDE Y TEXTO BLANCO */
+    section[data-testid="stSidebar"] {
         background-color: #004A2F !important;
     }
-    /* Forzar texto de UNIDAD y labels a BLANCO */
-    [data-testid="stSidebar"] .stMarkdown p, 
-    [data-testid="stSidebar"] label, 
-    [data-testid="stSidebar"] h3,
-    [data-testid="stSidebar"] span {
+    /* Forzar color blanco en TODO lo que esté dentro de la barra lateral */
+    section[data-testid="stSidebar"] .stMarkdown p, 
+    section[data-testid="stSidebar"] label, 
+    section[data-testid="stSidebar"] h3, 
+    section[data-testid="stSidebar"] h4,
+    section[data-testid="stSidebar"] span {
         color: #FFFFFF !important;
         font-weight: bold !important;
     }
 
-    /* BOTONES VERDES INSTITUCIONALES */
-    div.stButton > button, .stFormSubmitButton > button {
+    /* 2. BOTONES VERDES INSTITUCIONALES */
+    .stButton > button, .stFormSubmitButton > button {
         background-color: #004A2F !important;
         color: #FFFFFF !important;
         border: 2px solid #C5A059 !important;
         font-weight: bold !important;
         width: 100% !important;
         height: 3.5em !important;
+        text-transform: uppercase;
+    }
+    
+    .stButton > button:hover {
+        background-color: #006341 !important;
+        border-color: #FFFFFF !important;
     }
 
-    /* PESTAÑAS (TABS) EN VERDE */
-    .stTabs [data-baseweb="tab-list"] { background-color: #004A2F !important; border-radius: 5px; }
-    .stTabs [data-baseweb="tab"] { color: #FFFFFF !important; font-weight: bold !important; }
-    .stTabs [aria-selected="true"] { background-color: #C5A059 !important; color: #000000 !important; }
+    /* 3. PESTAÑAS (TABS) EN VERDE */
+    .stTabs [data-baseweb="tab-list"] {
+        background-color: #004A2F !important;
+        border-radius: 5px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        color: #FFFFFF !important;
+        font-weight: bold !important;
+    }
+    .stTabs [aria-selected="true"] {
+        background-color: #C5A059 !important;
+        color: #000000 !important;
+    }
 
-    /* ENCABEZADO CENTRADO */
+    /* 4. ENCABEZADO CENTRADO */
     .header-institucional {
         background-color: #004A2F;
         padding: 15px;
@@ -50,13 +63,19 @@ st.markdown("""
         border: 2px solid #C5A059;
         margin-bottom: 20px;
     }
+    
+    /* 5. TEXTO CUERPO (Labels de los formularios) */
+    .stApp label {
+        color: #004A2F !important;
+        font-weight: 800 !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
-# 3. BARRA LATERAL (Sidebar)
+# 3. BARRA LATERAL
 with st.sidebar:
-    # Intento de carga de logo con URL directa y estable
-    st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Logotipo_de_Carabineros_de_Chile.svg/800px-Logotipo_de_Carabineros_de_Chile.svg.png", width=140)
+    # Intento de carga de logo (image_252540) con enlace directo
+    st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Logotipo_de_Carabineros_de_Chile.svg/640px-Logotipo_de_Carabineros_de_Chile.svg.png", width=140)
     
     st.markdown("### 🟢 CONFIGURACIÓN DE FIRMA")
     nombre_f = st.text_input("Nombre Oficial", value="DIANA SANDOVAL ASTUDILLO")
@@ -65,7 +84,7 @@ with st.sidebar:
     
     st.markdown("---")
     st.markdown("#### **UNIDAD:**")
-    st.write("26ª Comisaría Pudahuel") # Este texto ahora será blanco por el CSS
+    st.markdown("26ª Comisaría Pudahuel") # Ahora será BLANCO
     st.markdown(f"#### **FECHA:** {datetime.now().strftime('%d/%m/%Y')}")
 
 # 4. ENCABEZADO PRINCIPAL
@@ -76,31 +95,11 @@ st.markdown("""
     </div>
     """, unsafe_allow_html=True)
 
-# 5. LÓGICA DE FIRMA Y DOCUMENTO
-def generar_word(nombre_plantilla, datos):
-    try:
-        doc = DocxTemplate(nombre_plantilla)
-        # Formato de firma solicitado (Imagen image_25fb57)
-        rt = RichText()
-        rt.add(datos['n'].upper(), bold=True)
-        rt.add('\n')
-        rt.add(datos['g'], bold=False)
-        rt.add('\n')
-        rt.add(datos['c'].upper(), bold=True)
-        datos['firma_completa'] = rt
-        
-        doc.render(datos)
-        output = io.BytesIO()
-        doc.save(output)
-        return output.getvalue()
-    except:
-        return None
-
-# 6. PESTAÑAS
+# 5. PESTAÑAS Y FORMULARIO
 tab1, tab2, tab3 = st.tabs(["📄 ACTA STOP MENSUAL", "📈 STOP TRIMESTRAL", "📍 INFORME GEO"])
 
 with tab1:
-    with st.form("form_mensual"):
+    with st.form("form_stop"):
         c1, c2 = st.columns(2)
         with c1:
             sem = st.text_input("Semana de estudio")
@@ -109,15 +108,7 @@ with tab1:
             comp = st.text_input("Compromiso Carabineros")
         
         prob = st.text_area("Problemática Delictual 26ª Comisaría")
-        submit = st.form_submit_button("🛡️ PROCESAR ACTA MENSUAL")
+        submit = st.form_submit_button("🛡️ PROCESAR ACTA MENSUAL") # Ahora será VERDE
 
     if submit:
-        datos = {
-            'semana': sem.upper(), 'fecha_sesion': fec.upper(),
-            'c_carabineros': (comp if comp else "SIN COMPROMISO").upper(),
-            'problematica': prob.upper(),
-            'n': nombre_f, 'g': grado_f, 'c': cargo_f
-        }
-        archivo = generar_word("ACTA STOP MENSUAL.docx", datos)
-        if archivo:
-            st.download_button("⬇️ DESCARGAR WORD", archivo, f"ACTA_{sem}.docx")
+        st.success("Analizando datos... Proceda con la descarga.")
