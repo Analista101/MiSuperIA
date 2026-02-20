@@ -2,113 +2,79 @@ import streamlit as st
 from docxtpl import DocxTemplate, RichText
 import io
 from datetime import datetime
+import os
 
-# 1. CONFIGURACIÓN DE PÁGINA (Debe ser lo primero)
+# 1. CONFIGURACIÓN DE PÁGINA
 st.set_page_config(page_title="F.R.I.D.A.Y. - 26ª Com. Pudahuel", page_icon="🟢", layout="wide")
 
-# 2. INYECCIÓN DE CSS DE ALTA PRIORIDAD
+# 2. INYECCIÓN DE CSS DE ALTA PRIORIDAD (Protocolo de Fuerza)
 st.markdown("""
     <style>
-    /* 1. BARRA LATERAL: FONDO VERDE Y TEXTO BLANCO */
-    section[data-testid="stSidebar"] {
+    /* FORZAR BARRA LATERAL */
+    [data-testid="stSidebar"] {
         background-color: #004A2F !important;
     }
-    /* Forzar color blanco en TODO lo que esté dentro de la barra lateral */
-    section[data-testid="stSidebar"] .stMarkdown p, 
-    section[data-testid="stSidebar"] label, 
-    section[data-testid="stSidebar"] h3, 
-    section[data-testid="stSidebar"] h4,
-    section[data-testid="stSidebar"] span {
+    /* FORZAR TEXTOS EN BARRA LATERAL A BLANCO */
+    [data-testid="stSidebar"] .stText, 
+    [data-testid="stSidebar"] .stMarkdown p, 
+    [data-testid="stSidebar"] label,
+    [data-testid="stSidebar"] h4 {
         color: #FFFFFF !important;
         font-weight: bold !important;
     }
 
-    /* 2. BOTONES VERDES INSTITUCIONALES */
+    /* FORZAR BOTONES VERDES */
     .stButton > button, .stFormSubmitButton > button {
         background-color: #004A2F !important;
         color: #FFFFFF !important;
         border: 2px solid #C5A059 !important;
         font-weight: bold !important;
         width: 100% !important;
-        height: 3.5em !important;
-        text-transform: uppercase;
-    }
-    
-    .stButton > button:hover {
-        background-color: #006341 !important;
-        border-color: #FFFFFF !important;
     }
 
-    /* 3. PESTAÑAS (TABS) EN VERDE */
-    .stTabs [data-baseweb="tab-list"] {
-        background-color: #004A2F !important;
-        border-radius: 5px;
-    }
-    .stTabs [data-baseweb="tab"] {
-        color: #FFFFFF !important;
-        font-weight: bold !important;
-    }
-    .stTabs [aria-selected="true"] {
-        background-color: #C5A059 !important;
-        color: #000000 !important;
-    }
-
-    /* 4. ENCABEZADO CENTRADO */
+    /* ENCABEZADO */
     .header-institucional {
         background-color: #004A2F;
-        padding: 15px;
+        padding: 10px;
         border-radius: 10px;
-        color: #FFFFFF !important;
+        color: white;
         text-align: center;
         border: 2px solid #C5A059;
-        margin-bottom: 20px;
-    }
-    
-    /* 5. TEXTO CUERPO (Labels de los formularios) */
-    .stApp label {
-        color: #004A2F !important;
-        font-weight: 800 !important;
     }
     </style>
     """, unsafe_allow_html=True)
 
 # 3. BARRA LATERAL
 with st.sidebar:
-    # Intento de carga de logo (image_252540) con enlace directo
-    st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Logotipo_de_Carabineros_de_Chile.svg/640px-Logotipo_de_Carabineros_de_Chile.svg.png", width=140)
+    # Verificamos si el logo existe localmente para evitar la imagen rota
+    if os.path.exists("logo.png"):
+        st.image("logo.png", width=140)
+    else:
+        # Respaldo si aún no sube el archivo
+        st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Logotipo_de_Carabineros_de_Chile.svg/300px-Logotipo_de_Carabineros_de_Chile.svg.png", width=130)
     
     st.markdown("### 🟢 CONFIGURACIÓN DE FIRMA")
-    nombre_f = st.text_input("Nombre Oficial", value="DIANA SANDOVAL ASTUDILLO")
+    nombre_f = st.text_input("Oficial", value="DIANA SANDOVAL ASTUDILLO")
     grado_f = st.text_input("Grado", value="C.P.R. Analista Social")
     cargo_f = st.text_input("Cargo", value="OFICINA DE OPERACIONES")
     
     st.markdown("---")
     st.markdown("#### **UNIDAD:**")
-    st.markdown("26ª Comisaría Pudahuel") # Ahora será BLANCO
+    st.write("26ª Comisaría Pudahuel") # Forzado a blanco por el CSS
     st.markdown(f"#### **FECHA:** {datetime.now().strftime('%d/%m/%Y')}")
 
-# 4. ENCABEZADO PRINCIPAL
-st.markdown("""
-    <div class="header-institucional">
-        <h2 style="color: white; margin:0; font-size: 1.8rem;">CARABINEROS DE CHILE</h2>
-        <h3 style="color: #C5A059; margin:0; font-size: 1.2rem;">SISTEMA F.R.I.D.A.Y. | PREFECTURA OCCIDENTE</h3>
-    </div>
-    """, unsafe_allow_html=True)
+# 4. CUERPO
+st.markdown('<div class="header-institucional"><h2>CARABINEROS DE CHILE</h2><h4>SISTEMA F.R.I.D.A.Y.</h4></div>', unsafe_allow_html=True)
 
-# 5. PESTAÑAS Y FORMULARIO
-tab1, tab2, tab3 = st.tabs(["📄 ACTA STOP MENSUAL", "📈 STOP TRIMESTRAL", "📍 INFORME GEO"])
+# Pestañas
+tab1, tab2 = st.tabs(["📄 ACTA STOP", "📊 OTROS"])
 
 with tab1:
-    with st.form("form_stop"):
-        c1, c2 = st.columns(2)
-        with c1:
-            sem = st.text_input("Semana de estudio")
-            fec = st.text_input("Fecha de sesión")
-        with c2:
-            comp = st.text_input("Compromiso Carabineros")
-        
-        prob = st.text_area("Problemática Delictual 26ª Comisaría")
-        submit = st.form_submit_button("🛡️ PROCESAR ACTA MENSUAL") # Ahora será VERDE
+    with st.form("form"):
+        sem = st.text_input("Semana")
+        prob = st.text_area("Problemática")
+        submit = st.form_submit_button("🛡️ PROCESAR ACTA") # Debe verse verde
 
     if submit:
-        st.success("Analizando datos... Proceda con la descarga.")
+        # Lógica de firma con formato de imagen (Negrita/Normal/Negrita)
+        st.success("Analizando...")
