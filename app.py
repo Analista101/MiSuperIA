@@ -1,572 +1,653 @@
+import streamlit as st
+import os
+import io, base64, random
+import docx
 import pandas as pd
-import re
-from datetime import datetime
-from docxtpl import DocxTemplate, InlineImage
-import io
-from docx.shared import Mm
-import matplotlib.pyplot as plt
-import textwrap
-import streamlit as st
-import json
-import os
+import PyPDF2
 import requests
-import streamlit as st
-import json
-import os
-import re
+import datetime
+import pytz
+import smtplib
+import urllib.parse
+from PIL import Image
+from groq import Groq
+from duckduckgo_search import DDGS
+from dotenv import load_dotenv
+from streamlit_mic_recorder import mic_recorder
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+from youtube_search import YoutubeSearch
+import feedparser
+import base64
+from io import BytesIO
 
-# --- 1. NÚCLEO DE MEMORIA Y CONFIGURACIÓN ---
-def inicializar_sistema_friday():
-    archivo_config = 'friday_settings.json'
-    if not os.path.exists(archivo_config):
-        base = {
-            "config": {"boton_limpiar": False, "mayusculas_auto": True},
-            "historial": []
-        }
-        with open(archivo_config, 'w') as f:
-            json.dump(base, f)
-        return base
+def get_base64_image(url):
     try:
-        with open(archivo_config, 'r') as f:
-            return json.load(f)
+        response = requests.get(url, timeout=5)
+        if response.status_code == 200:
+            # Convertimos la imagen a Base64
+            return base64.b64encode(response.content).decode()
     except:
-        return {"config": {"boton_limpiar": False}, "historial": []}
+        return None
+    return None
 
-def guardar_cambios_friday(datos):
-    with open('friday_settings.json', 'w') as f:
-        json.dump(datos, f)
+# --- 1. CONFIGURACIÓN DE SEGURIDAD Y HUD ---
+load_dotenv()
+st.set_page_config(
+    page_title="JARVIS - STARK INDUSTRIES", 
+    page_icon="https://img.icons8.com/neon/256/iron-man.png", 
+    layout="wide"
+)
 
-# Carga inicial de datos
-datos_maestros = inicializar_sistema_friday()
-config_nube = datos_maestros["config"]
-memoria_historia = datos_maestros["historial"]
+# Variables de Entorno
+ACCESS_PASSWORD = st.secrets.get("ACCESS_PASSWORD") or os.getenv("ACCESS_PASSWORD", "STARK_RECOVERY_2026")
+GROQ_API_KEY = st.secrets.get("GROQ_API_KEY") or os.getenv("GROQ_API_KEY")
+GMAIL_USER = st.secrets.get("GMAIL_USER") or os.getenv("GMAIL_USER")
+GMAIL_PASS = st.secrets.get("GMAIL_PASSWORD") or os.getenv("GMAIL_PASSWORD")
+HF_TOKEN = st.secrets.get("HF_TOKEN") or os.getenv("HF_TOKEN")
 
-# --- 2. CONFIGURACIÓN VISUAL Y CSS (EL CUERPO) ---
-if "key_carta" not in st.session_state:
-    st.session_state.key_carta = 0
+# Sincronización Manual de Reloj Atómico
+# Si America/Santiago falla, forzamos UTC-3 (Hora actual de Chile)
+ahora = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=-3)))
 
-if "memoria_historia" not in st.session_state:
-    st.session_state.memoria_historia = []
+fecha_actual = ahora.strftime("%d de febrero de 2026")
+hora_actual = ahora.strftime("%H:%M")
+
+# Proyección en la barra lateral
+st.sidebar.metric("Sincronización Santiago", hora_actual, delta="UTC-3")
+
+# --- 1. CONFIGURACIÓN DE PERSONALIDAD ACTUALIZADA ---
+PERSONALIDAD = (
+    f"Eres JARVIS, el asistente de la Srta. Diana. Tu tono es sofisticado e ingenioso. "
+    f"Usa terminología de Stark Industries. Responde siempre en ESPAÑOL. "
+    f"IMPORTANTE: Tienes la capacidad de proyectar videos de YouTube directamente en el HUD. "
+    f"Si se te solicita un video, confirma la proyección con elegancia (ej: 'Proyectando en el monitor principal, Srta. Diana'). "
+    f"Ubicación: Santiago, Chile. Fecha: {fecha_actual} | Hora: {hora_actual}."
+)
+
+# --- 2. ESTILOS HUD AVANZADOS (REACTOR V2 + NEON ENHANCEMENT + TABS FLEX) ---
+st.markdown("""
+    <style>
+    /* Fondo General (Protocolo Stark) */
+    .stApp {
+        background: #010409 !important;
+        background-image: 
+            radial-gradient(circle at 50% 30%, rgba(0, 242, 255, 0.15) 0% , transparent 60%),
+            url('https://wallpaperaccess.com/full/156094.jpg') !important;
+        background-size: cover !important;
+        background-blend-mode: overlay;
+    }
+            
+    /* BARRA LATERAL - EFECTO CÓDIGO BINARIO */
+    section[data-testid="stSidebar"] {
+        background-image: linear-gradient(rgba(1, 4, 9, 0.9), rgba(1, 4, 9, 0.9)), 
+            url('https://www.transparenttextures.com/patterns/carbon-fibre.png');
+        border-right: 2px solid #00f2ff;
+    }
+    section[data-testid="stSidebar"]::before {
+        content: "01101001 01101110 01110100 01100101 01101100 01101100 01101001 01100111 01100101 01101110 01100011 01100101";
+        font-family: 'Courier New', monospace;
+        font-size: 10px;
+        color: rgba(0, 242, 255, 0.2);
+        position: absolute;
+        width: 100%;
+        padding: 10px;
+        white-space: pre-wrap;
+        z-index: -1;
+    }
+
+    /* --- PROTOCOLO EXCLUSIVO PARA PESTAÑAS (TABS) --- */
+    /* Solo afecta al contenedor de pestañas superior */
+    div[data-testid="stTabs"] {
+        width: 100% !important;
+    }
+    
+    /* Solo afecta a los botones que son PESTAÑAS */
+    div[data-testid="stTabs"] button[data-baseweb="tab"] {
+        flex: 1 !important; 
+        min-width: 200px !important; 
+        height: 50px !important;
+        background-color: rgba(0, 242, 255, 0.05) !important;
+        border: 1px solid rgba(0, 242, 255, 0.2) !important;
+        color: #00f2ff !important;
+        font-family: 'Share Tech Mono', monospace;
+        transition: all 0.3s ease;
+    }
+
+    div[data-testid="stTabs"] button[aria-selected="true"] {
+        background-color: rgba(0, 242, 255, 0.15) !important;
+        border-bottom: 3px solid #00f2ff !important;
+        box-shadow: 0 0 15px rgba(0, 242, 255, 0.3);
+    }
+
+    /* Contenedores de Telemetría Moderna */
+    .telemetry-card {
+        background: rgba(0, 20, 30, 0.6) !important;
+        border-left: 3px solid #00f2ff !important;
+        padding: 10px;
+        margin-bottom: 10px;
+        border-radius: 0 8px 8px 0;
+        font-family: 'Share Tech Mono', monospace;
+    }
+
+    /* INPUTS Y UPLOADERS CON BORDE NEÓN */
+    div[data-baseweb="input"], div[data-baseweb="textarea"], .stFileUploader {
+        border: 1px solid #00f2ff !important;
+        box-shadow: 0 0 10px rgba(0, 242, 255, 0.2) !important;
+        border-radius: 8px !important;
+        background: rgba(0, 0, 0, 0.5) !important;
+    }
+
+    /* BOTONES ESTÁNDAR (Se mantienen sin flex) */
+    .stButton > button {
+        background: rgba(0, 242, 255, 0.1) !important;
+        color: #00f2ff !important;
+        border: 1px solid #00f2ff !important;
+        transition: all 0.3s ease;
+    }
+
+    /* REACTOR ARC V2 */
+    .reactor-container { 
+        position: relative; 
+        height: 300px; 
+        display: flex; 
+        justify-content: center; 
+        align-items: center; 
+        margin-top: -20px;
+    }
+    .reactor-aureola {
+        position: absolute;
+        width: 180px;
+        height: 180px;
+        border: 2px dashed #00f2ff;
+        border-radius: 50%;
+        animation: rotate-aureola 10s linear infinite;
+        opacity: 0.5;
+    }
+    .reactor-core { 
+        width: 100px; 
+        height: 100px; 
+        background: radial-gradient(circle, #fff 10%, #00f2ff 40%, transparent 70%); 
+        border-radius: 50%; 
+        box-shadow: 0 0 80px #00f2ff; 
+        animation: pulse-breathe 2s infinite alternate ease-in-out;
+        z-index: 2;
+    }
+    
+    @keyframes rotate-aureola { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    @keyframes pulse-breathe { 0% { transform: scale(0.9); opacity: 0.8; } 100% { transform: scale(1.1); opacity: 1; } }
+    </style>
+
+    <div class="reactor-container">
+        <div class="reactor-aureola"></div>
+        <div class="reactor-core"></div>
+    </div>
+""", unsafe_allow_html=True)
 
 st.markdown("""
     <style>
-    .stApp { background-color: #D1D8C4 !important; }
-    .section-header { 
-        background-color: #004A2F !important; color: white; padding: 10px; 
-        border-radius: 5px; font-weight: bold; border-left: 10px solid #C5A059; 
-        margin-bottom: 20px; 
+    /* 1. ESTABILIZAR EL ÁREA DE COMANDOS */
+    div[data-testid="stChatInput"] {
+        position: fixed;
+        bottom: 30px !important;
+        left: 330px !important; 
+        width: calc(85% - 350px) !important;
+        z-index: 1000 !important;
+        background: rgba(1, 4, 9, 0.9) !important;
+        border-radius: 15px;
+        border: 1px solid #00f2ff;
     }
-    .tabla-carta { 
-        width: 100%; border: 2px solid #004A2F; border-collapse: collapse; 
-        background-color: white; color: black !important; font-size: 12px; 
-        text-transform: uppercase; 
+
+    /* 2. FORZAR LA APARICIÓN DEL MICRÓFONO */
+    /* Lo moveremos al lado IZQUIERDO de la barra para que no choque con el botón de enviar */
+    .stMicRecorder {
+        position: fixed;
+        bottom: 37px !important;
+        left: 340px !important; /* Justo al inicio de la barra */
+        z-index: 99999 !important; /* Prioridad absoluta sobre todo el HUD */
     }
-    .tabla-carta td { border: 1.5px solid #004A2F; padding: 8px; font-weight: bold; }
-    .celda-titulo { background-color: #4F6228 !important; color: white !important; text-align: center; }
+
+    /* 3. ESTILO DEL BOTÓN (Círculo Cian para visibilidad total) */
+    .stMicRecorder button {
+        background: #00f2ff !important;
+        color: #000 !important;
+        border-radius: 50% !important;
+        width: 38px !important;
+        height: 38px !important;
+        border: 2px solid #fff !important;
+    }
+
+    /* 4. AJUSTE DE TEXTO PARA NO TAPAR EL MICRO */
+    div[data-testid="stChatInput"] textarea {
+        padding-left: 50px !important;
+    }
+
+    .main .block-container {
+        padding-bottom: 180px !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 3. MOTOR DE AUTONOMÍA ---
-def aplicar_evolucion_universal(orden_usuario):
-    if not orden_usuario: return False
-    orden = orden_usuario.upper()
-    actualizado = False
-    
-    if "LIMPIAR" in orden or "BOTON DE LIMPIEZA" in orden:
-        config_nube["boton_limpiar"] = True
-        actualizado = True
-    
-    if "QUITA EL BOTON" in orden or "BORRA LIMPIAR" in orden:
-        config_nube["boton_limpiar"] = False
-        actualizado = True
+# --- 3. AUTENTICACIÓN ---
+if "autenticado" not in st.session_state: st.session_state["autenticado"] = False
+if not st.session_state["autenticado"]:
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.subheader("🔐 ACCESO RESTRINGIDO")
+        pass_in = st.text_input("Código de Identificación:", type="password")
+        if st.button("DESBLOQUEAR"):
+            if pass_in == ACCESS_PASSWORD: st.session_state["autenticado"] = True; st.rerun()
+    st.stop()
 
-    if actualizado:
-        memoria_historia.append(f"Protocolo: {orden}")
-        guardar_cambios_friday({"config": config_nube, "historial": memoria_historia})
-        return True
-    return False
+# --- 4. CONEXIONES IA (RECALIBRADO DE MODELO) ---
+client = Groq(api_key=GROQ_API_KEY)
+# Cambiamos a un modelo más ligero para evitar el Rate Limit
+modelo_texto = "llama-3.1-8b-instant" 
+modelo_vision_scout = "meta-llama/llama-4-scout-17b-16e-instruct"
 
-# --- 4. INTERFAZ DE USUARIO ---
-st.markdown('<div class="section-header">🧠 FRIDAY: COMANDO CENTRAL DE INTELIGENCIA</div>', unsafe_allow_html=True)
+def generar_pdf_reporte(titulo, contenido):
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=letter)
+    c.setFont("Helvetica-Bold", 16); c.drawString(100, 750, f"STARK INDUSTRIES - {titulo}")
+    text_object = c.beginText(100, 700); text_object.setFont("Helvetica", 10)
+    for line in contenido.split('\n'): text_object.textLine(line[:95])
+    c.drawText(text_object); c.showPage(); c.save(); buffer.seek(0)
+    return buffer
 
-with st.expander("🗣️ CONSOLA DE ÓRDENES", expanded=True):
-    col_in, col_ev = st.columns([4, 1])
-    nueva_orden = col_in.text_input("INSTRUCCIÓN:", placeholder="Friday, activa el botón de limpieza...")
-    if col_ev.button("🚀 EVOLUCIONAR"):
-        if nueva_orden:
-            # Aquí usamos la función que definimos en el núcleo anterior
-            if aplicar_evolucion_universal(nueva_orden):
-                st.success("SISTEMA ACTUALIZADO.")
-                st.rerun()
+def extraer_url_video(texto):
+    """Protocolo de interceptación de enlaces de video"""
+    # Si el usuario pega una URL directamente
+    if "youtube.com/watch?v=" in texto or "youtu.be/" in texto:
+        import re
+        enlace = re.search(r'(https?://\S+)', texto)
+        return enlace.group(0) if enlace else None
+    return None
 
-    
-# --- 1. CONFIGURACIÓN VISUAL (SISTEMA STARK INDUSTRIES) ---
-# Nota: st.set_page_config ya se llamó en el núcleo, así que aquí solo definimos el estilo.
+def buscar_video_youtube(busqueda):
+    """Protocolo de búsqueda activa en la red de YouTube"""
+    from youtube_search import YoutubeSearch
+    import json
+    try:
+        results = YoutubeSearch(busqueda, max_results=1).to_json()
+        data = json.loads(results)
+        if data['videos']:
+            video_id = data['videos'][0]['id']
+            return f"https://www.youtube.com/watch?v={video_id}"
+    except Exception as e:
+        return None
+    return None
 
-st.markdown("""
-    <style>
-    /* El ADN Visual de FRIDAY */
-    .stApp { background-color: #D1D8C4 !important; }
-    .stTabs [data-baseweb="tab-list"] { background-color: #004A2F !important; }
-    
-    .section-header { 
-        background-color: #004A2F !important; 
-        color: white; padding: 10px; border-radius: 5px; 
-        font-weight: bold; border-left: 10px solid #C5A059; 
-        margin-bottom: 20px; 
-    }
+# --- 6. SIDEBAR - MONITOR DE RED MODULAR (V11 - PRONÓSTICO EXTENDIDO) ---
+with st.sidebar:
+    st.markdown("<h3 style='color: #00f2ff; text-align: center; letter-spacing: 2px;'>📡 MONITOR DE RED</h3>", unsafe_allow_html=True)
+    st.markdown("---")
 
-    /* Estilo de la Tabla de Situación (Blanco/Verde Institucional) */
-    .tabla-carta { 
-        width: 100%; border: 2px solid #004A2F; 
-        border-collapse: collapse; background-color: white; 
-        color: black !important; font-family: 'Arial', sans-serif; 
-        font-size: 12px; text-transform: uppercase; 
-    }
-    .tabla-carta td { border: 1.5px solid #004A2F; padding: 8px; font-weight: bold; }
-    .celda-titulo { background-color: #4F6228 !important; color: white !important; text-align: center !important; font-size: 16px !important; }
-    .celda-sub { background-color: #EBF1DE !important; text-align: center !important; }
-    .celda-header-perfil { background-color: #D7E3BC !important; text-align: center !important; }
-    .mini-tabla td { border: none !important; padding: 3px !important; }
-    .border-inner-r { border-right: 1.5px solid #004A2F !important; width: 45%; }
-    .border-inner-t { border-top: 1.5px solid #004A2F !important; }
-    </style>
-    """, unsafe_allow_html=True)
-
-# --- 2. PROTOCOLO DE ESTADO EN BARRA LATERAL ---
-# Esto reemplaza su código de sidebar para que use las variables del núcleo
-if 'memoria_historia' in globals():
-    st.sidebar.markdown(f"### 🛡️ NÚCLEO FRIDAY")
-    if memoria_historia:
-        st.sidebar.success(f"✅ {len(memoria_historia)} LECCIONES ACTIVAS")
-    else:
-        st.sidebar.warning("⚠️ ESPERANDO ÓRDENES")
-
-# Función de limpieza optimizada para el sistema de Keys
-def limpiar_solo_carta():
-    st.session_state.key_carta += 1
-    # No necesitamos st.rerun() aquí si se llama desde un botón que ya refresca
-
-# --- 2. MOTOR DE INTELIGENCIA FRIDAY (CARTA DE SITUACIÓN) ---
-# 1. Primero la función de apoyo (fuera de la otra)
-def extract_value(texto, patron):
-    import re
-    match = re.search(patron, texto)
-    return match.group(1).strip() if match else None
-
-# 2. Luego su función de procesamiento
-def procesar_relato_ia(texto):
-    # Limpieza inicial y normalización
-    texto_u = texto.upper().replace("Aï¿½OS", "AÑOS").replace("N°", "NRO")
-    an_actual = 2026 
-    
-    # Aquí el resto de su código...
-    # Ahora cuando llame a extract_value(texto_u, patron), funcionará perfecto.
-
-    # 1. TIPIFICACIÓN
-    tip_match = re.search(r'CODIGO DELITO\s?:\s?([^\n]+)', texto_u)
-    tipificacion = tip_match.group(1).strip() if tip_match else "ROBO DE ACCESORIOS DE VEHICULOS"
-
-    # 2. TRAMO HORARIO
-    h_delito = re.search(r'HORA DEL DELITO\s?:\s?(\d{1,2})', texto_u)
-    tramo_hora = f"{int(h_delito.group(1)):02d}:00 A {(int(h_delito.group(1))+1)%24:02d}:00 HRS" if h_delito else "00:00 A 01:00 HRS"
-
-    # 3. LUGAR DE OCURRENCIA
-    dir_match = re.search(r'DIRECCIÓN\s?:\s?([^\n\r]+)', texto_u)
-    lugar_ocurrencia = dir_match.group(1).strip() if dir_match else "RUTA 68"
-
-    # 4. FUNCIÓN INTERNA: BASE LEGAL (Corregida Indentación)
-    def obtener_base_legal(delito):
-        # Diccionario dinámico de leyes chilenas (Base: Código Penal)
-        leyes = {
-            "ROBO CON INTIMIDACION": "Art. 436 inciso 1º del Código Penal",
-            "ROBO EN LUGAR NO HABITADO": "Art. 442 del Código Penal",
-            "ROBO DE ACCESORIOS": "Art. 443 del Código Penal (Ley 20.931)",
-            "HURTO": "Art. 446 del Código Penal",
-            "RECEPTACION": "Art. 456 bis A del Código Penal"
-        }
-        
-        delito_u = delito.upper()
-        for clave, articulo in leyes.items():
-            if clave in delito_u:
-                return articulo
-        return "Artículo a determinar según relato (Revisión requerida)"
-
-    # Ejecución de base legal
-    base_legal_resultado = obtener_base_legal(tipificacion)
-
-    # 5. PERFIL VÍCTIMA (PRIMER AFECTADO)
-    if re.search(r'SEXO\s?:\s?MASCULINO', texto_u) or "SR. " in texto_u:
-        gv = "MASCULINO"
-    elif re.search(r'SEXO\s?:\s?FEMENINO', texto_u) or "SRA. " in texto_u:
-        gv = "FEMENINO"
-    else:
-        gv = "NO INDICA"
-    
-    ev = "NO INDICA"
-    f_nac_vic = re.search(r'FECHA NACIMIENTO\s?:\s?(\d{2})[-/](\d{2})[-/](\d{4})', texto_u)
-    if f_nac_vic:
-        edad = an_actual - int(f_nac_vic.group(3))
-        lim_inf = (edad // 5) * 5
-        ev = f"DE {lim_inf} A {lim_inf + 5} AÑOS"
-    
-    tl = "VIA PUBLICA"
-    if any(x in texto_u for x in ["SERVICENTRO", "SHELL", "COPEC"]): tl = "SERVICENTRO"
-    elif "DOMICILIO" in texto_u: tl = "DOMICILIO PARTICULAR"
-
-    # 6. ESPECIES
-    items = []
-    segmento_especies = re.search(r'(?:BIENES SUSTRAIDOS|ESPECIES SUSTRAIDAS|SUSTRACCION DE).*?(?=TESTIGOS|AVALUADOS|CITACION|$)', texto_u, re.DOTALL)
-    texto_especies = segmento_especies.group(0) if segmento_especies else texto_u
-
-    if "COMPUTADOR" in texto_especies:
-        marca_pc = extract_value(texto_especies, r'MARCA\s+([A-Z]+)') or "LENOVO"
-        items.append(f"01 COMPUTADOR PORTATIL {marca_pc}")
-    if "TELEFONO" in texto_especies or "CELULAR" in texto_especies:
-        marca_tel = extract_value(texto_especies, r'MARCA\s+([A-Z]+)') or "HUAWEI"
-        items.append(f"01 TELEFONO CELULAR {marca_tel}")
-    
-    if "VEHICULO" in texto_u:
-        marca_v = extract_value(texto_u, r'MARCA\s+([A-Z]+)') or "NO INDICADA"
-        patente_v = extract_value(texto_u, r'PATENTE\s+([A-Z0-9\-]+)') or "S/P"
-        if "ROBO DE VEHICULO" in tipificacion:
-            items.append(f"VEHICULO PARTICULAR MARCA {marca_v} PATENTE {patente_v}")
-
-    esp = " / ".join(items) if items else "ACCESORIOS VARIOS"
-
-    # 7. DELINCUENTE
-    gd = "MASCULINO" if any(x in texto_u for x in ["SUJETO", "INDIVIDUO", "HOMBRE"]) else "NO INDICA"
-    ed = "NO INDICA"
-    cd = "VESTIMENTA OSCURA" if "OSCURA" in texto_u else "NO INDICA"
-    md = "VEHICULO" if "VEHICULO" in texto_u and "A PIE" not in texto_u else "A PIE"
-
-    # 8. RESUMEN ADAPTATIVO (MODUS OPERANDI)
-    if any(x in texto_u for x in ["ESTACIONADO", "APARCADO", "DEJO SU"]): est_v = "MANTENÍA SU VEHÍCULO ESTACIONADO"
-    elif any(x in texto_u for x in ["CAMINANDO", "A PIE"]): est_v = "TRANSITABA A PIE"
-    else: est_v = "SE ENCONTRABA"
-
-    if any(x in texto_u for x in ["FRACTURARON", "VIDRIO"]): acc_v = "TRAS FRACTURAR UN VENTANAL DEL MÓVIL, SUSTRAJERON"
-    elif any(x in texto_u for x in ["INTIMIDÓ", "AMENAZÓ"]): acc_v = "MEDIANTE INTIMIDACIÓN, LOGRARON SUSTRAER"
-    else: acc_v = "PROCEDIERON A LA SUSTRACCIÓN DE"
-
-    desc = "AL REGRESAR AL LUGAR"
-    if "PERCATANDOSE" in texto_u: desc = "AL PERCATARSE DE LA SITUACIÓN"
-    elif "INFORMANDOLE" in texto_u: desc = "TRAS SER ALERTADO POR TERCEROS"
-
-    mo_final = f"EN CIRCUNSTANCIAS QUE LA VÍCTIMA {est_v} EN {tl}, {desc} NOTÓ QUE SUJETOS DESCONOCIDOS {acc_v} {esp}, PARA LUEGO DARSE A LA FUGA."
-
-    # Retornamos 13 valores (incluyendo base legal al final)
-    return tipificacion, tramo_hora, lugar_ocurrencia, gv, ev, tl, esp, gd, ed, cd, md, mo_final.upper(), base_legal_resultado
-
-# --- 3. INTERFAZ ---
-st.markdown('<div class="section-header">🧠 FRIDAY: COMANDO CENTRAL DE INTELIGENCIA</div>', unsafe_allow_html=True)
-
-t1, t2, t3, t4 = st.tabs(["📄 ACTA STOP", "📈 STOP TRIMESTRAL", "📍 INFORME GEO", "📋 CARTA DE SITUACIÓN"])
-
-with t1:
-    st.markdown('<div class="section-header">📝 ACTA STOP MENSUAL</div>', unsafe_allow_html=True)
-    with st.form("form_acta"):
-        c1, c2 = st.columns(2)
-        c1.text_input("Semana de estudio", value="SEMANA 08")
-        c1.text_input("Fecha de sesión", value="24-02-2026")
-        c2.text_input("Compromiso Carabineros", value="INCREMENTAR PATRULLAJES")
-        st.text_area("Problemática Delictual 26ª Comisaría", value="AUMENTO DE ROBO CON INTIMIDACIÓN EN SECTOR CUADRANTE 231")
-        st.text_input("Nombre", value="DIANA SANDOVAL ASTUDILLO")
-        st.text_input("Grado", value="C.P.R. Analista Social")
-        st.text_input("Cargo", value="OFICINA DE OPERACIONES")
-        st.form_submit_button("🛡️ GENERAR ACTA")
-
-with t2:
-    st.markdown('<div class="section-header">📈 STOP TRIMESTRAL: COMPROMISOS Y ACUERDOS</div>', unsafe_allow_html=True)
-    
-    # Iniciamos el formulario
-    with st.form("form_trim"):
-        ct1, ct2 = st.columns(2)
-        ct1.text_input("Periodo Trimestral", value="DIC-ENE-FEB")
-        ct1.text_input("Fecha Sesión STOP", value="24-02-2026")
-        ct2.text_input("Unidad / Repartición", value="26ª COMISARÍA PUDAHUEL")
-        
-        ct1.text_input("Nombre Asistente", value="INDICAR NOMBRE")
-        ct1.text_input("Grado Asistente", value="INDICAR GRADO")
-       
-        st.markdown('---')
-        st.markdown('**🖋️ PIE DE FIRMA - VALIDACIÓN DE ACTA**')
-        
-        col_f1, col_f2 = st.columns(2)
-        # Usamos col_f2 para mantener su diseño original
-        col_f2.text_input("Analista Responsable", value="DIANA SANDOVAL ASTUDILLO")
-        col_f2.text_input("Grado Analista", value="C.P.R. Analista Social")
-        col_f2.text_input("Cargo Analista", value="OFICINA DE OPERACIONES")
-        
-        submit_trim = st.form_submit_button("🛡️ GENERAR TRIMESTRAL")
-
-    if submit_trim:
-        st.info("Sistemas FRIDAY: Procesando Acta Trimestral...")
-       
-# 1. FUNCIÓN DE TABLA MEJORADA (SIN CORTES Y DISEÑO INSTITUCIONAL)
-def crear_tabla_profesional(df, nombre_archivo, ancho_pulgadas=10):
-    alto_pulgadas = (len(df) * 0.5) + 0.8
-    fig, ax = plt.subplots(figsize=(ancho_pulgadas, alto_pulgadas))
-    ax.axis('off')
-
-    tabla = ax.table(
-        cellText=df.values,
-        colLabels=df.columns,
-        cellLoc='center',
-        loc='center',
-        colColours=["#1E7421"] * len(df.columns) 
-    )
-
-    tabla.auto_set_font_size(False)
-    tabla.set_fontsize(11)
-    tabla.scale(1, 2) 
-
-    for (row, col), cell in tabla.get_celld().items():
-        cell.set_edgecolor('black')
-        cell.set_linewidth(1.5)
-        if row == 0:
-            cell.set_text_props(weight='bold', color='white')
-
-    plt.savefig(nombre_archivo, bbox_inches='tight', dpi=200, pad_inches=0.1)
-    plt.close()
-
-# --- ESTRUCTURA DE LA PESTAÑA INFORME GEO ---
-with t3:
-    st.markdown('<div class="section-header">📍 INFORME GEO: GENERACIÓN PROFESIONAL</div>', unsafe_allow_html=True)
-    
-    with st.form("form_geo_final"):
-        col1, col2, col3 = st.columns(3)
-        # DOE y Fechas
-        doe_n = col1.text_input("DOE N°", value="248812153")
-        doe_fecha = col1.text_input("Fecha DOE", value="03-03-2026")
-        inf_fecha = col1.text_input("Fecha Informe", value="03 de marzo de 2026")
-        
-        # Funcionario
-        funcionario = col2.text_input("Funcionario", value="JUAN ANDRES URRUTIA LOBOS")
-        grado = col2.text_input("Grado", value="SARGENTO 2°")
-        unidad = col2.text_input("Unidad", value="GRUPO DE ADIESTRAMIENTO CANINO")
-        
-        # Ubicación
-        domicilio = col3.text_input("Domicilio", value="PASAJE PILCOMAYO 8501")
-        subcomisaria = col3.text_input("Subcomisaría", value="26A COMISARIA PUDAHUEL")
-        cuadrante = col3.text_input("Cuadrante", value="232-A")
-        
-        cp1, cp2, cp3 = st.columns([2, 1, 1])
-        periodo_txt = cp1.text_input("Periodo", value="03-12-2025 al 03-03-2026")
-        mapa_img = cp2.file_uploader("SUBIR MAPA SAIT", type=['png', 'jpg'])
-        excel_geo = cp3.file_uploader("SUBIR EXCEL/CSV", type=['xlsx', 'csv'])
-        
-        submit_geo = st.form_submit_button("🛡️ GENERAR INFORME GEO")
-
-## --- FUNCIÓN DE SOPORTE (Asegúrese de que esté definida antes del bloque principal) ---
-def ajustar_texto_largo(texto, ancho=35):
-    """Divide el texto para evitar desbordamientos en las tablas del informe."""
-    import textwrap
-    if not isinstance(texto, str):
-        texto = str(texto)
-    return "\n".join(textwrap.wrap(texto, width=ancho))
-
-# --- LÓGICA DE PROCESAMIENTO (Fuera del Form, dependiente del botón) ---
-if submit_geo:
-    if not mapa_img or not excel_geo:
-        st.error("❌ Faltan archivos (Mapa o Excel) para procesar.")
-    else:
+    # MÓDULO 1: ALERTAS GLOBALES (NOTICIAS)
+    with st.expander("🌐 ALERTAS GLOBALES", expanded=False):
         try:
-            # 1. PROCESAMIENTO DE DATOS
-            # Soporte para CSV y Excel con limpieza de cabeceras
-            df = pd.read_csv(excel_geo) if excel_geo.name.endswith('csv') else pd.read_excel(excel_geo)
-            df.columns = [c.upper().strip() for c in df.columns]
-            total_casos = len(df)
-
-            # Inicializar variables de seguridad
-            resumen_dmcs = pd.DataFrame()
-            dia_frec, hora_frec = "NO IDENTIFICADO", "NO IDENTIFICADO"
-
-            if 'DELITO' in df.columns:
-                df['DELITO'] = df['DELITO'].astype(str).str.upper()
-                resumen_dmcs = df['DELITO'].value_counts().reset_index()
-                resumen_dmcs.columns = ['TIPO DE DELITO (DMCS)', 'CANTIDAD']
-                
-                # Aplicación corregida de la función de ajuste (usando 'ancho')
-                resumen_dmcs_tabla = resumen_dmcs.copy()
-                resumen_dmcs_tabla['TIPO DE DELITO (DMCS)'] = resumen_dmcs_tabla['TIPO DE DELITO (DMCS)'].apply(
-                    lambda x: ajustar_texto_largo(x, ancho=35)
-                )
-                crear_tabla_profesional(resumen_dmcs_tabla, "img_delitos.png", ancho_pulgadas=12)
-
-            if 'DIA' in df.columns and 'RANGO HORA' in df.columns:
-                resumen_tramos = df.groupby(['DIA', 'RANGO HORA']).size().reset_index(name='CANTIDAD')
-                resumen_tramos = resumen_tramos.sort_values(by=['CANTIDAD', 'DIA'], ascending=[False, True]).head(10)
-                resumen_tramos.columns = ['DÍA', 'TRAMO HORARIO', 'CANTIDAD']
-                
-                resumen_tramos_tabla = resumen_tramos.copy()
-                resumen_tramos_tabla['TRAMO HORARIO'] = resumen_tramos_tabla['TRAMO HORARIO'].apply(
-                    lambda x: ajustar_texto_largo(x, ancho=20)
-                )
-                crear_tabla_profesional(resumen_tramos_tabla, "img_tramos.png", ancho_pulgadas=10)
-                
-                dia_frec = df['DIA'].mode()[0] if not df['DIA'].empty else "N/A"
-                hora_frec = df['RANGO HORA'].mode()[0] if not df['RANGO HORA'].empty else "N/A"
+            import feedparser
+            import requests
+            query = "terremoto+OR+incendio+OR+tsunami+OR+emergencia"
+            url_news = f"https://news.google.com/rss/search?q={query}&hl=es-419&gl=CL&ceid=CL:es-419"
+            headers = {'User-Agent': 'Mozilla/5.0'}
+            resp = requests.get(url_news, headers=headers, timeout=5)
+            feed = feedparser.parse(resp.content)
             
-            # Variables para el análisis
-            delito_principal = resumen_dmcs.iloc[0]['TIPO DE DELITO (DMCS)'] if not resumen_dmcs.empty else "DMCS"
-            cantidad_real = resumen_dmcs.iloc[0]['CANTIDAD'] if not resumen_dmcs.empty else 0
+            if feed.entries:
+                for entry in feed.entries[:3]:
+                    titulo = entry.title.rsplit(' - ', 1)[0]
+                    st.markdown(f"""
+                        <div style='border-left: 2px solid #ff4b4b; padding-left: 8px; margin-bottom: 10px; background: rgba(255,0,0,0.05);'>
+                            <div style='color: #ff4b4b; font-size: 0.6rem; font-weight: bold;'>{entry.published[:12]}</div>
+                            <div style='color: #ffffff; font-size: 0.72rem; line-height: 1.1;'>{titulo}</div>
+                            <a href='{entry.link}' target='_blank' style='color: #00f2ff; font-size: 0.6rem; text-decoration: none;'>[ VER SEÑAL ]</a>
+                        </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.write("No se detectan anomalías.")
+        except:
+            st.error("Error de enlace satelital.")
 
-            analisis_ia = (f"Tras el análisis georreferencial en el cuadrante {cuadrante}, se registran {total_casos} eventos DMCS en el periodo. "
-                           f"El delito con mayor prevalencia es '{delito_principal}' con {cantidad_real} casos registrados. "
-                           f"La criticidad se concentra los días {dia_frec} en el tramo {hora_frec}. "
-                           f"Se sugiere intensificar patrullajes preventivos en el radio de 300 mts de {domicilio}.")
+    # MÓDULO 2: TELEMETRÍA SÍSMICA
+    with st.expander("🛰️ REGISTRO SÍSMICO", expanded=False):
+        st.markdown(f"""
+            <div class='telemetry-card' style='border-left: 4px solid #00f2ff; padding: 10px;'>
+                <div class='telemetry-value' style='font-size: 1rem;'>6.2 Mw - COQUIMBO</div>
+                <div style='color: rgba(0,242,255,0.7); font-size: 0.7rem; margin-top: 5px;'>
+                    📅 {datetime.datetime.now().strftime("%d/%m/%Y")}<br>
+                    📍 42km O de Tongoy<br>
+                    🌊 SIN ALERTA DE TSUNAMI
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
 
-            # 2. GENERACIÓN DEL DOCUMENTO WORD
-            doc = DocxTemplate("INFORME GEO.docx")
-            o_mapa = InlineImage(doc, mapa_img, width=Mm(150))
-            o_tabla1 = InlineImage(doc, "img_delitos.png", width=Mm(145))
-            o_tabla2 = InlineImage(doc, "img_tramos.png", width=Mm(130))
+    # MÓDULO 3: CONTROL DE INCENDIOS
+    with st.expander("🔥 REPORTE DE INCENDIOS", expanded=False):
+        estado_inc = "EN COMBATE"
+        color_inc = "#ff4b4b" if estado_inc == "FUERA DE CONTROL" else "#ff8800"
+        st.markdown(f"""
+            <div class='telemetry-card' style='border-left: 4px solid {color_inc}; padding: 10px;'>
+                <div class='telemetry-value' style='font-size: 1rem;'>SECTOR: NOVICIADO</div>
+                <div style='margin-top: 5px;'>
+                    <span style='background: {color_inc}; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; font-weight: bold;'>{estado_inc}</span>
+                </div>
+                <div class='telemetry-sub' style='font-size: 0.7rem; margin-top: 8px;'>
+                    Pudahuel bajo monitoreo aéreo activo.
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
 
-            # Manejo seguro del periodo
-            p_split = periodo_txt.split(" al ")
-            p_inicio = p_split[0] if len(p_split) > 0 else "INICIO"
-            p_fin = p_split[1] if len(p_split) > 1 else "FIN"
-
-            contexto = {
-                "domicilio": domicilio.upper(), "jurisdiccion": subcomisaria.upper(), "fecha_actual": inf_fecha.upper(),
-                "doe": doe_n, "fecha_doe": doe_fecha, "grado_solic": grado.upper(),
-                "solicitante": funcionario.upper(), "unidad_solic": unidad.upper(),
-                "periodo_inicio": p_inicio, "periodo_fin": p_fin,
-                "cuadrante": cuadrante, "mapa": o_mapa, "total_dmcs": total_casos,
-                "tabla": o_tabla1, "tabla_horarios": o_tabla2,
-                "dia_max": dia_frec, "hora_max": hora_frec, "conclusion_ia": analisis_ia.upper()
-            }
-
-            doc.render(contexto)
+   # MÓDULO 4: CLIMA SEMANAL (PUDAHUEL) - PROTOCOLO DE RENDERIZADO SEGURO
+    with st.expander("🌤️ PRONÓSTICO SEMANAL: PUDAHUEL", expanded=False):
+        dias = ["Sáb", "Dom", "Lun", "Mar", "Mié", "Jue", "Vie"]
+        temps = ["32°", "31°", "29°", "33°", "34°", "30°", "28°"]
+        iconos = ["☀️", "☀️", "🌤️", "🔥", "🔥", "🌤️", "☀️"]
+        
+        # Usamos columnas nativas de Streamlit para asegurar que no haya errores de HTML
+        col1, col2, col3 = st.columns(3)
+        
+        for idx, (d, t, i) in enumerate(zip(dias, temps, iconos)):
+            # Distribuimos los días en las 3 columnas de forma automática
+            target_col = [col1, col2, col3][idx % 3]
             
-            # Guardado en memoria
-            output = io.BytesIO()
-            doc.save(output)
-            output.seek(0)
+            with target_col:
+                st.markdown(f"""
+                    <div style='text-align: center; background: rgba(0,242,255,0.05); 
+                                padding: 5px; border-radius: 5px; border: 1px solid rgba(0,242,255,0.1);
+                                margin-bottom: 5px;'>
+                        <div style='font-size: 0.6rem; color: #888;'>{d}</div>
+                        <div style='font-size: 0.9rem;'>{i}</div>
+                        <div style='font-size: 0.8rem; color: #00f2ff; font-weight: bold;'>{t}</div>
+                    </div>
+                """, unsafe_allow_html=True)
+        
+        st.markdown("---")
+        st.markdown("""
+            <div style='text-align: center;'>
+                <span style='color: #f9d71c; font-size: 0.7rem;'>⚠️ ALERTA UV: EXTREMO</span><br>
+                <span style='color: #888; font-size: 0.65rem;'>SENSACIÓN: 36°C</span>
+            </div>
+        """, unsafe_allow_html=True)
 
-            st.success("✅ Informe generado exitosamente.")
-            st.download_button(
-                label="📥 DESCARGAR INFORME OFICIAL",
-                data=output,
-                file_name=f"Informe_Geo_{cuadrante}.docx",
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            )
+        st.markdown("---")
+    if st.button("🔄 REFRESCAR SISTEMAS", use_container_width=True):
+        st.rerun()
 
-        except Exception as e:
-            st.error(f"Error en el motor FRIDAY: {e}")
+    st.caption(f"Sincronización: {datetime.datetime.now().strftime('%H:%M:%S')}")
 
-# --- PESTAÑA 4: CARTA DE SITUACIÓN (ESTILO Y LÓGICA FINAL) ---
-with t4:
-    st.markdown('<div class="section-header">📋 GENERADOR DE CARTA DE SITUACIÓN</div>', unsafe_allow_html=True)
-    
-    if 'key_relato' not in st.session_state:
-        st.session_state.key_relato = 0
+# --- 7. PESTAÑAS ---
+tabs = st.tabs(["🗨️ COMANDO CENTRAL", "📊 ANÁLISIS", "✉️ COMUNICACIONES", "🎨 LABORATORIO"])
 
-    relato_in = st.text_area(
-        "PEGUE EL PARTE POLICIAL AQUÍ:", 
-        height=250, 
-        key=f"relato_area_{st.session_state.key_relato}"
-    )
-    
-    col_btn1, col_btn2 = st.columns([1, 1])
-    with col_btn1:
-        enviar = st.button("⚡ GENERAR ANÁLISIS TÁCTICO")
-    with col_btn2:
-        if st.button("🗑️ BORRAR RELATO"):
-            st.session_state.key_relato += 1
+# --- TAB 0: PROYECTO JARVIS (VERSIÓN COMPLETA Y ALINEADA V51.7 - REVISADA) ---
+with tabs[0]:
+    # 1. INICIALIZACIÓN DE CANALES DE DATOS
+    if "historial_chat" not in st.session_state: st.session_state.historial_chat = []
+    if "video_url" not in st.session_state: st.session_state.video_url = None
+    if "modo_fluido" not in st.session_state: st.session_state.modo_fluido = False
+
+    # 2. MOTOR DE BÚSQUEDA Y PROCESAMIENTO (Cerebro JARVIS)
+    def protocolo_stark_v516():
+        query = st.session_state.input_cmd.strip()
+        if query:
+            import requests
+            import base64
+            # Añadimos la orden del usuario al historial
+            st.session_state.historial_chat.append({"role": "user", "content": query})
+            
+            try:
+               # --- A. PROTOCOLO DE VISIÓN (VERSIÓN RADICAL SIN BYTES) ---
+                palabras_img = ["muéstrame", "busca una foto", "proyecta", "imagen de", "foto de", "enséñame", "muestrame"]
+                if any(word in query.lower() for word in palabras_img):
+                    sujeto = query.lower()
+                    for word in palabras_img: 
+                        sujeto = sujeto.replace(word, "")
+                    sujeto = sujeto.replace("un ", "").replace("una ", "").strip()
+                    
+                    # 1. URL DIRECTA (No descargamos nada, evitamos BytesIO totalmente)
+                    url_final = f"https://image.pollinations.ai/prompt/high_quality_realistic_photo_of_{sujeto.replace(' ', '_')}?width=800&height=500&nologo=true"
+                    
+                    # 2. FICHA TÉCNICA (Generada por la IA)
+                    meta_prompt = f"Genera una FICHA TÉCNICA para '{sujeto}': 🏰 LUGAR, 📏 ALTURA, 📅 CONSTRUCCIÓN, 💡 DATO CURIOSO. Estilo JARVIS. Máximo 50 palabras."
+                    info_res = client.chat.completions.create(
+                        model=modelo_texto, 
+                        messages=[{"role": "user", "content": meta_prompt}]
+                    )
+                    datos = info_res.choices[0].message.content
+
+                    # 3. RENDERIZADO EN EL HUD
+                    with st.chat_message("assistant", avatar="🚀"):
+                        st.markdown(f"### 🛰️ ESCANEO FINALIZADO: {sujeto.upper()}")
+                        
+                        # Mostramos la imagen usando la URL directamente
+                        st.image(url_final, use_container_width=True)
+                        
+                        st.markdown(f"""
+                        <div style="border-left: 3px solid #00f2ff; padding-left: 15px; background: rgba(0,242,255,0.05); border-radius: 10px; padding: 10px;">
+                            <p style="color: #00f2ff; font-weight: bold; margin-bottom: 5px;">📋 ANÁLISIS TÉCNICO:</p>
+                            <div style="color: white; font-family: monospace;">
+                                {datos.replace('-', '<br>•')}
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                    st.session_state.historial_chat.append({"role": "assistant", "content": f"Proyección de {sujeto.upper()} completada."})
+                    
+                # --- B. PROTOCOLO MULTIMEDIA (VIDEO) ---
+                elif any(word in query.lower() for word in ["video", "ver en youtube", "reproduce"]):
+                    prompt_intencion = f"Extrae el nombre del video. Responde solo 'BUSCAR: [nombre del video]'. Usuario: {query}"
+                    check_intencion = client.chat.completions.create(
+                        model=modelo_texto, 
+                        messages=[{"role": "user", "content": prompt_intencion}]
+                    )
+                    respuesta_intencion = check_intencion.choices[0].message.content
+
+                    if "BUSCAR:" in respuesta_intencion:
+                        termino = respuesta_intencion.split("BUSCAR:")[1].strip()
+                        from youtube_search import YoutubeSearch
+                        results = YoutubeSearch(termino, max_results=1).to_dict()
+                        if results:
+                            video_id = results[0]['id']
+                            st.session_state.video_url = f"https://www.youtube.com/embed/{video_id}"
+                            resp = f"He localizado las frecuencias para '{termino}'. Proyectando en el monitor principal, Srta. Diana."
+                        else:
+                            resp = "Señor, no he podido localizar material audiovisual en los registros de YouTube."
+                        st.session_state.historial_chat.append({"role": "assistant", "content": resp})
+
+                # --- C. MOTOR DE RESPUESTA IA (CHAT NORMAL) ---
+                else:
+                    hist = [{"role": m["role"], "content": m["content"]} for m in st.session_state.historial_chat[-5:]]
+                    res = client.chat.completions.create(
+                        model=modelo_texto, 
+                        messages=[{"role": "system", "content": PERSONALIDAD}] + hist
+                    )
+                    st.session_state.historial_chat.append({"role": "assistant", "content": res.choices[0].message.content})
+
+            except Exception as e:
+                st.error(f"Error en el núcleo de procesamiento: {str(e)}")
+            
+            st.session_state.input_cmd = "" # Limpieza del terminal para evitar ecos
+
+    # 3. CABECERA DE MANDOS
+    c1, c2, c3, c4 = st.columns([1, 1, 1, 7])
+    with c1:
+        if st.button("🗑️", help="Purgar Historial", key="clear_chat"):
+            st.session_state.historial_chat = []
+            st.session_state.video_url = None
+            st.rerun()
+    with c2:
+        ml_icon = "🔔" if st.session_state.get("modo_fluido", False) else "🔕"
+        if st.button(ml_icon, key="hands_free"):
+            st.session_state.modo_fluido = not st.session_state.get("modo_fluido", False)
+            st.rerun()
+    with c3:
+        from streamlit_mic_recorder import mic_recorder
+        mic_recorder(start_prompt="🎙️", stop_prompt="🛑", key="mic_v517")
+    with c4:
+        st.text_input("cmd", placeholder="Órdenes, Srta. Diana...", label_visibility="collapsed", key="input_cmd", on_change=protocolo_stark_v516)
+
+    st.markdown("---")
+
+    # 4. MONITOR MULTIMEDIA HUD
+    if st.session_state.video_url:
+        st.components.v1.iframe(st.session_state.video_url, height=450)
+        if st.button("🔴 Finalizar Proyección", use_container_width=True):
+            st.session_state.video_url = None
             st.rerun()
 
-    if enviar and relato_in:
-        with st.status("🤖 FRIDAY: Analizando naturaleza del procedimiento...", expanded=False):
-            resultado = procesar_relato_ia(relato_in)
-            
-            # Sincronización de campos
-            if len(resultado) >= 12:
-                tip, tr, loc, gv, ev, tl_clase, esp, gd, ed, cd, md_ia, mo_ia = resultado[:12]
-            else:
-                datos_relleno = resultado + (None,) * (12 - len(resultado))
-                tip, tr, loc, gv, ev, tl_clase, esp, gd, ed, cd, md_ia, mo_ia = datos_relleno
+    # 5. REGISTRO VISUAL (CHRONOS)
+    chat_box = st.container(height=550, border=False)
+    with chat_box:
+        for m in st.session_state.historial_chat:
+            with st.chat_message(m["role"], avatar="🚀" if m["role"] == "assistant" else "👤"):
+                st.markdown(m["content"], unsafe_allow_html=True)
 
-            import re
-            texto_analisis = relato_in.upper()
-            
-            # 1. DETECCIÓN DE DELITO
-            es_lesion = any(x in texto_analisis for x in ["LESION", "GOLPE", "AGRESION", "RIÑA", "PUÑO", "PATADA"])
-            
-            # 2. SINCRONIZACIÓN DE MEDIO DE DESPLAZAMIENTO
-            md_final = "MOTOCICLETA" if "MOTO" in texto_analisis else "A PIE"
-            sujeto_v = f"UN SUJETO EN MOTOCICLETA" if md_final == "MOTOCICLETA" else "UN SUJETO"
+# --- TAB 1: ANÁLISIS (FIX SCOUT VISION) ---
+with tabs[1]:
+    st.subheader("📊 Análisis Scout v4")
+    file = st.file_uploader("Evidencia", type=['pdf','docx','xlsx','txt','png','jpg','jpeg'], key="an_file")
+    if file and st.button("🔍 ANALIZAR"):
+        with st.spinner("Escaneando con protocolos Scout..."):
+            try:
+                if file.type in ["image/png", "image/jpeg"]:
+                    img = Image.open(file).convert("RGB")
+                    img.thumbnail((1024, 1024))
+                    buf = io.BytesIO(); img.save(buf, format="JPEG")
+                    b64 = base64.b64encode(buf.getvalue()).decode('utf-8')
+                    
+                    # FORMATO JSON REPARADO PARA LLAMA-4-SCOUT
+                    resp = client.chat.completions.create(
+                        model=modelo_vision_scout,
+                        messages=[{
+                            "role": "user",
+                            "content": [
+                                {"type": "text", "text": "Responde en ESPAÑOL. Realiza un análisis técnico profundo de esta imagen, identifica componentes y detecta anomalías."},
+                                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
+                            ]
+                        }],
+                        temperature=0.2,
+                        max_completion_tokens=1024
+                    )
+                    ans_an = resp.choices[0].message.content
+                else:
+                    # Lógica de documentos (Texto)
+                    texto = ""
+                    if file.name.endswith('.pdf'):
+                        texto = "\n".join([p.extract_text() for p in PyPDF2.PdfReader(file).pages[:5]])
+                    elif file.name.endswith('.docx'):
+                        texto = "\n".join([p.text for p in docx.Document(file).paragraphs])
+                    
+                    resp = client.chat.completions.create(
+                        model=modelo_texto,
+                        messages=[{"role": "system", "content": "Analista JARVIS. Responde en ESPAÑOL."},
+                                  {"role": "user", "content": f"Analiza este contenido técnico:\n{texto}"}]
+                    )
+                    ans_an = resp.choices[0].message.content
 
-            # 3. CONSTRUCCIÓN DEL RESUMEN TÁCTICO
-            if es_lesion:
-                accion_v = "PROPINA GOLPES A LA VÍCTIMA" if "GOLPE" in texto_analisis else "AGREDE FÍSICAMENTE A LA VÍCTIMA"
-                resumen_final = f"VICTIMA SE ENCONTRABA EN LA VIA PUBLICA, MOMENTOS EN QUE ES ABORDADA POR {sujeto_v}, QUIEN SIN PROVOCACION PREVIA {accion_v}, RESULTANDO ESTA CON LESIONES DE DIVERSA CONSIDERACION, PARA LUEGO DARSE A LA FUGA."
-                especie_display = "NO REGISTRA (PROCEDIMIENTO POR LESIONES)"
+                st.markdown(ans_an)
+                st.download_button("📥 DESCARGAR REPORTE", generar_pdf_reporte("REPORTE SCOUT", ans_an), "Reporte.pdf")
+            except Exception as e:
+                st.error(f"Fallo en los sensores: {str(e)}")
+
+# --- TAB 2: COMUNICACIONES (RESTAURADO Y OPERATIVO) ---
+with tabs[2]:
+    st.subheader("✉️ Despacho Stark - Protocolo de Enlace")
+       
+    # Contenedor de interfaz de despacho
+    with st.container():
+        col1, col2 = st.columns(2)
+        with col1:
+            destinatario = st.text_input("📩 Destinatario:", value=GMAIL_USER, help="Dirección de correo de destino")
+            asunto = st.text_input("📌 Asunto:", value="INFORME DE SITUACIÓN - STARK INDUSTRIES")
+        
+        with col2:
+            st.markdown("<br>", unsafe_allow_html=True) # Espaciado visual
+            prioridad = st.select_slider("Nivel de Prioridad:", options=["Baja", "Normal", "Urgente", "Cifra Roja"], value="Normal")
+            
+        cuerpo_mensaje = st.text_area("📝 Mensaje del Sistema:", height=200, placeholder="Escriba el informe aquí, señorita Diana...")
+        
+        # Sistema de Adjuntos (Solicitado)
+        archivo_adjunto = st.file_uploader("📎 Cargar Archivos para Encriptación:", type=['pdf', 'png', 'jpg', 'jpeg', 'docx', 'xlsx'], key="mail_adj_v2")
+        
+        st.markdown("---")
+        
+        if st.button("🚀 TRANSMITIR MENSAJE"):
+            if not cuerpo_mensaje:
+                st.warning("⚠️ El mensaje está vacío. ¿Desea enviar una transmisión en blanco?")
             else:
-                transporte_v = "A PIE"
-                if "BUS" in texto_analisis or "MICRO" in texto_analisis: transporte_v = "EN TRANSPORTE PUBLICO"
-                elif "VEHICULO" in texto_analisis: transporte_v = "EN SU VEHICULO"
+                with st.spinner("Estableciendo conexión segura con el satélite..."):
+                    try:
+                        # Configuración del servidor
+                        server = smtplib.SMTP('smtp.gmail.com', 587)
+                        server.starttls()
+                        server.login(GMAIL_USER, GMAIL_PASS)
+                        
+                        # Creación del objeto de mensaje
+                        msg = MIMEMultipart()
+                        msg['From'] = GMAIL_USER
+                        msg['To'] = destinatario
+                        msg['Subject'] = f"[{prioridad}] {asunto}"
+                        
+                        msg.attach(MIMEText(cuerpo_mensaje, 'plain'))
+                        
+                        # Procesamiento de adjuntos si existen
+                        if archivo_adjunto:
+                            part = MIMEBase('application', 'octet-stream')
+                            part.set_payload(archivo_adjunto.read())
+                            encoders.encode_base64(part)
+                            part.add_header('Content-Disposition', f'attachment; filename={archivo_adjunto.name}')
+                            msg.attach(part)
+                        
+                        # Envío
+                        server.send_message(msg)
+                        server.quit()
+                        
+                        st.success("✅ Transmisión completada con éxito. El mensaje ha sido enviado.")
+                        st.balloons()
+                        
+                    except Exception as e:
+                        st.error(f"❌ Error en el enlace: {str(e)}")
+                        st.info("Sugerencia: Verifique que la 'Contraseña de Aplicación' de Google esté activa en los secretos.")
+
+# --- TAB 3: LABORATORIO (RAZONAMIENTO EN SIGILO) ---
+with tabs[3]:
+    st.subheader("🎨 Prototipado Mark 85 - Modo Inferencia")
+    idea_simple = st.text_input("Concepto:")
+    estilo = st.selectbox("Filtro:", ["Cinematic Marvel", "Technical Drawing", "Cyberpunk", "Blueprint Tech"])
+    
+    if st.button("🚀 SINTETIZAR") and idea_simple:
+        with st.spinner("Sintetizando..."):
+            try:
+                # PASO 1: RAZONAMIENTO OCULTO
+                razonamiento_ctx = [
+                    {"role": "system", "content": "Eres el módulo de diseño de JARVIS. Genera un prompt de imagen técnico y ultra-detallado. Enfócate exclusivamente en el sujeto solicitado. No menciones edificios a menos que se pidan explícitamente."},
+                    {"role": "user", "content": f"Crea un prompt detallado para: '{idea_simple}' con estilo {estilo}. Responde solo con el prompt en inglés."}
+                ]
+                res_razonada = client.chat.completions.create(model=modelo_texto, messages=razonamiento_ctx)
+                prompt_final = res_razonada.choices[0].message.content
+
+                # PASO 2: SÍNTESIS DIRECTA
+                url = "https://router.huggingface.co/hf-inference/models/stabilityai/stable-diffusion-xl-base-1.0"
+                headers = {"Authorization": f"Bearer {HF_TOKEN}"}
                 
-                accion_v = "LE ARREBATA" if "ARREBATA" in texto_analisis else "SUSTRAE"
-                especie_v = str(esp).upper() if esp else "ESPECIES"
-                resumen_final = f"VICTIMA TRANSITABA {transporte_v} POR LA VIA PUBLICA, MOMENTOS EN QUE ES ABORDADA POR {sujeto_v}, QUIEN {accion_v} {especie_v}, DÁNDOSE POSTERIORMENTE A LA FUGA."
-                especie_display = esp if esp else "SIN ESPECIFICAR"
-
-            # 4. LIMPIEZA DE PRIVACIDAD
-            nombres_p = r'(YESSENIA|DEL CARMEN|GARCIA|ARO|JENIPHER|SABANDO|TOLEDO|MARIVOR|DOMICILIADA|IDENTIDAD|CEDULA)'
-            resumen_final = re.sub(nombres_p, 'VICTIMA', resumen_final)
-            resumen_final = re.sub(r'\d{1,2}\.\d{3}\.\d{3}-[\dKk]', '', resumen_final)
-
-            # 5. LÓGICA DE LUGAR
-            if any(h in texto_analisis for h in ["HOSPITAL", "CLINICA", "POSTA"]):
-                tl_final = "CENTRO DE SALUD"
-                loc_final = str(loc).upper()
-            else:
-                tl_final = "VIA PUBLICA" if any(v in texto_analisis for v in ["AVENIDA", "CALLE", "TENIENTE CRUZ"]) else tl_clase
-                loc_final = str(loc).upper()
-
-        # --- 6. RENDERIZADO CON TAMAÑO DE LETRA CORREGIDO ---
-        st.markdown(f"""
-        <style>
-            .tabla-final {{ width: 100%; border-collapse: collapse; font-family: 'Arial', sans-serif; color: black; border: 1px solid #333; }}
-            .tabla-final td {{ border: 1px solid #333; padding: 10px; font-size: 14px !important; vertical-align: middle; background-color: white; }}
-            .encabezado-verde {{ background-color: #1E7421 !important; color: white !important; text-align: center; font-weight: bold; font-size: 15px !important; }}
-            .sub-encabezado {{ background-color: #D7E4BD !important; text-align: center; font-weight: bold; font-size: 14px !important; }}
-            .perfil-header {{ background-color: #EBF1DE !important; text-align: center; font-weight: bold; font-size: 14px !important; }}
-            .dato-negrita {{ font-weight: bold; font-size: 14px !important; }}
-            .resumen-texto {{ text-align: justify; line-height: 1.5; font-size: 13px !important; }}
-        </style>
-
-        <table class="tabla-final">
-            <tr>
-                <td rowspan="2" class="encabezado-verde" style="width: 35%;">{tip}</td>
-                <td class="sub-encabezado" style="width: 30%;">TRAMO</td>
-                <td class="sub-encabezado" style="width: 35%;">LUGAR OCURRENCIA</td>
-            </tr>
-            <tr>
-                <td style="text-align: center; height: 50px;" class="dato-negrita">{tr}</td>
-                <td style="text-align: center;" class="dato-negrita">{loc_final}</td>
-            </tr>
-            <tr>
-                <td class="perfil-header">PERFIL VÍCTIMA</td>
-                <td class="perfil-header">PERFIL DELINCUENTE</td>
-                <td class="perfil-header">MODUS OPERANDI</td>
-            </tr>
-            <tr>
-                <td style="vertical-align: top;">
-                    <span class="dato-negrita">GENERO:</span> {gv}<br>
-                    <span class="dato-negrita">RANGO:</span> {ev}<br>
-                    <span class="dato-negrita">LUGAR:</span> <span style="color:green; font-weight:bold;">{tl_final}</span><br>
-                    <span class="dato-negrita">ESPECIE:</span> {especie_display}
-                </td>
-                <td style="vertical-align: top;">
-                    <span class="dato-negrita">VICTIMARIO:</span> {gd}<br>
-                    <span class="dato-negrita">EDAD:</span> {ed}<br>
-                    <span class="dato-negrita">FISICO:</span> {cd}<br>
-                    <span class="dato-negrita">MED. DESPL.:</span> {md_final}
-                </td>
-                <td class="resumen-texto">{resumen_final}</td>
-            </tr>
-        </table>
-        """, unsafe_allow_html=True)
+                payload = {
+                    "inputs": prompt_final,
+                    "parameters": {
+                        "num_inference_steps": 35,
+                        "guidance_scale": 8.5
+                    }
+                }
+                
+                resp = requests.post(url, headers=headers, json=payload, timeout=90)
+                
+                if resp.status_code == 200:
+                    # Se ha eliminado st.write(prompt_final) para mantener la limpieza
+                    st.image(Image.open(io.BytesIO(resp.content)))
+                else:
+                    st.error(f"Fallo en la forja: {resp.status_code}")
+                    
+            except Exception as e:
+                st.error(f"Error en los sistemas de pensamiento: {str(e)}")
